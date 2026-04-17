@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/canonical/claim.schema.json",
+  "title": "Claim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claim_id",
+    "field_name",
+    "value",
+    "value_type",
+    "source_key",
+    "parser_version",
+    "parser_confidence",
+    "created_at",
+    "evidence",
+    "metadata"
+  ],
+  "properties": {
+    "claim_id": { "type": "string", "format": "uuid" },
+    "field_name": { "type": "string" },
+    "value": {},
+    "value_type": { "type": "string" },
+    "entity_hint": { "type": ["string", "null"] },
+    "source_key": { "type": "string" },
+    "parser_version": { "type": "string" },
+    "normalizer_version": { "type": ["string", "null"] },
+    "parser_confidence": { "type": "number" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_id",
+          "source_key",
+          "source_url",
+          "raw_artifact_id",
+          "captured_at"
+        ],
+        "properties": {
+          "evidence_id": { "type": "string", "format": "uuid" },
+          "source_key": { "type": "string" },
+          "source_url": { "type": "string" },
+          "raw_artifact_id": { "type": "string", "format": "uuid" },
+          "fragment_id": { "type": ["string", "null"], "format": "uuid" },
+          "captured_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

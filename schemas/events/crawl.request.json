@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/events/crawl.request.json",
+  "title": "crawl.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_name", "header", "payload"],
+  "properties": {
+    "event_name": { "const": "crawl.request.v1" },
+    "header": { "$ref": "#/$defs/header" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "crawl_run_id",
+        "source_key",
+        "endpoint_url",
+        "priority",
+        "trigger",
+        "parser_profile",
+        "requested_at",
+        "metadata"
+      ],
+      "properties": {
+        "crawl_run_id": { "type": "string", "format": "uuid" },
+        "source_key": { "type": "string" },
+        "endpoint_url": { "type": "string" },
+        "priority": { "enum": ["high", "bulk"] },
+        "trigger": { "enum": ["schedule", "manual", "replay"] },
+        "parser_profile": { "type": "string" },
+        "requested_at": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      }
+    }
+  },
+  "$defs": {
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "producer", "occurred_at", "schema_version"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "trace_id": { "type": ["string", "null"], "format": "uuid" },
+        "producer": { "type": "string" },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "schema_version": { "type": "integer" }
+      }
+    }
+  }
+}

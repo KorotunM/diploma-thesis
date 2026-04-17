@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/events/review.required.json",
+  "title": "review.required.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_name", "header", "payload"],
+  "properties": {
+    "event_name": { "const": "review.required.v1" },
+    "header": { "$ref": "#/$defs/header" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_case_id",
+        "reason",
+        "priority",
+        "university_id",
+        "evidence_ids",
+        "queue_name"
+      ],
+      "properties": {
+        "review_case_id": { "type": "string", "format": "uuid" },
+        "reason": { "type": "string" },
+        "priority": { "enum": ["high", "normal"] },
+        "university_id": { "type": ["string", "null"], "format": "uuid" },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" }
+        },
+        "queue_name": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "producer", "occurred_at", "schema_version"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "trace_id": { "type": ["string", "null"], "format": "uuid" },
+        "producer": { "type": "string" },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "schema_version": { "type": "integer" }
+      }
+    }
+  }
+}

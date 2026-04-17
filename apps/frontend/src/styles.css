@@ -1,0 +1,114 @@
+:root {
+  color-scheme: light;
+  font-family: "Manrope", "Avenir Next", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(218, 236, 255, 0.9), transparent 32%),
+    linear-gradient(180deg, #f5f7fa 0%, #edf1f5 100%);
+  color: #132238;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 20px 56px;
+}
+
+.hero {
+  padding: 32px;
+  border-radius: 28px;
+  background: linear-gradient(140deg, #0d2438, #1f4d71);
+  color: #f8fbff;
+  box-shadow: 0 28px 70px rgba(9, 30, 48, 0.18);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  opacity: 0.72;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 0.98;
+}
+
+.hero-copy {
+  max-width: 720px;
+  margin: 16px 0 0;
+  color: rgba(248, 251, 255, 0.82);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.panel {
+  padding: 24px;
+  border: 1px solid rgba(19, 34, 56, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 45px rgba(19, 34, 56, 0.08);
+}
+
+.feature-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(235, 244, 250, 0.95));
+}
+
+.accent-panel {
+  background: linear-gradient(180deg, rgba(241, 248, 235, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.compact-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(19, 34, 56, 0.08);
+}
+
+.chip {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #d7e8f8;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.evidence-card {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (max-width: 680px) {
+  .app-shell {
+    padding: 20px 14px 32px;
+  }
+
+  .hero {
+    padding: 24px;
+  }
+}

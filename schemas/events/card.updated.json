@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/events/card.updated.json",
+  "title": "card.updated.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_name", "header", "payload"],
+  "properties": {
+    "event_name": { "const": "card.updated.v1" },
+    "header": { "$ref": "#/$defs/header" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "university_id",
+        "card_version",
+        "delivery_table",
+        "updated_fields",
+        "generated_at"
+      ],
+      "properties": {
+        "university_id": { "type": "string", "format": "uuid" },
+        "card_version": { "type": "integer" },
+        "delivery_table": { "type": "string" },
+        "updated_fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "producer", "occurred_at", "schema_version"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "trace_id": { "type": ["string", "null"], "format": "uuid" },
+        "producer": { "type": "string" },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "schema_version": { "type": "integer" }
+      }
+    }
+  }
+}

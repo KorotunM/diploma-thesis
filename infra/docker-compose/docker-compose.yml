@@ -1,0 +1,129 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    env_file:
+      - ../env/local/app.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../schemas/sql/init:/docker-entrypoint-initdb.d/10-init:ro
+      - ../../schemas/sql/ddl:/docker-entrypoint-initdb.d/20-ddl:ro
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    env_file:
+      - ../env/local/app.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ../rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_management load_definitions "/etc/rabbitmq/definitions.json"
+
+  minio:
+    image: minio/minio:latest
+    env_file:
+      - ../env/local/app.env
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-bootstrap:
+    image: minio/mc:latest
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]
+    volumes:
+      - ../minio/bootstrap.sh:/bootstrap.sh:ro
+
+  scheduler:
+    build:
+      context: ../..
+      dockerfile: apps/scheduler/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - postgres
+      - rabbitmq
+      - minio
+    ports:
+      - "8001:8001"
+
+  parser:
+    build:
+      context: ../..
+      dockerfile: apps/parser/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - postgres
+      - rabbitmq
+      - minio
+    ports:
+      - "8002:8002"
+
+  normalizer:
+    build:
+      context: ../..
+      dockerfile: apps/normalizer/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - postgres
+      - rabbitmq
+      - minio
+    ports:
+      - "8003:8003"
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - postgres
+    ports:
+      - "8004:8004"
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: apps/frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    env_file:
+      - ../env/local/app.env
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  minio_data:
+  grafana_data:

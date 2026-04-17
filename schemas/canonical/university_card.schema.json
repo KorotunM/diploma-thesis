@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/canonical/university_card.schema.json",
+  "title": "UniversityCard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "university_id",
+    "canonical_name",
+    "aliases",
+    "location",
+    "contacts",
+    "institutional",
+    "programs",
+    "tuition",
+    "ratings",
+    "dormitory",
+    "reviews",
+    "sources",
+    "version"
+  ],
+  "properties": {
+    "university_id": { "type": "string", "format": "uuid" },
+    "canonical_name": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "confidence", "sources"],
+      "properties": {
+        "value": { "type": ["string", "number", "integer", "null"] },
+        "confidence": { "type": "number" },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sourceAttribution" }
+        }
+      }
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "country": { "type": ["string", "null"] },
+        "city": { "type": ["string", "null"] },
+        "address": { "type": ["string", "null"] },
+        "geo": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "contacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "website": { "type": ["string", "null"] },
+        "emails": { "type": "array", "items": { "type": "string" } },
+        "phones": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "institutional": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": ["string", "null"] },
+        "founded_year": { "type": ["integer", "null"] }
+      }
+    },
+    "programs": { "type": "array", "items": { "type": "object" } },
+    "tuition": { "type": "array", "items": { "type": "object" } },
+    "ratings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "year", "metric", "value"],
+        "properties": {
+          "provider": { "type": "string" },
+          "year": { "type": "integer" },
+          "metric": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    },
+    "dormitory": { "type": "object" },
+    "reviews": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": { "type": ["string", "null"] },
+        "items": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sourceAttribution" }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card_version", "generated_at"],
+      "properties": {
+        "card_version": { "type": "integer" },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "sourceAttribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_key", "source_url", "evidence_ids"],
+      "properties": {
+        "source_key": { "type": "string" },
+        "source_url": { "type": "string" },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" }
+        }
+      }
+    }
+  }
+}

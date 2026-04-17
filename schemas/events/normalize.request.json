@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/events/normalize.request.json",
+  "title": "normalize.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_name", "header", "payload"],
+  "properties": {
+    "event_name": { "const": "normalize.request.v1" },
+    "header": { "$ref": "#/$defs/header" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "crawl_run_id",
+        "source_key",
+        "parsed_document_id",
+        "parser_version",
+        "normalizer_version",
+        "metadata"
+      ],
+      "properties": {
+        "crawl_run_id": { "type": "string", "format": "uuid" },
+        "source_key": { "type": "string" },
+        "parsed_document_id": { "type": "string", "format": "uuid" },
+        "parser_version": { "type": "string" },
+        "normalizer_version": { "type": "string" },
+        "metadata": { "type": "object" }
+      }
+    }
+  },
+  "$defs": {
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "producer", "occurred_at", "schema_version"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "trace_id": { "type": ["string", "null"], "format": "uuid" },
+        "producer": { "type": "string" },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "schema_version": { "type": "integer" }
+      }
+    }
+  }
+}

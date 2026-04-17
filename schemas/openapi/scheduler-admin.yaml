@@ -1,0 +1,17 @@
+openapi: 3.1.0
+info:
+  title: Scheduler Admin API
+  version: 0.1.0
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is alive
+  /admin/v1/crawl-jobs:
+    post:
+      summary: Schedule a crawl job
+      responses:
+        "202":
+          description: Crawl request accepted

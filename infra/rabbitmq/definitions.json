@@ -1,0 +1,69 @@
+{
+  "vhosts": [{ "name": "/" }],
+  "exchanges": [
+    { "name": "parser.jobs", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "normalize.jobs", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "delivery.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "parser.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "normalize.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "delivery.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    {
+      "name": "parser.high",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "parser.dlx" }
+    },
+    {
+      "name": "parser.bulk",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "parser.dlx" }
+    },
+    {
+      "name": "normalize.high",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "normalize.dlx" }
+    },
+    {
+      "name": "normalize.bulk",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "normalize.dlx" }
+    },
+    {
+      "name": "card.updated",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "delivery.dlx" }
+    },
+    {
+      "name": "review.required",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "delivery.dlx" }
+    },
+    { "name": "parser.dead", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "normalize.dead", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "delivery.dead", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "parser.jobs", "vhost": "/", "destination": "parser.high", "destination_type": "queue", "routing_key": "high", "arguments": {} },
+    { "source": "parser.jobs", "vhost": "/", "destination": "parser.bulk", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
+    { "source": "normalize.jobs", "vhost": "/", "destination": "normalize.high", "destination_type": "queue", "routing_key": "high", "arguments": {} },
+    { "source": "normalize.jobs", "vhost": "/", "destination": "normalize.bulk", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
+    { "source": "delivery.events", "vhost": "/", "destination": "card.updated", "destination_type": "queue", "routing_key": "card.updated", "arguments": {} },
+    { "source": "delivery.events", "vhost": "/", "destination": "review.required", "destination_type": "queue", "routing_key": "review.required", "arguments": {} },
+    { "source": "parser.dlx", "vhost": "/", "destination": "parser.dead", "destination_type": "queue", "routing_key": "", "arguments": {} },
+    { "source": "normalize.dlx", "vhost": "/", "destination": "normalize.dead", "destination_type": "queue", "routing_key": "", "arguments": {} },
+    { "source": "delivery.dlx", "vhost": "/", "destination": "delivery.dead", "destination_type": "queue", "routing_key": "", "arguments": {} }
+  ]
+}

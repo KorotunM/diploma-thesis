@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: Backend API
+  version: 0.1.0
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is alive
+  /api/v1/search:
+    get:
+      summary: Search universities
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search result page
+  /api/v1/universities/{university_id}:
+    get:
+      summary: Get university card
+      parameters:
+        - in: path
+          name: university_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: University card

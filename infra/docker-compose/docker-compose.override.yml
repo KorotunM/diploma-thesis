@@ -1,0 +1,26 @@
+services:
+  scheduler:
+    volumes:
+      - ../../:/workspace
+    command: uvicorn apps.scheduler.app.main:app --host 0.0.0.0 --port 8001 --reload
+
+  parser:
+    volumes:
+      - ../../:/workspace
+    command: uvicorn apps.parser.app.main:app --host 0.0.0.0 --port 8002 --reload
+
+  normalizer:
+    volumes:
+      - ../../:/workspace
+    command: uvicorn apps.normalizer.app.main:app --host 0.0.0.0 --port 8003 --reload
+
+  backend:
+    volumes:
+      - ../../:/workspace
+    command: uvicorn apps.backend.app.main:app --host 0.0.0.0 --port 8004 --reload
+
+  frontend:
+    volumes:
+      - ../../apps/frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 5173
