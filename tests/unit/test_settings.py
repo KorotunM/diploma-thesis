@@ -42,6 +42,7 @@ def test_platform_settings_build_connection_values_from_shared_env_file(tmp_path
     assert settings.rabbitmq.heartbeat_seconds == 30
     assert settings.rabbitmq.prefetch_count == 16
     assert settings.minio.endpoint == "http://object-storage:9100"
+    assert settings.minio.api_endpoint == "object-storage:9100"
 
 
 def test_platform_settings_loads_shared_and_service_specific_env_files(

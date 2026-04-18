@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from functools import cache
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -135,6 +135,15 @@ class MinIOSettings(BaseModel):
     def console_url(self) -> str:
         scheme = "https" if self.secure else "http"
         return f"{scheme}://{self.host}:{self.console_port}"
+
+    @property
+    def api_endpoint(self) -> str:
+        parsed = urlparse(self.endpoint)
+        if parsed.netloc:
+            return parsed.netloc
+        if parsed.path:
+            return parsed.path
+        return f"{self.host}:{self.port}"
 
 
 class PlatformSettings(BaseSettings):
