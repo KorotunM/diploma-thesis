@@ -1,3 +1,43 @@
-from .topology import EXCHANGES, QUEUES
+from .topology import (
+    EXCHANGE_DEFINITIONS,
+    EXCHANGES,
+    QUEUE_DEFINITIONS,
+    QUEUES,
+    ExchangeDefinition,
+    QueueDefinition,
+    get_exchange_definition,
+    get_queue_definition,
+)
+from .transport import (
+    RabbitMQConsumer,
+    RabbitMQPublisher,
+    RabbitMQPublishResult,
+    build_rabbitmq_connection_options,
+    build_rabbitmq_publish_retry_policy,
+    create_exchange_entities,
+    create_queue_entities,
+    create_rabbitmq_connection,
+    declare_rabbitmq_topology,
+    get_rabbitmq_connection,
+)
 
-__all__ = ["EXCHANGES", "QUEUES"]
+__all__ = [
+    "EXCHANGES",
+    "QUEUES",
+    "EXCHANGE_DEFINITIONS",
+    "QUEUE_DEFINITIONS",
+    "ExchangeDefinition",
+    "QueueDefinition",
+    "RabbitMQConsumer",
+    "RabbitMQPublishResult",
+    "RabbitMQPublisher",
+    "build_rabbitmq_connection_options",
+    "build_rabbitmq_publish_retry_policy",
+    "create_exchange_entities",
+    "create_queue_entities",
+    "create_rabbitmq_connection",
+    "declare_rabbitmq_topology",
+    "get_exchange_definition",
+    "get_queue_definition",
+    "get_rabbitmq_connection",
+]

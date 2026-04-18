@@ -83,6 +83,11 @@ class RabbitMQSettings(BaseModel):
     vhost: str
     management_port: int
     url_override: str | None = None
+    heartbeat_seconds: int
+    connection_timeout_seconds: int
+    prefetch_count: int
+    publish_retry: bool
+    publish_retry_max_retries: int
 
     @property
     def url(self) -> str:
@@ -211,6 +216,26 @@ class PlatformSettings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("RABBITMQ_URL"),
     )
+    rabbitmq_heartbeat_seconds: int = Field(
+        default=30,
+        validation_alias=AliasChoices("RABBITMQ_HEARTBEAT_SECONDS"),
+    )
+    rabbitmq_connection_timeout_seconds: int = Field(
+        default=5,
+        validation_alias=AliasChoices("RABBITMQ_CONNECTION_TIMEOUT_SECONDS"),
+    )
+    rabbitmq_prefetch_count: int = Field(
+        default=16,
+        validation_alias=AliasChoices("RABBITMQ_PREFETCH_COUNT"),
+    )
+    rabbitmq_publish_retry: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("RABBITMQ_PUBLISH_RETRY"),
+    )
+    rabbitmq_publish_retry_max_retries: int = Field(
+        default=3,
+        validation_alias=AliasChoices("RABBITMQ_PUBLISH_RETRY_MAX_RETRIES"),
+    )
 
     minio_endpoint_override: str | None = Field(
         default=None,
@@ -314,6 +339,11 @@ class PlatformSettings(BaseSettings):
             vhost=self.rabbitmq_vhost,
             management_port=self.rabbitmq_management_port,
             url_override=self.rabbitmq_url_override,
+            heartbeat_seconds=self.rabbitmq_heartbeat_seconds,
+            connection_timeout_seconds=self.rabbitmq_connection_timeout_seconds,
+            prefetch_count=self.rabbitmq_prefetch_count,
+            publish_retry=self.rabbitmq_publish_retry,
+            publish_retry_max_retries=self.rabbitmq_publish_retry_max_retries,
         )
 
     @property

@@ -39,6 +39,8 @@ def test_platform_settings_build_connection_values_from_shared_env_file(tmp_path
     assert settings.postgres.pool_size == 5
     assert settings.postgres.max_overflow == 10
     assert settings.rabbitmq.url == "amqp://publisher:broker%20pass@broker.internal:5673/events"
+    assert settings.rabbitmq.heartbeat_seconds == 30
+    assert settings.rabbitmq.prefetch_count == 16
     assert settings.minio.endpoint == "http://object-storage:9100"
 
 
