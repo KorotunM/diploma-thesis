@@ -2,26 +2,28 @@ from fastapi import APIRouter, FastAPI
 from prometheus_client import make_asgi_app
 
 from libs.contracts.dto import HealthResponse
-from libs.storage.settings import PlatformSettings
+from libs.storage import get_platform_settings
 
 
 def create_service_app(service_name: str, description: str) -> FastAPI:
-    settings = PlatformSettings()
-    app = FastAPI(title=service_name, description=description, version=settings.app_version)
+    settings = get_platform_settings(service_name=service_name)
+    service = settings.service
+    app = FastAPI(title=service_name, description=description, version=service.version)
+    app.state.platform_settings = settings
     router = APIRouter(tags=["platform"])
 
     dependencies = {
-        "postgres": "configured" if settings.postgres_dsn else "missing",
-        "rabbitmq": "configured" if settings.rabbitmq_url else "missing",
-        "minio": "configured" if settings.minio_endpoint else "missing",
+        "postgres": "configured" if settings.postgres.sqlalchemy_dsn else "missing",
+        "rabbitmq": "configured" if settings.rabbitmq.url else "missing",
+        "minio": "configured" if settings.minio.endpoint else "missing",
     }
 
     @router.get("/healthz", response_model=HealthResponse, summary="Liveness probe")
     def healthz() -> HealthResponse:
         return HealthResponse(
             service=service_name,
-            environment=settings.app_env,
-            version=settings.app_version,
+            environment=service.environment,
+            version=service.version,
             dependencies=dependencies,
         )
 
@@ -29,8 +31,8 @@ def create_service_app(service_name: str, description: str) -> FastAPI:
     def readyz() -> HealthResponse:
         return HealthResponse(
             service=service_name,
-            environment=settings.app_env,
-            version=settings.app_version,
+            environment=service.environment,
+            version=service.version,
             dependencies=dependencies,
         )
 
