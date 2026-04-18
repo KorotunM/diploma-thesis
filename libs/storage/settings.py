@@ -55,6 +55,12 @@ class PostgresSettings(BaseModel):
     driver: str
     application_name: str
     dsn_override: str | None = None
+    connect_timeout_seconds: int
+    pool_size: int
+    max_overflow: int
+    pool_timeout_seconds: int
+    pool_recycle_seconds: int
+    pool_pre_ping: bool
 
     @property
     def sqlalchemy_dsn(self) -> str:
@@ -161,6 +167,30 @@ class PlatformSettings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("POSTGRES_DSN"),
     )
+    postgres_connect_timeout_seconds: int = Field(
+        default=5,
+        validation_alias=AliasChoices("POSTGRES_CONNECT_TIMEOUT_SECONDS"),
+    )
+    postgres_pool_size: int = Field(
+        default=5,
+        validation_alias=AliasChoices("POSTGRES_POOL_SIZE"),
+    )
+    postgres_max_overflow: int = Field(
+        default=10,
+        validation_alias=AliasChoices("POSTGRES_MAX_OVERFLOW"),
+    )
+    postgres_pool_timeout_seconds: int = Field(
+        default=30,
+        validation_alias=AliasChoices("POSTGRES_POOL_TIMEOUT_SECONDS"),
+    )
+    postgres_pool_recycle_seconds: int = Field(
+        default=1800,
+        validation_alias=AliasChoices("POSTGRES_POOL_RECYCLE_SECONDS"),
+    )
+    postgres_pool_pre_ping: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("POSTGRES_POOL_PRE_PING"),
+    )
 
     rabbitmq_host: str = Field(default="rabbitmq", validation_alias=AliasChoices("RABBITMQ_HOST"))
     rabbitmq_port: int = Field(default=5672, validation_alias=AliasChoices("RABBITMQ_PORT"))
@@ -266,6 +296,12 @@ class PlatformSettings(BaseSettings):
             driver=self.postgres_driver,
             application_name=self.postgres_application_name,
             dsn_override=self.postgres_dsn_override,
+            connect_timeout_seconds=self.postgres_connect_timeout_seconds,
+            pool_size=self.postgres_pool_size,
+            max_overflow=self.postgres_max_overflow,
+            pool_timeout_seconds=self.postgres_pool_timeout_seconds,
+            pool_recycle_seconds=self.postgres_pool_recycle_seconds,
+            pool_pre_ping=self.postgres_pool_pre_ping,
         )
 
     @property

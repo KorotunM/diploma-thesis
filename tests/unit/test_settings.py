@@ -35,6 +35,9 @@ def test_platform_settings_build_connection_values_from_shared_env_file(tmp_path
     assert settings.postgres.sqlalchemy_dsn == (
         "postgresql+psycopg://reader:secret%20pass@db.internal:5433/universities"
     )
+    assert settings.postgres.connect_timeout_seconds == 5
+    assert settings.postgres.pool_size == 5
+    assert settings.postgres.max_overflow == 10
     assert settings.rabbitmq.url == "amqp://publisher:broker%20pass@broker.internal:5673/events"
     assert settings.minio.endpoint == "http://object-storage:9100"
 
