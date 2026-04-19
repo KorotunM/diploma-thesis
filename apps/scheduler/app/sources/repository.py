@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from typing import Any
 
 from .models import CreateSourceRequest, SourceRecord, UpdateSourceRequest
+from .serialization import json_from_db, json_to_db
 
 
 class SourceAlreadyExistsError(ValueError):
@@ -22,22 +22,6 @@ def _sql_text(statement: str) -> Any:
             "Install project runtime dependencies before using scheduler repositories."
         ) from exc
     return text(statement)
-
-
-def _metadata_to_db(metadata: dict[str, Any] | None) -> str:
-    return json.dumps(metadata or {}, ensure_ascii=False, sort_keys=True)
-
-
-def _metadata_from_db(value: Any) -> dict[str, Any]:
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        decoded = json.loads(value)
-        if isinstance(decoded, dict):
-            return decoded
-    return dict(value)
 
 
 class SourceRepository:
@@ -88,7 +72,7 @@ class SourceRepository:
                 "source_type": request.source_type.value,
                 "trust_tier": request.trust_tier.value,
                 "is_active": request.is_active,
-                "metadata": _metadata_to_db(request.metadata),
+                "metadata": json_to_db(request.metadata),
             },
         )
         return self._record_from_row(result.mappings().one())
@@ -190,7 +174,7 @@ class SourceRepository:
                 "trust_tier": request.trust_tier.value if request.trust_tier else None,
                 "is_active": request.is_active,
                 "metadata_is_set": metadata_is_set,
-                "metadata": _metadata_to_db(request.metadata) if metadata_is_set else "{}",
+                "metadata": json_to_db(request.metadata) if metadata_is_set else "{}",
             },
         )
         row = result.mappings().one_or_none()
@@ -206,5 +190,5 @@ class SourceRepository:
             source_type=row["source_type"],
             trust_tier=row["trust_tier"],
             is_active=row["is_active"],
-            metadata=_metadata_from_db(row["metadata"]),
+            metadata=json_from_db(row["metadata"]),
         )
