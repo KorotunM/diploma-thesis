@@ -1,5 +1,6 @@
 from fastapi import status
 
+from apps.scheduler.app.sources.routes import router as source_registry_router
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
 from libs.observability import create_service_app
 
@@ -7,6 +8,7 @@ app = create_service_app(
     service_name="scheduler",
     description="Plans crawl runs and publishes crawl.request events.",
 )
+app.include_router(source_registry_router)
 
 
 @app.get("/", tags=["scheduler"])
