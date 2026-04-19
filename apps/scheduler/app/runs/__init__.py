@@ -8,10 +8,15 @@ from .models import (
     PipelineTriggerType,
 )
 from .repository import PipelineRunRepository
-from .service import ManualCrawlEndpointNotFoundError, ManualCrawlTriggerService
+from .service import (
+    CrawlRequestPublishError,
+    ManualCrawlEndpointNotFoundError,
+    ManualCrawlTriggerService,
+)
 
 __all__ = [
     "CrawlJobAcceptedResponse",
+    "CrawlRequestPublishError",
     "ManualCrawlEndpointNotFoundError",
     "ManualCrawlTriggerRequest",
     "ManualCrawlTriggerService",

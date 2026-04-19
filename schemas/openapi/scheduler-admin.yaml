@@ -20,13 +20,15 @@ paths:
               $ref: "#/components/schemas/ManualCrawlTriggerRequest"
       responses:
         "202":
-          description: Crawl run persisted and crawl request prepared
+          description: Crawl run persisted and crawl request published
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CrawlJobAcceptedResponse"
         "404":
           description: Source endpoint was not found
+        "502":
+          description: Crawl request could not be published to RabbitMQ
 components:
   schemas:
     ManualCrawlTriggerRequest:

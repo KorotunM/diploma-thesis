@@ -1,4 +1,6 @@
+import json
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -11,6 +13,7 @@ from apps.scheduler.app.runs.models import (
 )
 from apps.scheduler.app.runs.repository import PipelineRunRepository
 from apps.scheduler.app.runs.service import (
+    CrawlRequestPublishError,
     ManualCrawlEndpointNotFoundError,
     ManualCrawlTriggerService,
 )
@@ -35,8 +38,12 @@ class FakePipelineRunSession:
     def __init__(self) -> None:
         self.rows: dict[object, dict] = {}
         self.executed: list[tuple[str, dict]] = []
+        self.commit_count = 0
         self.now = datetime(2026, 4, 19, 10, 0, tzinfo=UTC)
         self.finished_at = datetime(2026, 4, 19, 10, 5, tzinfo=UTC)
+
+    def commit(self) -> None:
+        self.commit_count += 1
 
     def execute(self, statement: str, params: dict):
         normalized_statement = " ".join(statement.split()).lower()
@@ -66,11 +73,9 @@ class FakePipelineRunSession:
             row["status"] = params["status"]
             if params["finish"]:
                 row["finished_at"] = self.finished_at
-            row["metadata"] = (
-                '{"attempt": 1, "published_queue": "parser.high"}'
-                if "published_queue" in params["metadata_patch"]
-                else params["metadata_patch"]
-            )
+            row_metadata = json.loads(row["metadata"])
+            row_metadata.update(json.loads(params["metadata_patch"]))
+            row["metadata"] = json.dumps(row_metadata)
             return FakeMappingResult(row=row)
 
         raise AssertionError(f"Unexpected statement: {statement}")
@@ -89,6 +94,8 @@ class FakeEndpointRepository:
 class FakeRunRepository:
     def __init__(self) -> None:
         self.created: list[dict] = []
+        self.transitions: list[dict] = []
+        self.commit_count = 0
         self.record = None
 
     def create(self, **kwargs):
@@ -104,6 +111,48 @@ class FakeRunRepository:
             "metadata": kwargs["metadata"],
         }
         return self.record
+
+    def transition(self, **kwargs):
+        self.transitions.append(kwargs)
+        if self.record is None:
+            return None
+        self.record = {
+            **self.record,
+            "status": kwargs["status"],
+            "metadata": {
+                **self.record["metadata"],
+                **(kwargs.get("metadata_patch") or {}),
+            },
+        }
+        if kwargs.get("finish"):
+            self.record["finished_at"] = datetime(2026, 4, 19, 10, 5, tzinfo=UTC)
+        return self.record
+
+    def commit(self) -> None:
+        self.commit_count += 1
+
+
+class FakeCrawlRequestPublisher:
+    def __init__(self, *, fail_with: Exception | None = None) -> None:
+        self.fail_with = fail_with
+        self.calls: list[dict] = []
+
+    def publish(self, payload, *, queue_name: str, headers: dict | None = None):
+        self.calls.append(
+            {
+                "payload": payload,
+                "queue_name": queue_name,
+                "headers": headers or {},
+            }
+        )
+        if self.fail_with is not None:
+            raise self.fail_with
+        routing_key = "high" if queue_name == "parser.high" else "bulk"
+        return SimpleNamespace(
+            queue_name=queue_name,
+            exchange_name="parser.jobs",
+            routing_key=routing_key,
+        )
 
 
 def build_endpoint(endpoint_id=None) -> SourceEndpointRecord:
@@ -172,9 +221,11 @@ def test_manual_crawl_trigger_service_persists_run_and_builds_event() -> None:
     endpoint = build_endpoint(endpoint_id)
     endpoint_repository = FakeEndpointRepository(endpoint)
     run_repository = FakeRunRepository()
+    publisher = FakeCrawlRequestPublisher()
     service = ManualCrawlTriggerService(
         endpoint_repository=endpoint_repository,
         run_repository=run_repository,
+        publisher=publisher,
     )
     crawl_run_id = uuid4()
     requested_at = datetime(2026, 4, 19, 12, 0, tzinfo=UTC)
@@ -191,7 +242,7 @@ def test_manual_crawl_trigger_service_persists_run_and_builds_event() -> None:
     )
 
     assert response.pipeline_run.run_id == crawl_run_id
-    assert response.pipeline_run.status == PipelineRunStatus.QUEUED
+    assert response.pipeline_run.status == PipelineRunStatus.PUBLISHED
     assert response.event.event_name == "crawl.request.v1"
     assert response.event.payload.crawl_run_id == crawl_run_id
     assert response.event.payload.trigger == "manual"
@@ -203,12 +254,85 @@ def test_manual_crawl_trigger_service_persists_run_and_builds_event() -> None:
     assert response.event.payload.metadata["requested_by"] == "operator"
     assert response.event.payload.metadata["crawl_policy"]["timeout_seconds"] == 45
     assert run_repository.created[0]["metadata"]["priority"] == "high"
+    assert run_repository.transitions[0]["status"] == PipelineRunStatus.PUBLISHED
+    assert run_repository.transitions[0]["metadata_patch"]["published_queue"] == "parser.high"
+    assert run_repository.transitions[0]["metadata_patch"]["published_exchange"] == "parser.jobs"
+    assert run_repository.transitions[0]["metadata_patch"]["published_routing_key"] == "high"
+    assert run_repository.commit_count == 2
+    assert publisher.calls == [
+        {
+            "payload": response.event.model_dump(mode="json"),
+            "queue_name": "parser.high",
+            "headers": {
+                "event_name": "crawl.request.v1",
+                "event_id": str(response.event.header.event_id),
+                "schema_version": "1",
+                "crawl_run_id": str(crawl_run_id),
+                "source_key": "msu-official",
+                "priority": "high",
+            },
+        }
+    ]
+
+
+def test_manual_crawl_trigger_service_routes_bulk_priority_to_bulk_queue() -> None:
+    endpoint_id = uuid4()
+    run_repository = FakeRunRepository()
+    publisher = FakeCrawlRequestPublisher()
+    service = ManualCrawlTriggerService(
+        endpoint_repository=FakeEndpointRepository(build_endpoint(endpoint_id)),
+        run_repository=run_repository,
+        publisher=publisher,
+    )
+
+    response = service.trigger_manual_crawl(
+        ManualCrawlTriggerRequest(
+            source_key="msu-official",
+            endpoint_id=endpoint_id,
+            priority="bulk",
+        )
+    )
+
+    assert response.pipeline_run.status == PipelineRunStatus.PUBLISHED
+    assert publisher.calls[0]["queue_name"] == "parser.bulk"
+    assert run_repository.transitions[0]["metadata_patch"]["published_routing_key"] == "bulk"
+    assert run_repository.commit_count == 2
+
+
+def test_manual_crawl_trigger_service_marks_run_failed_when_publish_fails() -> None:
+    endpoint_id = uuid4()
+    run_repository = FakeRunRepository()
+    service = ManualCrawlTriggerService(
+        endpoint_repository=FakeEndpointRepository(build_endpoint(endpoint_id)),
+        run_repository=run_repository,
+        publisher=FakeCrawlRequestPublisher(fail_with=RuntimeError("broker unavailable")),
+    )
+
+    with pytest.raises(CrawlRequestPublishError) as exc_info:
+        service.trigger_manual_crawl(
+            ManualCrawlTriggerRequest(
+                source_key="msu-official",
+                endpoint_id=endpoint_id,
+                priority="high",
+            )
+        )
+
+    assert "broker unavailable" in str(exc_info.value)
+    assert run_repository.transitions[0]["status"] == PipelineRunStatus.FAILED
+    assert run_repository.transitions[0]["finish"] is True
+    assert run_repository.transitions[0]["metadata_patch"] == {
+        "publish_stage": "rabbitmq",
+        "publish_queue": "parser.high",
+        "publish_error": "broker unavailable",
+    }
+    assert run_repository.commit_count == 2
 
 
 def test_manual_crawl_trigger_service_rejects_unknown_endpoint() -> None:
     service = ManualCrawlTriggerService(
         endpoint_repository=FakeEndpointRepository(None),
         run_repository=FakeRunRepository(),
+        publisher=FakeCrawlRequestPublisher(),
     )
 
     with pytest.raises(ManualCrawlEndpointNotFoundError):

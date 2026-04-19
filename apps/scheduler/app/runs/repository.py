@@ -94,6 +94,9 @@ class PipelineRunRepository:
             return None
         return self._record_from_row(row)
 
+    def commit(self) -> None:
+        self._session.commit()
+
     def transition(
         self,
         *,
