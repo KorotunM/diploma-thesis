@@ -11,7 +11,92 @@ paths:
           description: Service is alive
   /admin/v1/crawl-jobs:
     post:
-      summary: Schedule a crawl job
+      summary: Create a manual crawl run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualCrawlTriggerRequest"
       responses:
         "202":
-          description: Crawl request accepted
+          description: Crawl run persisted and crawl request prepared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrawlJobAcceptedResponse"
+        "404":
+          description: Source endpoint was not found
+components:
+  schemas:
+    ManualCrawlTriggerRequest:
+      type: object
+      required:
+        - source_key
+        - endpoint_id
+      properties:
+        crawl_run_id:
+          type: string
+          format: uuid
+        source_key:
+          type: string
+        endpoint_id:
+          type: string
+          format: uuid
+        priority:
+          type: string
+          enum: [high, bulk]
+          default: bulk
+        requested_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          default: {}
+    PipelineRun:
+      type: object
+      required:
+        - run_id
+        - run_type
+        - status
+        - trigger_type
+        - started_at
+        - metadata
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        run_type:
+          type: string
+          enum: [crawl, replay, backfill]
+        status:
+          type: string
+          enum: [queued, published, running, succeeded, failed, canceled]
+        trigger_type:
+          type: string
+          enum: [manual, schedule, replay]
+        source_key:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+    CrawlJobAcceptedResponse:
+      type: object
+      required:
+        - pipeline_run
+        - event
+      properties:
+        pipeline_run:
+          $ref: "#/components/schemas/PipelineRun"
+        event:
+          type: object
+          additionalProperties: true

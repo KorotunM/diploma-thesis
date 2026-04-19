@@ -1,7 +1,5 @@
-from fastapi import status
-
+from apps.scheduler.app.runs.routes import router as pipeline_run_router
 from apps.scheduler.app.sources.routes import router as source_registry_router
-from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
 from libs.observability import create_service_app
 
 app = create_service_app(
@@ -9,6 +7,7 @@ app = create_service_app(
     description="Plans crawl runs and publishes crawl.request events.",
 )
 app.include_router(source_registry_router)
+app.include_router(pipeline_run_router)
 
 
 @app.get("/", tags=["scheduler"])
@@ -24,12 +23,3 @@ def scheduler_overview() -> dict[str, object]:
         ],
     }
 
-
-@app.post(
-    "/admin/v1/crawl-jobs",
-    response_model=CrawlRequestEvent,
-    status_code=status.HTTP_202_ACCEPTED,
-    tags=["scheduler"],
-)
-def create_crawl_job(payload: CrawlRequestPayload) -> CrawlRequestEvent:
-    return CrawlRequestEvent(header=EventHeader(producer="scheduler"), payload=payload)

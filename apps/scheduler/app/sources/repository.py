@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from apps.scheduler.app.persistence import json_from_db, json_to_db, sql_text
+
 from .models import CreateSourceRequest, SourceRecord, UpdateSourceRequest
-from .serialization import json_from_db, json_to_db
 
 
 class SourceAlreadyExistsError(ValueError):
@@ -13,23 +14,12 @@ class SourceAlreadyExistsError(ValueError):
         self.source_key = source_key
 
 
-def _sql_text(statement: str) -> Any:
-    try:
-        from sqlalchemy import text
-    except ModuleNotFoundError as exc:
-        raise RuntimeError(
-            "SQLAlchemy is required for source registry persistence. "
-            "Install project runtime dependencies before using scheduler repositories."
-        ) from exc
-    return text(statement)
-
-
 class SourceRepository:
     def __init__(
         self,
         session: Any,
         *,
-        sql_text: Callable[[str], Any] = _sql_text,
+        sql_text: Callable[[str], Any] = sql_text,
     ) -> None:
         self._session = session
         self._sql_text = sql_text

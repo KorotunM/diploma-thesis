@@ -4,6 +4,17 @@ import json
 from typing import Any
 
 
+def sql_text(statement: str) -> Any:
+    try:
+        from sqlalchemy import text
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "SQLAlchemy is required for scheduler persistence. "
+            "Install project runtime dependencies before using scheduler repositories."
+        ) from exc
+    return text(statement)
+
+
 def json_to_db(value: dict[str, Any] | None) -> str:
     return json.dumps(value or {}, ensure_ascii=False, sort_keys=True)
 

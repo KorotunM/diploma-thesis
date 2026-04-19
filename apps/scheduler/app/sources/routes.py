@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from libs.storage import get_postgres_session_factory
+from apps.scheduler.app.dependencies import get_scheduler_session
 
 from .endpoint_repository import (
     SourceEndpointAlreadyExistsError,
@@ -23,19 +23,6 @@ from .models import (
 from .repository import SourceAlreadyExistsError, SourceRepository
 
 router = APIRouter(prefix="/admin/v1/sources", tags=["scheduler:sources"])
-
-
-def get_scheduler_session():
-    session_factory = get_postgres_session_factory(service_name="scheduler")
-    session = session_factory()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 
 SchedulerSessionDependency = Annotated[Any, Depends(get_scheduler_session)]

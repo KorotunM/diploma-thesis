@@ -4,14 +4,14 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
+from apps.scheduler.app.persistence import json_from_db, json_to_db, sql_text
+
 from .models import (
     CrawlPolicy,
     CreateSourceEndpointRequest,
     SourceEndpointRecord,
     UpdateSourceEndpointRequest,
 )
-from .repository import _sql_text
-from .serialization import json_from_db, json_to_db
 
 
 class SourceNotFoundError(ValueError):
@@ -32,7 +32,7 @@ class SourceEndpointRepository:
         self,
         session: Any,
         *,
-        sql_text: Callable[[str], Any] = _sql_text,
+        sql_text: Callable[[str], Any] = sql_text,
     ) -> None:
         self._session = session
         self._sql_text = sql_text
