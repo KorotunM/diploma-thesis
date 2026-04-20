@@ -11,6 +11,7 @@ from .base_adapter import (
     RawFetcher,
     SourceAdapter,
 )
+from .stores import MinIORawArtifactStore, RawArtifactContentError
 
 __all__ = [
     "ExtractedFragment",
@@ -23,5 +24,7 @@ __all__ = [
     "ParserExecutionStatus",
     "RawArtifactStore",
     "RawFetcher",
+    "MinIORawArtifactStore",
+    "RawArtifactContentError",
     "SourceAdapter",
 ]
