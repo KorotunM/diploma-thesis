@@ -95,6 +95,7 @@ class FetchedArtifact(BaseModel):
     final_url: str | None = None
     http_status: int | None = Field(default=None, ge=100, le=599)
     content_type: str
+    response_headers: dict[str, str] = Field(default_factory=dict)
     content_length: int | None = Field(default=None, ge=0)
     sha256: str
     fetched_at: datetime = Field(default_factory=utc_now)

@@ -39,6 +39,9 @@ def handle_crawl_request(event: CrawlRequestEvent) -> ParseCompletedEvent:
         metadata={"note": "stub parser completed event"},
     )
     return ParseCompletedEvent(
-        header=EventHeader(producer="parser", trace_id=event.header.trace_id or event.header.event_id),
+        header=EventHeader(
+            producer="parser",
+            trace_id=event.header.trace_id or event.header.event_id,
+        ),
         payload=payload,
     )
