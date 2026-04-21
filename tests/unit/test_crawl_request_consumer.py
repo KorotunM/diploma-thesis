@@ -14,6 +14,7 @@ from apps.parser.app.crawl_requests import (
     build_crawl_request_consumer,
     build_crawl_request_consumers,
 )
+from apps.parser.app.parse_completed import ParseCompletedEmitter
 from apps.parser.app.parsed_documents import (
     ParsedDocumentPersistenceService,
     ParsedDocumentRepository,
@@ -156,6 +157,29 @@ class FakeRabbitMQConsumer:
         return {"consumer": "parser", **kwargs}
 
 
+class FakeParseCompletedPublisher:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def publish(self, payload, *, queue_name: str, headers: dict | None = None):
+        self.calls.append(
+            {
+                "payload": payload,
+                "queue_name": queue_name,
+                "headers": headers,
+            }
+        )
+        return type(
+            "PublishResult",
+            (),
+            {
+                "queue_name": queue_name,
+                "exchange_name": "normalize.jobs",
+                "routing_key": "high" if queue_name == "normalize.high" else "bulk",
+            },
+        )()
+
+
 def build_event(crawl_run_id=None) -> CrawlRequestEvent:
     return CrawlRequestEvent(
         header=EventHeader(producer="scheduler"),
@@ -184,6 +208,7 @@ def build_processing_service(
     raw_store: FakeRawStore,
     session: FakeRawArtifactSession,
     enable_official_parser: bool = False,
+    parse_completed_publisher: FakeParseCompletedPublisher | None = None,
 ) -> CrawlRequestProcessingService:
     repository = RawArtifactRepository(session, sql_text=lambda statement: statement)
     raw_artifact_service = RawArtifactPersistenceService(
@@ -206,6 +231,11 @@ def build_processing_service(
         raw_artifact_service=raw_artifact_service,
         parsed_document_service=parsed_document_service,
         source_adapters=source_adapters,
+        parse_completed_emitter=(
+            ParseCompletedEmitter(publisher=parse_completed_publisher)
+            if parse_completed_publisher
+            else None
+        ),
     )
 
 
@@ -237,14 +267,17 @@ async def test_crawl_request_processing_persists_official_parsed_document() -> N
     )
     raw_store = FakeRawStore()
     session = FakeRawArtifactSession()
+    parse_completed_publisher = FakeParseCompletedPublisher()
     service = build_processing_service(
         fetcher=fetcher,
         raw_store=raw_store,
         session=session,
         enable_official_parser=True,
+        parse_completed_publisher=parse_completed_publisher,
     )
 
-    result = await service.process(build_event())
+    event = build_event()
+    result = await service.process(event)
 
     assert result.parsed_document is not None
     assert result.parsed_document.entity_hint == "Example University"
@@ -255,6 +288,14 @@ async def test_crawl_request_processing_persists_official_parsed_document() -> N
     )
     fragments_by_field = {fragment.field_name: fragment for fragment in result.extracted_fragments}
     assert fragments_by_field["contacts.emails"].value == ["admissions@example.edu"]
+    assert result.parse_completed is not None
+    assert result.parse_completed.event.payload.parsed_document_id == (
+        result.parsed_document.parsed_document_id
+    )
+    assert result.parse_completed.event.header.trace_id == event.header.event_id
+    assert result.parse_completed.queue_name == "normalize.high"
+    assert parse_completed_publisher.calls[0]["queue_name"] == "normalize.high"
+    assert parse_completed_publisher.calls[0]["headers"]["event_name"] == "parse.completed.v1"
     assert len(session.documents) == 1
     assert len(session.fragments) == 4
     assert session.commit_count == 2

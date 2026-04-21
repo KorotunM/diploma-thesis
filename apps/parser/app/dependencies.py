@@ -1,9 +1,16 @@
 from apps.parser.adapters.official_sites import OfficialSiteAdapter
 from libs.source_sdk.fetchers import HttpFetcher
 from libs.source_sdk.stores import MinIORawArtifactStore
-from libs.storage import get_minio_storage, get_postgres_session_factory
+from libs.storage import (
+    RabbitMQPublisher,
+    get_minio_storage,
+    get_platform_settings,
+    get_postgres_session_factory,
+    get_rabbitmq_connection,
+)
 
 from .crawl_requests import CrawlRequestProcessingService
+from .parse_completed import ParseCompletedEmitter
 from .parsed_documents import ParsedDocumentPersistenceService, ParsedDocumentRepository
 from .raw_artifacts import RawArtifactPersistenceService, RawArtifactRepository
 
@@ -31,6 +38,13 @@ def create_crawl_request_processing_service(session) -> CrawlRequestProcessingSe
     )
     parsed_document_repository = ParsedDocumentRepository(session)
     parsed_document_service = ParsedDocumentPersistenceService(parsed_document_repository)
+    settings = get_platform_settings(service_name="parser")
+    parse_completed_emitter = ParseCompletedEmitter(
+        publisher=RabbitMQPublisher(
+            get_rabbitmq_connection(service_name="parser"),
+            settings.rabbitmq,
+        )
+    )
     return CrawlRequestProcessingService(
         fetcher=fetcher,
         raw_artifact_service=raw_artifact_service,
@@ -38,4 +52,5 @@ def create_crawl_request_processing_service(session) -> CrawlRequestProcessingSe
         source_adapters=(
             OfficialSiteAdapter(fetcher=fetcher, raw_store=raw_store),
         ),
+        parse_completed_emitter=parse_completed_emitter,
     )
