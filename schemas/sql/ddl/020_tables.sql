@@ -31,34 +31,46 @@ CREATE TABLE IF NOT EXISTS ingestion.raw_artifact (
     raw_artifact_id uuid PRIMARY KEY,
     crawl_run_id uuid NOT NULL,
     source_key text NOT NULL,
-    endpoint_url text NOT NULL,
-    bucket_name text NOT NULL,
-    object_key text NOT NULL,
-    sha256 text NOT NULL,
-    content_type text NOT NULL,
+    source_url text NOT NULL,
+    final_url text,
     http_status integer,
-    render_mode text NOT NULL DEFAULT 'http',
-    parser_version text,
+    content_type text NOT NULL,
+    content_length bigint,
+    sha256 text NOT NULL,
+    storage_bucket text NOT NULL,
+    storage_object_key text NOT NULL,
+    etag text,
+    last_modified text,
     fetched_at timestamptz NOT NULL DEFAULT now(),
-    metadata jsonb NOT NULL DEFAULT '{}'::jsonb
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    UNIQUE (source_key, sha256)
 );
 
 CREATE TABLE IF NOT EXISTS parsing.parsed_document (
     parsed_document_id uuid PRIMARY KEY,
+    crawl_run_id uuid NOT NULL,
     raw_artifact_id uuid NOT NULL REFERENCES ingestion.raw_artifact(raw_artifact_id),
-    parser_version text NOT NULL,
     source_key text NOT NULL,
-    intermediate_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
-    extracted_fragments integer NOT NULL DEFAULT 0,
-    created_at timestamptz NOT NULL DEFAULT now()
+    parser_profile text NOT NULL,
+    parser_version text NOT NULL,
+    entity_type text NOT NULL,
+    entity_hint text,
+    extracted_fragment_count integer NOT NULL DEFAULT 0,
+    parsed_at timestamptz NOT NULL DEFAULT now(),
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    UNIQUE (raw_artifact_id, parser_version)
 );
 
 CREATE TABLE IF NOT EXISTS parsing.extracted_fragment (
     fragment_id uuid PRIMARY KEY,
     parsed_document_id uuid NOT NULL REFERENCES parsing.parsed_document(parsed_document_id),
+    raw_artifact_id uuid NOT NULL REFERENCES ingestion.raw_artifact(raw_artifact_id),
+    source_key text NOT NULL,
     field_name text NOT NULL,
-    value_json jsonb NOT NULL,
+    value jsonb NOT NULL,
+    value_type text NOT NULL,
     locator text,
+    confidence double precision NOT NULL DEFAULT 1.0,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
@@ -132,6 +144,9 @@ CREATE TABLE IF NOT EXISTS delivery.university_card (
 );
 
 CREATE INDEX IF NOT EXISTS idx_raw_artifact_sha256 ON ingestion.raw_artifact (sha256);
+CREATE INDEX IF NOT EXISTS idx_parsed_document_raw_artifact ON parsing.parsed_document (raw_artifact_id);
+CREATE INDEX IF NOT EXISTS idx_extracted_fragment_document ON parsing.extracted_fragment (parsed_document_id);
+CREATE INDEX IF NOT EXISTS idx_extracted_fragment_raw_artifact ON parsing.extracted_fragment (raw_artifact_id);
 CREATE INDEX IF NOT EXISTS idx_claim_field_name ON normalize.claim (field_name);
 CREATE INDEX IF NOT EXISTS idx_university_canonical_name_trgm ON core.university USING gin (canonical_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_delivery_search_text ON delivery.university_card USING gin (search_text);

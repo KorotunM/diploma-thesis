@@ -1,10 +1,12 @@
 import hashlib
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
+from apps.parser.adapters.official_sites import OfficialSiteAdapter
 from apps.parser.app.crawl_requests import (
     PARSER_HIGH_QUEUE,
     CrawlRequestConsumer,
@@ -12,9 +14,15 @@ from apps.parser.app.crawl_requests import (
     build_crawl_request_consumer,
     build_crawl_request_consumers,
 )
+from apps.parser.app.parsed_documents import (
+    ParsedDocumentPersistenceService,
+    ParsedDocumentRepository,
+)
 from apps.parser.app.raw_artifacts import RawArtifactPersistenceService, RawArtifactRepository
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
 from libs.source_sdk import FetchContext, FetchedArtifact
+
+FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "parser_ingestion"
 
 
 class FakeMappingResult:
@@ -31,6 +39,8 @@ class FakeMappingResult:
 class FakeRawArtifactSession:
     def __init__(self) -> None:
         self.rows: dict[tuple[str, str], dict] = {}
+        self.documents: dict[tuple[str, str], dict] = {}
+        self.fragments: dict[str, dict] = {}
         self.commit_count = 0
 
     def commit(self) -> None:
@@ -38,23 +48,57 @@ class FakeRawArtifactSession:
 
     def execute(self, statement: str, params: dict):
         normalized_statement = " ".join(statement.split()).lower()
-        if normalized_statement.startswith("insert"):
-            key = (params["source_key"], params["sha256"])
-            existing = self.rows.get(key)
-            if existing is None:
-                row = dict(params)
-            else:
-                existing_metadata = json.loads(existing["metadata"])
-                existing_metadata.update(json.loads(params["metadata"]))
-                row = {
-                    **existing,
-                    **params,
-                    "raw_artifact_id": existing["raw_artifact_id"],
-                    "metadata": json.dumps(existing_metadata),
-                }
-            self.rows[key] = row
-            return FakeMappingResult(row=row)
+        if "insert into ingestion.raw_artifact" in normalized_statement:
+            return FakeMappingResult(row=self._upsert_raw_artifact(params))
+        if "insert into parsing.parsed_document" in normalized_statement:
+            return FakeMappingResult(row=self._upsert_parsed_document(params))
+        if "insert into parsing.extracted_fragment" in normalized_statement:
+            return FakeMappingResult(row=self._upsert_extracted_fragment(params))
         raise AssertionError(f"Unexpected statement: {statement}")
+
+    def _upsert_raw_artifact(self, params: dict):
+        key = (params["source_key"], params["sha256"])
+        existing = self.rows.get(key)
+        if existing is None:
+            row = dict(params)
+        else:
+            existing_metadata = json.loads(existing["metadata"])
+            existing_metadata.update(json.loads(params["metadata"]))
+            row = {
+                **existing,
+                **params,
+                "raw_artifact_id": existing["raw_artifact_id"],
+                "metadata": json.dumps(existing_metadata),
+            }
+        self.rows[key] = row
+        return row
+
+    def _upsert_parsed_document(self, params: dict):
+        key = (str(params["raw_artifact_id"]), params["parser_version"])
+        existing = self.documents.get(key)
+        row = dict(params)
+        if existing is not None:
+            existing_metadata = json.loads(existing["metadata"])
+            existing_metadata.update(json.loads(params["metadata"]))
+            row = {
+                **existing,
+                **params,
+                "parsed_document_id": existing["parsed_document_id"],
+                "metadata": json.dumps(existing_metadata),
+            }
+        self.documents[key] = row
+        return row
+
+    def _upsert_extracted_fragment(self, params: dict):
+        key = str(params["fragment_id"])
+        existing = self.fragments.get(key)
+        row = dict(params)
+        if existing is not None:
+            existing_metadata = json.loads(existing["metadata"])
+            existing_metadata.update(json.loads(params["metadata"]))
+            row["metadata"] = json.dumps(existing_metadata)
+        self.fragments[key] = row
+        return row
 
 
 class FakeFetcher:
@@ -139,15 +183,29 @@ def build_processing_service(
     fetcher: FakeFetcher,
     raw_store: FakeRawStore,
     session: FakeRawArtifactSession,
+    enable_official_parser: bool = False,
 ) -> CrawlRequestProcessingService:
     repository = RawArtifactRepository(session, sql_text=lambda statement: statement)
     raw_artifact_service = RawArtifactPersistenceService(
         raw_store=raw_store,
         repository=repository,
     )
+    parsed_document_service = None
+    source_adapters = ()
+    if enable_official_parser:
+        parsed_document_repository = ParsedDocumentRepository(
+            session,
+            sql_text=lambda statement: statement,
+        )
+        parsed_document_service = ParsedDocumentPersistenceService(
+            parsed_document_repository
+        )
+        source_adapters = (OfficialSiteAdapter(fetcher=fetcher),)
     return CrawlRequestProcessingService(
         fetcher=fetcher,
         raw_artifact_service=raw_artifact_service,
+        parsed_document_service=parsed_document_service,
+        source_adapters=source_adapters,
     )
 
 
@@ -170,6 +228,36 @@ async def test_crawl_request_processing_is_idempotent_for_same_source_and_sha256
     assert first.raw_artifact.sha256 == hashlib.sha256(b"<html>same</html>").hexdigest()
     assert first.metadata["idempotency_key"] == f"msu-official:{first.raw_artifact.sha256}"
     assert second.metadata["raw_object_key"] == first.metadata["raw_object_key"]
+
+
+@pytest.mark.asyncio
+async def test_crawl_request_processing_persists_official_parsed_document() -> None:
+    fetcher = FakeFetcher(
+        payload=(FIXTURE_ROOT / "official_site_admissions.html").read_bytes()
+    )
+    raw_store = FakeRawStore()
+    session = FakeRawArtifactSession()
+    service = build_processing_service(
+        fetcher=fetcher,
+        raw_store=raw_store,
+        session=session,
+        enable_official_parser=True,
+    )
+
+    result = await service.process(build_event())
+
+    assert result.parsed_document is not None
+    assert result.parsed_document.entity_hint == "Example University"
+    assert result.parsed_document.extracted_fragment_count == 4
+    assert len(result.extracted_fragments) == 4
+    assert result.metadata["parsed_document_id"] == str(
+        result.parsed_document.parsed_document_id
+    )
+    fragments_by_field = {fragment.field_name: fragment for fragment in result.extracted_fragments}
+    assert fragments_by_field["contacts.emails"].value == ["admissions@example.edu"]
+    assert len(session.documents) == 1
+    assert len(session.fragments) == 4
+    assert session.commit_count == 2
 
 
 def test_crawl_request_consumer_validates_body_and_runs_processing_service() -> None:
