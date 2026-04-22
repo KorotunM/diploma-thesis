@@ -1,5 +1,6 @@
-from fastapi import status
 from uuid import uuid4
+
+from fastapi import status
 
 from libs.contracts.events import (
     CardUpdatedEvent,
@@ -42,7 +43,10 @@ def prepare_normalization(event: ParseCompletedEvent) -> NormalizeRequestEvent:
         metadata={"note": "stub normalize request"},
     )
     return NormalizeRequestEvent(
-        header=EventHeader(producer="normalizer", trace_id=event.header.trace_id or event.header.event_id),
+        header=EventHeader(
+            producer="normalizer",
+            trace_id=event.header.trace_id or event.header.event_id,
+        ),
         payload=payload,
     )
 
@@ -60,6 +64,9 @@ def build_card(event: NormalizeRequestEvent) -> CardUpdatedEvent:
         updated_fields=["canonical_name", "contacts.website", "location.city"],
     )
     return CardUpdatedEvent(
-        header=EventHeader(producer="normalizer", trace_id=event.header.trace_id or event.header.event_id),
+        header=EventHeader(
+            producer="normalizer",
+            trace_id=event.header.trace_id or event.header.event_id,
+        ),
         payload=payload,
     )

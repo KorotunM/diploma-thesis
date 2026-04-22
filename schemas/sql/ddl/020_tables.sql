@@ -147,6 +147,7 @@ CREATE INDEX IF NOT EXISTS idx_raw_artifact_sha256 ON ingestion.raw_artifact (sh
 CREATE INDEX IF NOT EXISTS idx_parsed_document_raw_artifact ON parsing.parsed_document (raw_artifact_id);
 CREATE INDEX IF NOT EXISTS idx_extracted_fragment_document ON parsing.extracted_fragment (parsed_document_id);
 CREATE INDEX IF NOT EXISTS idx_extracted_fragment_raw_artifact ON parsing.extracted_fragment (raw_artifact_id);
+CREATE INDEX IF NOT EXISTS idx_claim_parsed_document ON normalize.claim (parsed_document_id);
 CREATE INDEX IF NOT EXISTS idx_claim_field_name ON normalize.claim (field_name);
 CREATE INDEX IF NOT EXISTS idx_university_canonical_name_trgm ON core.university USING gin (canonical_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_delivery_search_text ON delivery.university_card USING gin (search_text);
