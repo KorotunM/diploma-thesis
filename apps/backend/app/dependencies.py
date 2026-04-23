@@ -3,6 +3,7 @@ from fastapi import Depends
 from libs.storage import get_postgres_session_factory
 
 from .cards import UniversityCardReadRepository, UniversityCardReadService
+from .provenance import UniversityProvenanceReadService, UniversityProvenanceRepository
 
 
 def get_backend_session():
@@ -18,6 +19,12 @@ def create_university_card_read_service(session) -> UniversityCardReadService:
     return UniversityCardReadService(UniversityCardReadRepository(session))
 
 
+def create_university_provenance_read_service(
+    session,
+) -> UniversityProvenanceReadService:
+    return UniversityProvenanceReadService(UniversityProvenanceRepository(session))
+
+
 BACKEND_SESSION_DEPENDENCY = Depends(get_backend_session)
 
 
@@ -25,3 +32,9 @@ def get_university_card_read_service(
     session=BACKEND_SESSION_DEPENDENCY,
 ) -> UniversityCardReadService:
     return create_university_card_read_service(session)
+
+
+def get_university_provenance_read_service(
+    session=BACKEND_SESSION_DEPENDENCY,
+) -> UniversityProvenanceReadService:
+    return create_university_provenance_read_service(session)

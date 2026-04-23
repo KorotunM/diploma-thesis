@@ -3,7 +3,15 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 
 from apps.backend.app.cards import UniversityCardNotFoundError, UniversityCardReadService
-from apps.backend.app.dependencies import get_university_card_read_service
+from apps.backend.app.dependencies import (
+    get_university_card_read_service,
+    get_university_provenance_read_service,
+)
+from apps.backend.app.provenance import (
+    UniversityProvenanceNotFoundError,
+    UniversityProvenanceReadService,
+    UniversityProvenanceTrace,
+)
 from libs.domain.university import UniversityCard
 from libs.observability import create_service_app
 
@@ -13,6 +21,7 @@ app = create_service_app(
 )
 
 CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
+PROVENANCE_READ_SERVICE_DEPENDENCY = Depends(get_university_provenance_read_service)
 
 
 @app.get("/", tags=["backend"])
@@ -59,13 +68,19 @@ def get_university_card(
         ) from exc
 
 
-@app.get("/api/v1/universities/{university_id}/provenance", tags=["backend"])
-def get_university_provenance(university_id: UUID) -> dict[str, object]:
-    return {
-        "university_id": str(university_id),
-        "chain": ["raw", "parsed", "claims", "resolved_facts", "delivery_projection"],
-        "note": (
-            "Placeholder provenance endpoint. "
-            "Replace with real trace stitching from normalization data."
-        ),
-    }
+@app.get(
+    "/api/v1/universities/{university_id}/provenance",
+    response_model=UniversityProvenanceTrace,
+    tags=["backend"],
+)
+def get_university_provenance(
+    university_id: UUID,
+    service: UniversityProvenanceReadService = PROVENANCE_READ_SERVICE_DEPENDENCY,
+) -> UniversityProvenanceTrace:
+    try:
+        return service.get_latest_trace(university_id)
+    except UniversityProvenanceNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"University provenance {university_id} was not found.",
+        ) from exc
