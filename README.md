@@ -79,13 +79,4 @@ tests/
    npm run dev
    ```
 
-## Следующий практический шаг
-
-Следующим этапом стоит реализовать первую сквозную цепочку:
-
-1. `scheduler` публикует реальный `crawl.request.v1`.
-2. `parser` поднимает первый adapter для официального сайта вуза и пишет raw + parsed snapshot.
-3. `normalizer` создает первую `UniversityCard` из одного authoritative source.
-4. `backend` отдает карточку и provenance.
-
 Детали решений вынесены в [docs/architecture-foundation.md](docs/architecture-foundation.md) и [docs/roadmap.md](docs/roadmap.md).

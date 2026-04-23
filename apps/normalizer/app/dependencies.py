@@ -1,6 +1,7 @@
 from libs.storage import get_postgres_session_factory
 
 from .claims import ClaimBuildRepository, ClaimBuildService
+from .universities import UniversityBootstrapRepository, UniversityBootstrapService
 
 
 def get_normalizer_session():
@@ -18,3 +19,7 @@ def get_normalizer_session():
 
 def create_claim_build_service(session) -> ClaimBuildService:
     return ClaimBuildService(ClaimBuildRepository(session))
+
+
+def create_university_bootstrap_service(session) -> UniversityBootstrapService:
+    return UniversityBootstrapService(UniversityBootstrapRepository(session))
