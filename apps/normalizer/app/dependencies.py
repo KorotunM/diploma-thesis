@@ -1,6 +1,7 @@
 from libs.storage import get_postgres_session_factory
 
 from .claims import ClaimBuildRepository, ClaimBuildService
+from .facts import ResolvedFactGenerationService, ResolvedFactRepository
 from .universities import UniversityBootstrapRepository, UniversityBootstrapService
 
 
@@ -23,3 +24,7 @@ def create_claim_build_service(session) -> ClaimBuildService:
 
 def create_university_bootstrap_service(session) -> UniversityBootstrapService:
     return UniversityBootstrapService(UniversityBootstrapRepository(session))
+
+
+def create_resolved_fact_generation_service(session) -> ResolvedFactGenerationService:
+    return ResolvedFactGenerationService(ResolvedFactRepository(session))
