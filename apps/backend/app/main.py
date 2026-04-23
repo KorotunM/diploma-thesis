@@ -1,5 +1,9 @@
 from uuid import UUID
 
+from fastapi import Depends, HTTPException, status
+
+from apps.backend.app.cards import UniversityCardNotFoundError, UniversityCardReadService
+from apps.backend.app.dependencies import get_university_card_read_service
 from libs.domain.university import UniversityCard
 from libs.observability import create_service_app
 
@@ -7,6 +11,8 @@ app = create_service_app(
     service_name="backend",
     description="Serves delivery projections and provenance traces to the UI.",
 )
+
+CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
 
 
 @app.get("/", tags=["backend"])
@@ -35,9 +41,22 @@ def search_universities(query: str = "") -> dict[str, object]:
     }
 
 
-@app.get("/api/v1/universities/{university_id}", response_model=UniversityCard, tags=["backend"])
-def get_university_card(university_id: UUID) -> UniversityCard:
-    return UniversityCard.sample().model_copy(update={"university_id": university_id})
+@app.get(
+    "/api/v1/universities/{university_id}",
+    response_model=UniversityCard,
+    tags=["backend"],
+)
+def get_university_card(
+    university_id: UUID,
+    service: UniversityCardReadService = CARD_READ_SERVICE_DEPENDENCY,
+) -> UniversityCard:
+    try:
+        return service.get_latest_card(university_id)
+    except UniversityCardNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"University card {university_id} was not found.",
+        ) from exc
 
 
 @app.get("/api/v1/universities/{university_id}/provenance", tags=["backend"])
@@ -45,5 +64,8 @@ def get_university_provenance(university_id: UUID) -> dict[str, object]:
     return {
         "university_id": str(university_id),
         "chain": ["raw", "parsed", "claims", "resolved_facts", "delivery_projection"],
-        "note": "Placeholder provenance endpoint. Replace with real trace stitching from normalization data.",
+        "note": (
+            "Placeholder provenance endpoint. "
+            "Replace with real trace stitching from normalization data."
+        ),
     }
