@@ -93,8 +93,10 @@ CREATE TABLE IF NOT EXISTS normalize.claim_evidence (
     claim_id uuid NOT NULL REFERENCES normalize.claim(claim_id),
     raw_artifact_id uuid NOT NULL REFERENCES ingestion.raw_artifact(raw_artifact_id),
     fragment_id uuid,
+    source_key text NOT NULL,
     source_url text NOT NULL,
-    captured_at timestamptz NOT NULL DEFAULT now()
+    captured_at timestamptz NOT NULL DEFAULT now(),
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS core.university (
@@ -149,5 +151,8 @@ CREATE INDEX IF NOT EXISTS idx_extracted_fragment_document ON parsing.extracted_
 CREATE INDEX IF NOT EXISTS idx_extracted_fragment_raw_artifact ON parsing.extracted_fragment (raw_artifact_id);
 CREATE INDEX IF NOT EXISTS idx_claim_parsed_document ON normalize.claim (parsed_document_id);
 CREATE INDEX IF NOT EXISTS idx_claim_field_name ON normalize.claim (field_name);
+CREATE INDEX IF NOT EXISTS idx_claim_evidence_claim ON normalize.claim_evidence (claim_id);
+CREATE INDEX IF NOT EXISTS idx_claim_evidence_raw_artifact ON normalize.claim_evidence (raw_artifact_id);
+CREATE INDEX IF NOT EXISTS idx_claim_evidence_fragment ON normalize.claim_evidence (fragment_id);
 CREATE INDEX IF NOT EXISTS idx_university_canonical_name_trgm ON core.university USING gin (canonical_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_delivery_search_text ON delivery.university_card USING gin (search_text);

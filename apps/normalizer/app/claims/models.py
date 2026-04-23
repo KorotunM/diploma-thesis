@@ -29,6 +29,8 @@ class ExtractedFragmentSnapshot(BaseModel):
     parsed_document_id: UUID
     raw_artifact_id: UUID
     source_key: str
+    source_url: str
+    captured_at: datetime
     field_name: str
     value: Any
     value_type: str
@@ -54,8 +56,22 @@ class ClaimRecord(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class ClaimEvidenceRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    evidence_id: UUID
+    claim_id: UUID
+    source_key: str
+    source_url: str
+    raw_artifact_id: UUID
+    fragment_id: UUID | None = None
+    captured_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ClaimBuildResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     parsed_document: ParsedDocumentSnapshot
     claims: list[ClaimRecord]
+    evidence: list[ClaimEvidenceRecord] = Field(default_factory=list)

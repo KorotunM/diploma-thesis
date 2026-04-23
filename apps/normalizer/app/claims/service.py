@@ -35,8 +35,16 @@ class ClaimBuildService:
             fragments=fragments,
             normalizer_version=payload.normalizer_version,
         )
+        evidence = self._repository.upsert_claim_evidence(
+            claims=claims,
+            fragments=fragments,
+        )
         self._repository.commit()
-        return ClaimBuildResult(parsed_document=parsed_document, claims=claims)
+        return ClaimBuildResult(
+            parsed_document=parsed_document,
+            claims=claims,
+            evidence=evidence,
+        )
 
     @staticmethod
     def _validate_request(

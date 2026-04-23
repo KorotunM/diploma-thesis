@@ -12,7 +12,10 @@ from apps.normalizer.app.claims import (
     ClaimBuildRepository,
     ClaimBuildService,
 )
-from apps.normalizer.app.claims.repository import deterministic_claim_id
+from apps.normalizer.app.claims.repository import (
+    deterministic_claim_id,
+    deterministic_evidence_id,
+)
 from apps.normalizer.app.persistence import json_from_db, json_to_db
 from libs.contracts.events import NormalizeRequestPayload
 
@@ -46,7 +49,9 @@ class FakeClaimBuildSession:
         self.parsed_document_id = uuid4()
         self.raw_artifact_id = uuid4()
         self.fragment_ids = [uuid4(), uuid4()]
+        self.source_url = "https://example.edu/admissions"
         self.created_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
+        self.captured_at = datetime(2026, 4, 22, 8, 55, tzinfo=UTC)
         self.parsed_document = {
             "parsed_document_id": self.parsed_document_id,
             "crawl_run_id": uuid4(),
@@ -65,6 +70,8 @@ class FakeClaimBuildSession:
                 "parsed_document_id": self.parsed_document_id,
                 "raw_artifact_id": self.raw_artifact_id,
                 "source_key": "msu-official",
+                "source_url": self.source_url,
+                "captured_at": self.captured_at,
                 "field_name": "canonical_name",
                 "value": json_to_db({"value": "Example University"}),
                 "value_type": "str",
@@ -77,6 +84,8 @@ class FakeClaimBuildSession:
                 "parsed_document_id": self.parsed_document_id,
                 "raw_artifact_id": self.raw_artifact_id,
                 "source_key": "msu-official",
+                "source_url": self.source_url,
+                "captured_at": self.captured_at,
                 "field_name": "contacts.emails",
                 "value": json_to_db({"value": ["admissions@example.edu"]}),
                 "value_type": "list",
@@ -86,6 +95,7 @@ class FakeClaimBuildSession:
             },
         ]
         self.claims: dict[Any, dict[str, Any]] = {}
+        self.evidence: dict[Any, dict[str, Any]] = {}
         self.commit_count = 0
 
     def execute(self, statement: str, params: dict[str, Any]) -> MappingResult:
@@ -94,7 +104,9 @@ class FakeClaimBuildSession:
             return self._select_parsed_document(params)
         if "from parsing.extracted_fragment" in sql:
             return self._select_fragments(params)
-        if "insert into normalize.claim" in sql:
+        if "insert into normalize.claim_evidence" in sql:
+            return MappingResult(row=self._upsert_evidence(params))
+        if "insert into normalize.claim " in sql:
             return MappingResult(row=self._upsert_claim(params))
         raise AssertionError(f"Unexpected SQL statement: {statement}")
 
@@ -127,6 +139,21 @@ class FakeClaimBuildSession:
                 sort_keys=True,
             )
         self.claims[params["claim_id"]] = row
+        return row
+
+    def _upsert_evidence(self, params: dict[str, Any]) -> dict[str, Any]:
+        existing = self.evidence.get(params["evidence_id"])
+        row = dict(params)
+        if existing is not None:
+            row["metadata"] = json.dumps(
+                {
+                    **json_from_db(existing["metadata"]),
+                    **json_from_db(params["metadata"]),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        self.evidence[params["evidence_id"]] = row
         return row
 
 
@@ -173,6 +200,26 @@ def test_claim_build_repository_maps_extracted_fragments_to_claim_records() -> N
         for fragment_id in session.fragment_ids
     }
 
+    evidence = repository.upsert_claim_evidence(claims=claims, fragments=fragments)
+
+    assert len(evidence) == 2
+    by_claim_id = {record.claim_id: record for record in evidence}
+    canonical_evidence = by_claim_id[by_field["canonical_name"].claim_id]
+    assert canonical_evidence.source_key == "msu-official"
+    assert canonical_evidence.source_url == session.source_url
+    assert canonical_evidence.raw_artifact_id == session.raw_artifact_id
+    assert canonical_evidence.fragment_id == session.fragment_ids[0]
+    assert canonical_evidence.captured_at == session.captured_at
+    assert canonical_evidence.metadata["field_name"] == "canonical_name"
+    assert set(session.evidence) == {
+        deterministic_evidence_id(
+            claim_id=claim.claim_id,
+            raw_artifact_id=session.raw_artifact_id,
+            fragment_id=claim.metadata["fragment_id"],
+        )
+        for claim in claims
+    }
+
 
 def test_claim_build_service_builds_claims_idempotently_for_normalize_request() -> None:
     session = FakeClaimBuildSession()
@@ -187,7 +234,11 @@ def test_claim_build_service_builds_claims_idempotently_for_normalize_request() 
     assert [claim.claim_id for claim in second.claims] == [
         claim.claim_id for claim in first.claims
     ]
+    assert [record.evidence_id for record in second.evidence] == [
+        record.evidence_id for record in first.evidence
+    ]
     assert len(session.claims) == 2
+    assert len(session.evidence) == 2
     assert session.commit_count == 2
 
 

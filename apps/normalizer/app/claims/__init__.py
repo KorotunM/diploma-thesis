@@ -1,5 +1,6 @@
 from .models import (
     ClaimBuildResult,
+    ClaimEvidenceRecord,
     ClaimRecord,
     ExtractedFragmentSnapshot,
     ParsedDocumentSnapshot,
@@ -12,6 +13,7 @@ __all__ = [
     "ClaimBuildRepository",
     "ClaimBuildRepositoryError",
     "ClaimBuildResult",
+    "ClaimEvidenceRecord",
     "ClaimBuildService",
     "ClaimRecord",
     "ExtractedFragmentSnapshot",
