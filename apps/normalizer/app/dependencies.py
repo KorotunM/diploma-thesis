@@ -1,5 +1,6 @@
 from libs.storage import get_postgres_session_factory
 
+from .cards import UniversityCardProjectionRepository, UniversityCardProjectionService
 from .claims import ClaimBuildRepository, ClaimBuildService
 from .facts import ResolvedFactGenerationService, ResolvedFactRepository
 from .universities import UniversityBootstrapRepository, UniversityBootstrapService
@@ -28,3 +29,7 @@ def create_university_bootstrap_service(session) -> UniversityBootstrapService:
 
 def create_resolved_fact_generation_service(session) -> ResolvedFactGenerationService:
     return ResolvedFactGenerationService(ResolvedFactRepository(session))
+
+
+def create_university_card_projection_service(session) -> UniversityCardProjectionService:
+    return UniversityCardProjectionService(UniversityCardProjectionRepository(session))
