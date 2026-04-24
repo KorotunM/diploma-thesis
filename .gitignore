@@ -138,6 +138,7 @@ celerybeat.pid
 .env
 .envrc
 .venv
+node_modules/
 env/
 venv/
 ENV/
@@ -157,6 +158,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
+apps/frontend/dist/
 
 # mypy
 .mypy_cache/

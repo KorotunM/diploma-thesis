@@ -309,7 +309,7 @@ Definition of done:
 6. `feat(backend): serve university card from delivery projection instead of sample stub`
 7. `feat(backend): stitch provenance endpoint from raw parsed claim fact and card version data`
 
-### День 6. Привязать frontend к живому backend
+### День 6. Привязать frontend к живому backend - остановились на дне 6
 
 Цель дня:
 
