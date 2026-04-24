@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
 import { HttpRequestError, isAbortError } from "../../shared/http";
+import { useSelectedUniversity } from "../../shared/selected-university";
 import { useFrontendRuntime } from "../../shared/runtime";
 
 import type { UniversityCardSnapshot } from "./models";
@@ -11,14 +12,22 @@ const UUID_PATTERN =
 
 export function useUniversityCardLookup() {
   const runtime = useFrontendRuntime();
-  const [draftUniversityId, setDraftUniversityId] = useState(readUniversityIdFromLocation);
-  const [activeUniversityId, setActiveUniversityId] = useState(readUniversityIdFromLocation);
+  const {
+    activeUniversityId,
+    setActiveUniversityId,
+    clearActiveUniversityId,
+  } = useSelectedUniversity();
+  const [draftUniversityId, setDraftUniversityId] = useState(activeUniversityId);
   const [snapshot, setSnapshot] = useState<UniversityCardSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(activeUniversityId !== "");
   const [refreshing, setRefreshing] = useState(false);
   const lastLoadedUniversityIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setDraftUniversityId(activeUniversityId);
+  }, [activeUniversityId]);
 
   useEffect(() => {
     if (!activeUniversityId) {
@@ -117,31 +126,14 @@ export function useUniversityCardLookup() {
       }
       setValidationError(null);
       setActiveUniversityId(nextUniversityId);
-      updateLocationUniversityId(nextUniversityId);
     },
     clear: () => {
       setDraftUniversityId("");
-      setActiveUniversityId("");
+      clearActiveUniversityId();
       setSnapshot(null);
       setError(null);
       setValidationError(null);
       lastLoadedUniversityIdRef.current = null;
-      updateLocationUniversityId(null);
     },
   };
-}
-
-function readUniversityIdFromLocation(): string {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("university_id")?.trim() ?? "";
-}
-
-function updateLocationUniversityId(universityId: string | null): void {
-  const url = new URL(window.location.href);
-  if (universityId) {
-    url.searchParams.set("university_id", universityId);
-  } else {
-    url.searchParams.delete("university_id");
-  }
-  window.history.replaceState({}, "", url);
 }
