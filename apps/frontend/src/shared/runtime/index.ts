@@ -1,4 +1,6 @@
 import { BackendApiClient } from "../backend-api";
+import { PlatformServiceClient } from "../platform-api";
+import { SchedulerApiClient } from "../scheduler-api";
 import type { FrontendRuntime } from "./context";
 import { FrontendRuntimeProvider, useFrontendRuntime } from "./context";
 import {
@@ -13,7 +15,19 @@ export function createFrontendRuntime(
     config,
     backendApi: new BackendApiClient({
       baseUrl: config.backendBaseUrl,
-      requestTimeoutMs: config.backendRequestTimeoutMs,
+      requestTimeoutMs: config.apiRequestTimeoutMs,
+    }),
+    schedulerApi: new SchedulerApiClient({
+      baseUrl: config.schedulerBaseUrl,
+      requestTimeoutMs: config.apiRequestTimeoutMs,
+    }),
+    parserApi: new PlatformServiceClient({
+      baseUrl: config.parserBaseUrl,
+      requestTimeoutMs: config.apiRequestTimeoutMs,
+    }),
+    normalizerApi: new PlatformServiceClient({
+      baseUrl: config.normalizerBaseUrl,
+      requestTimeoutMs: config.apiRequestTimeoutMs,
     }),
   };
 }

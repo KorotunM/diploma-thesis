@@ -2,11 +2,16 @@ import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 
 import type { BackendApiClient } from "../backend-api";
+import type { PlatformServiceClient } from "../platform-api";
+import type { SchedulerApiClient } from "../scheduler-api";
 import type { FrontendRuntimeConfig } from "./config";
 
 export interface FrontendRuntime {
   config: FrontendRuntimeConfig;
   backendApi: BackendApiClient;
+  schedulerApi: SchedulerApiClient;
+  parserApi: PlatformServiceClient;
+  normalizerApi: PlatformServiceClient;
 }
 
 const FrontendRuntimeContext = createContext<FrontendRuntime | null>(null);

@@ -74,6 +74,263 @@ body {
   background: linear-gradient(180deg, rgba(241, 248, 235, 0.96), rgba(255, 255, 255, 0.98));
 }
 
+.home-panel {
+  grid-column: 1 / -1;
+  background:
+    radial-gradient(circle at top right, rgba(255, 205, 137, 0.22), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 248, 251, 0.98));
+}
+
+.home-heading,
+.subpanel-heading,
+.service-card-header,
+.freshness-title-row,
+.live-status-cluster,
+.service-meta,
+.freshness-metrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-heading {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.section-kicker {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  color: #567894;
+}
+
+.section-copy {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: #4f6377;
+}
+
+.live-status-cluster {
+  min-width: 140px;
+  align-items: flex-end;
+  flex-direction: column;
+}
+
+.live-pill,
+.freshness-pill,
+.service-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.live-pill {
+  background: #d8ecdc;
+  color: #245437;
+}
+
+.live-pill-refreshing {
+  background: #fff1cf;
+  color: #89611b;
+}
+
+.panel-alert {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff2e8;
+  color: #8c4d16;
+}
+
+.summary-grid,
+.service-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-bottom: 18px;
+}
+
+.summary-tile,
+.home-subpanel,
+.service-card,
+.freshness-row {
+  border: 1px solid rgba(19, 34, 56, 0.08);
+  border-radius: 18px;
+}
+
+.summary-tile {
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.summary-tile span,
+.summary-tile small,
+.subpanel-heading small,
+.service-card p,
+.service-meta,
+.freshness-row p,
+.freshness-metrics {
+  color: #5b6f82;
+}
+
+.summary-tile strong {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 1.8rem;
+}
+
+.home-columns {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 18px;
+}
+
+.home-subpanel {
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.subpanel-heading {
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.subpanel-heading h3 {
+  margin: 0;
+}
+
+.service-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.service-card {
+  padding: 16px;
+  background: rgba(248, 251, 254, 0.94);
+}
+
+.service-live {
+  border-color: rgba(55, 114, 79, 0.24);
+}
+
+.service-degraded {
+  border-color: rgba(180, 102, 32, 0.24);
+}
+
+.service-state-live,
+.freshness-fresh {
+  background: #ddf2e2;
+  color: #245437;
+}
+
+.service-state-degraded,
+.freshness-stale {
+  background: #ffe1d0;
+  color: #953d17;
+}
+
+.freshness-aging {
+  background: #fff0c9;
+  color: #8d6315;
+}
+
+.freshness-scheduled {
+  background: #dde9ff;
+  color: #2d4f8e;
+}
+
+.freshness-manual,
+.freshness-unknown {
+  background: #ece8ff;
+  color: #58409c;
+}
+
+.freshness-inactive {
+  background: #e7eaee;
+  color: #56636f;
+}
+
+.service-card p,
+.freshness-row p {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.service-card code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #132238;
+  color: #f8fbff;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.service-meta {
+  margin-top: 12px;
+  font-size: 0.82rem;
+}
+
+.service-dependencies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dependency-chip {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #edf3f8;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.service-error {
+  display: block;
+  margin-top: 10px;
+  color: #9d4b20;
+}
+
+.freshness-list {
+  display: grid;
+  gap: 12px;
+}
+
+.freshness-row {
+  padding: 14px 16px;
+  background: rgba(250, 252, 254, 0.92);
+}
+
+.freshness-main {
+  margin-bottom: 10px;
+}
+
+.freshness-title-row {
+  align-items: center;
+}
+
+.freshness-metrics {
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+
+.empty-state {
+  margin: 4px 0 0;
+  color: #5b6f82;
+}
+
 .compact-list {
   margin: 0;
   padding-left: 18px;
@@ -110,5 +367,20 @@ body {
 
   .hero {
     padding: 24px;
+  }
+
+  .home-heading,
+  .subpanel-heading,
+  .service-card-header,
+  .freshness-title-row,
+  .live-status-cluster,
+  .service-meta,
+  .freshness-metrics {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-columns {
+    grid-template-columns: 1fr;
   }
 }

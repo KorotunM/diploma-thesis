@@ -1,4 +1,4 @@
-export { BackendApiClient, BackendApiError } from "./client";
+export { BackendApiClient } from "./client";
 export type { BackendApiClientOptions } from "./client";
 export type {
   BackendSearchItem,
