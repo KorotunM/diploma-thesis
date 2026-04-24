@@ -1,0 +1,147 @@
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+
+import { HttpRequestError, isAbortError } from "../../shared/http";
+import { useFrontendRuntime } from "../../shared/runtime";
+
+import type { UniversityCardSnapshot } from "./models";
+import { loadUniversityCard } from "./service";
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function useUniversityCardLookup() {
+  const runtime = useFrontendRuntime();
+  const [draftUniversityId, setDraftUniversityId] = useState(readUniversityIdFromLocation);
+  const [activeUniversityId, setActiveUniversityId] = useState(readUniversityIdFromLocation);
+  const [snapshot, setSnapshot] = useState<UniversityCardSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(activeUniversityId !== "");
+  const [refreshing, setRefreshing] = useState(false);
+  const lastLoadedUniversityIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeUniversityId) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    let disposed = false;
+    const controller = new AbortController();
+    const isInitialLoad = lastLoadedUniversityIdRef.current !== activeUniversityId;
+
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+
+    void loadUniversityCard({
+      runtime,
+      universityId: activeUniversityId,
+      signal: controller.signal,
+    })
+      .then((nextSnapshot) => {
+        if (disposed) {
+          return;
+        }
+        startTransition(() => {
+          setSnapshot(nextSnapshot);
+          setError(null);
+        });
+        lastLoadedUniversityIdRef.current = nextSnapshot.universityId;
+      })
+      .catch((nextError) => {
+        if (disposed || isAbortError(nextError)) {
+          return;
+        }
+        if (nextError instanceof HttpRequestError && nextError.status === 404) {
+          setError(`University card ${activeUniversityId} was not found in delivery projection.`);
+          return;
+        }
+        if (nextError instanceof Error) {
+          setError(nextError.message);
+          return;
+        }
+        setError("University card lookup failed.");
+      })
+      .finally(() => {
+        if (disposed) {
+          return;
+        }
+        setLoading(false);
+        setRefreshing(false);
+      });
+
+    return () => {
+      disposed = true;
+      controller.abort();
+    };
+  }, [activeUniversityId, runtime]);
+
+  const canSubmit = useMemo(
+    () => draftUniversityId.trim().length > 0 && validationError === null,
+    [draftUniversityId, validationError],
+  );
+
+  return {
+    draftUniversityId,
+    snapshot,
+    error,
+    validationError,
+    loading,
+    refreshing,
+    canSubmit,
+    setDraftUniversityId: (value: string) => {
+      setDraftUniversityId(value);
+      if (!value.trim()) {
+        setValidationError(null);
+        return;
+      }
+      setValidationError(
+        UUID_PATTERN.test(value.trim())
+          ? null
+          : "University id must be a valid UUID.",
+      );
+    },
+    submit: () => {
+      const nextUniversityId = draftUniversityId.trim();
+      if (!nextUniversityId) {
+        setValidationError("University id is required to fetch a live card.");
+        return;
+      }
+      if (!UUID_PATTERN.test(nextUniversityId)) {
+        setValidationError("University id must be a valid UUID.");
+        return;
+      }
+      setValidationError(null);
+      setActiveUniversityId(nextUniversityId);
+      updateLocationUniversityId(nextUniversityId);
+    },
+    clear: () => {
+      setDraftUniversityId("");
+      setActiveUniversityId("");
+      setSnapshot(null);
+      setError(null);
+      setValidationError(null);
+      lastLoadedUniversityIdRef.current = null;
+      updateLocationUniversityId(null);
+    },
+  };
+}
+
+function readUniversityIdFromLocation(): string {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("university_id")?.trim() ?? "";
+}
+
+function updateLocationUniversityId(universityId: string | null): void {
+  const url = new URL(window.location.href);
+  if (universityId) {
+    url.searchParams.set("university_id", universityId);
+  } else {
+    url.searchParams.delete("university_id");
+  }
+  window.history.replaceState({}, "", url);
+}
