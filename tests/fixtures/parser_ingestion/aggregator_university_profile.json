@@ -1,0 +1,19 @@
+{
+  "provider": {
+    "name": "Study Aggregator"
+  },
+  "university": {
+    "id": "agg-42",
+    "display_name": "Example University",
+    "aliases": ["EU", "Example U"],
+    "location": {
+      "city": "Moscow",
+      "country_code": "RU"
+    },
+    "official_website": "https://example.edu",
+    "contacts": {
+      "emails": ["admissions@example.edu"],
+      "phones": ["+7 495 123-45-67"]
+    }
+  }
+}

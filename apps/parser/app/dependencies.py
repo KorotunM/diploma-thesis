@@ -1,3 +1,4 @@
+from apps.parser.adapters.aggregators import AggregatorAdapter
 from apps.parser.adapters.official_sites import OfficialSiteAdapter
 from libs.source_sdk.fetchers import HttpFetcher
 from libs.source_sdk.stores import MinIORawArtifactStore
@@ -50,6 +51,7 @@ def create_crawl_request_processing_service(session) -> CrawlRequestProcessingSe
         raw_artifact_service=raw_artifact_service,
         parsed_document_service=parsed_document_service,
         source_adapters=(
+            AggregatorAdapter(fetcher=fetcher, raw_store=raw_store),
             OfficialSiteAdapter(fetcher=fetcher, raw_store=raw_store),
         ),
         parse_completed_emitter=parse_completed_emitter,
