@@ -72,16 +72,17 @@ def test_aggregator_payload_extractor_reads_secondary_university_fields() -> Non
     fragments = AggregatorPayloadExtractor().extract(context=context, artifact=artifact)
     by_field = {fragment.field_name: fragment for fragment in fragments}
 
-    assert by_field["aggregator.external_id"].value == "agg-42"
-    assert by_field["aggregator.display_name"].value == "Example University"
-    assert by_field["aggregator.aliases"].value == ["EU", "Example U"]
-    assert by_field["aggregator.city"].value == "Moscow"
-    assert by_field["aggregator.country_code"].value == "RU"
-    assert by_field["aggregator.official_website"].value == "https://example.edu"
-    assert by_field["aggregator.contacts.emails"].value == ["admissions@example.edu"]
-    assert by_field["aggregator.contacts.phones"].value == ["+7 495 123-45-67"]
-    assert by_field["aggregator.display_name"].metadata["adapter_family"] == "aggregators"
-    assert by_field["aggregator.display_name"].metadata["provider_name"] == "Study Aggregator"
+    assert by_field["canonical_name"].value == "Example University"
+    assert by_field["aliases"].value == ["EU", "Example U"]
+    assert by_field["location.city"].value == "Moscow"
+    assert by_field["location.country_code"].value == "RU"
+    assert by_field["contacts.website"].value == "https://example.edu"
+    assert by_field["contacts.emails"].value == ["admissions@example.edu"]
+    assert by_field["contacts.phones"].value == ["+7 495 123-45-67"]
+    assert by_field["canonical_name"].metadata["adapter_family"] == "aggregators"
+    assert by_field["canonical_name"].metadata["provider_name"] == "Study Aggregator"
+    assert by_field["canonical_name"].metadata["source_field"] == "aggregator.display_name"
+    assert by_field["canonical_name"].metadata["external_id"] == "agg-42"
 
 
 def test_aggregator_adapter_maps_fragments_to_secondary_intermediate_claims() -> None:
@@ -103,11 +104,15 @@ def test_aggregator_adapter_maps_fragments_to_secondary_intermediate_claims() ->
     assert record.metadata["adapter_key"] == "aggregators:0.1.0"
     assert record.metadata["source_kind"] == "secondary"
     claims_by_field = {claim["field_name"]: claim for claim in record.claims}
-    assert claims_by_field["aggregator.display_name"]["value"] == "Example University"
-    assert claims_by_field["aggregator.display_name"]["value_type"] == "str"
-    assert claims_by_field["aggregator.contacts.emails"]["value_type"] == "list"
-    assert claims_by_field["aggregator.official_website"]["raw_artifact_id"] == str(
+    assert claims_by_field["canonical_name"]["value"] == "Example University"
+    assert claims_by_field["canonical_name"]["value_type"] == "str"
+    assert claims_by_field["contacts.emails"]["value_type"] == "list"
+    assert claims_by_field["contacts.website"]["raw_artifact_id"] == str(
         artifact.raw_artifact_id
+    )
+    assert (
+        claims_by_field["canonical_name"]["metadata"]["source_field"]
+        == "aggregator.display_name"
     )
 
 
@@ -126,5 +131,5 @@ def test_aggregator_adapter_executes_fetch_store_extract_and_map() -> None:
     assert result.adapter_key == "aggregators:0.1.0"
     assert result.artifact is not None
     assert result.artifact.storage_bucket == "raw-json"
-    assert result.extracted_fragments == 8
+    assert result.extracted_fragments == 7
     assert result.intermediate_records[0].entity_hint == "Example University"

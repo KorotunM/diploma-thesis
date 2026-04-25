@@ -22,21 +22,7 @@ class AggregatorPayloadExtractor:
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.external_id",
-            value=self._string(
-                university.get("external_id")
-                or university.get("id")
-                or payload.get("external_id"),
-            ),
-            locator="$.external_id|$.university.external_id|$.university.id",
-            confidence=0.98,
-            metadata=self._metadata(provider_name=provider_name),
-        )
-        self._append_fragment(
-            fragments,
-            context=context,
-            artifact=artifact,
-            field_name="aggregator.display_name",
+            field_name="canonical_name",
             value=self._string(
                 university.get("display_name")
                 or university.get("name")
@@ -45,17 +31,28 @@ class AggregatorPayloadExtractor:
             ),
             locator="$.display_name|$.name|$.university.display_name|$.university.name",
             confidence=0.94,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.display_name",
+                external_id=self._string(
+                    university.get("external_id")
+                    or university.get("id")
+                    or payload.get("external_id"),
+                ),
+            ),
         )
         self._append_fragment(
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.aliases",
+            field_name="aliases",
             value=self._string_list(university.get("aliases") or payload.get("aliases")),
             locator="$.aliases|$.university.aliases",
             confidence=0.84,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.aliases",
+            ),
         )
 
         location = self._mapping(university.get("location"))
@@ -63,17 +60,20 @@ class AggregatorPayloadExtractor:
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.city",
+            field_name="location.city",
             value=self._string(location.get("city") or university.get("city")),
             locator="$.location.city|$.university.location.city|$.university.city",
             confidence=0.9,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.city",
+            ),
         )
         self._append_fragment(
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.country_code",
+            field_name="location.country_code",
             value=self._string(
                 location.get("country_code")
                 or location.get("country")
@@ -85,7 +85,10 @@ class AggregatorPayloadExtractor:
                 "$.university.location.country_code|$.university.country_code"
             ),
             confidence=0.86,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.country_code",
+            ),
         )
 
         contacts = self._mapping(university.get("contacts"))
@@ -93,7 +96,7 @@ class AggregatorPayloadExtractor:
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.official_website",
+            field_name="contacts.website",
             value=self._string(
                 university.get("official_website")
                 or contacts.get("website")
@@ -104,27 +107,36 @@ class AggregatorPayloadExtractor:
                 "$.university.official_website|$.university.contacts.website"
             ),
             confidence=0.88,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.official_website",
+            ),
         )
         self._append_fragment(
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.contacts.emails",
+            field_name="contacts.emails",
             value=self._string_list(contacts.get("emails") or university.get("emails")),
             locator="$.contacts.emails|$.university.contacts.emails|$.university.emails",
             confidence=0.82,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.contacts.emails",
+            ),
         )
         self._append_fragment(
             fragments,
             context=context,
             artifact=artifact,
-            field_name="aggregator.contacts.phones",
+            field_name="contacts.phones",
             value=self._string_list(contacts.get("phones") or university.get("phones")),
             locator="$.contacts.phones|$.university.contacts.phones|$.university.phones",
             confidence=0.8,
-            metadata=self._metadata(provider_name=provider_name),
+            metadata=self._metadata(
+                provider_name=provider_name,
+                source_field="aggregator.contacts.phones",
+            ),
         )
         return fragments
 
@@ -188,10 +200,18 @@ class AggregatorPayloadExtractor:
         )
 
     @staticmethod
-    def _metadata(*, provider_name: str | None) -> dict[str, Any]:
-        if provider_name is None:
-            return {}
-        return {"provider_name": provider_name}
+    def _metadata(
+        *,
+        provider_name: str | None,
+        source_field: str,
+        external_id: str | None = None,
+    ) -> dict[str, Any]:
+        metadata: dict[str, Any] = {"source_field": source_field}
+        if provider_name is not None:
+            metadata["provider_name"] = provider_name
+        if external_id is not None:
+            metadata["external_id"] = external_id
+        return metadata
 
     @staticmethod
     def _mapping(value: Any) -> dict[str, Any]:

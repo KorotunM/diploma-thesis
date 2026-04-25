@@ -78,7 +78,7 @@ class AggregatorAdapter(SourceAdapter):
             (
                 fragment.value
                 for fragment in fragments
-                if fragment.field_name == "aggregator.display_name"
+                if fragment.field_name == "canonical_name"
             ),
             None,
         )
