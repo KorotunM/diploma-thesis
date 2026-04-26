@@ -9,6 +9,12 @@ from apps.normalizer.app.claims import (
     ClaimEvidenceRecord,
     ClaimRecord,
 )
+from apps.normalizer.app.resolution import (
+    SINGLE_SOURCE_AUTHORITATIVE_POLICY,
+    FieldResolutionPolicyMatrix,
+    SourceTrustTier,
+    source_tier_map,
+)
 
 from .models import (
     SourceAuthorityRecord,
@@ -17,16 +23,20 @@ from .models import (
 )
 from .repository import UniversityBootstrapRepository, deterministic_university_id
 
-AUTHORITATIVE_TRUST_TIER = "authoritative"
-
 
 class UniversityBootstrapError(ValueError):
     pass
 
 
 class UniversityBootstrapService:
-    def __init__(self, repository: UniversityBootstrapRepository) -> None:
+    def __init__(
+        self,
+        repository: UniversityBootstrapRepository,
+        *,
+        policy_matrix: FieldResolutionPolicyMatrix | None = None,
+    ) -> None:
         self._repository = repository
+        self._policy_matrix = policy_matrix or FieldResolutionPolicyMatrix()
 
     def bootstrap_single_source_authoritative(
         self,
@@ -57,7 +67,10 @@ class UniversityBootstrapService:
         source: SourceAuthorityRecord,
         claim_result: ClaimBuildResult,
     ) -> UniversityBootstrapCandidate:
-        claims_by_field = self._claims_by_field(claim_result.claims)
+        claims_by_field = self._claims_by_field(
+            claims=claim_result.claims,
+            source=source,
+        )
         canonical_name = self._canonical_name(claims_by_field)
         canonical_domain = self._canonical_domain(claims_by_field)
         metadata = self._metadata(
@@ -88,16 +101,30 @@ class UniversityBootstrapService:
             raise UniversityBootstrapError(
                 f"Source {source.source_key} is inactive and cannot bootstrap a university."
             )
-        if source.trust_tier != AUTHORITATIVE_TRUST_TIER:
+        if source.trust_tier is not SourceTrustTier.AUTHORITATIVE:
             raise UniversityBootstrapError(
                 f"Source {source.source_key} is not authoritative."
             )
 
-    @staticmethod
-    def _claims_by_field(claims: list[ClaimRecord]) -> dict[str, ClaimRecord]:
+    def _claims_by_field(
+        self,
+        *,
+        claims: list[ClaimRecord],
+        source: SourceAuthorityRecord,
+    ) -> dict[str, ClaimRecord]:
         result: dict[str, ClaimRecord] = {}
-        for claim in sorted(claims, key=lambda item: item.parser_confidence, reverse=True):
-            result.setdefault(claim.field_name, claim)
+        tiers = source_tier_map(
+            default_source_key=source.source_key,
+            default_trust_tier=source.trust_tier,
+        )
+        for field_name in {claim.field_name for claim in claims}:
+            selected = self._policy_matrix.select_best_claim(
+                field_name=field_name,
+                claims=(claim for claim in claims if claim.field_name == field_name),
+                source_tiers=tiers,
+            )
+            if selected is not None:
+                result[field_name] = selected
         return result
 
     def _canonical_name(self, claims_by_field: dict[str, ClaimRecord]) -> str:
@@ -136,11 +163,11 @@ class UniversityBootstrapService:
         claim_result: ClaimBuildResult,
     ) -> dict[str, Any]:
         return {
-            "bootstrap_policy": "single_source_authoritative",
+            "bootstrap_policy": SINGLE_SOURCE_AUTHORITATIVE_POLICY,
             "source_id": str(source.source_id),
             "source_key": source.source_key,
             "source_type": source.source_type,
-            "trust_tier": source.trust_tier,
+            "trust_tier": source.trust_tier.value,
             "parsed_document_id": str(claim_result.parsed_document.parsed_document_id),
             "parser_version": claim_result.parsed_document.parser_version,
             "claim_ids": [str(claim.claim_id) for claim in claim_result.claims],

@@ -10,6 +10,10 @@ from apps.normalizer.app.cards import (
 )
 from apps.normalizer.app.facts import ResolvedFactBuildResult, ResolvedFactRecord
 from apps.normalizer.app.persistence import json_from_db
+from apps.normalizer.app.resolution import (
+    CANONICAL_FIELD_POLICY,
+    SINGLE_SOURCE_AUTHORITATIVE_POLICY,
+)
 from apps.normalizer.app.universities import UniversityRecord, deterministic_university_id
 from libs.domain.university import UniversityCard
 
@@ -77,7 +81,7 @@ def fact(
         value=value,
         value_type="str",
         fact_score=score,
-        resolution_policy="single_source_authoritative_highest_confidence",
+        resolution_policy=CANONICAL_FIELD_POLICY,
         selected_claim_ids=[uuid4()],
         selected_evidence_ids=[selected_evidence_id],
         card_version=card_version,
@@ -98,7 +102,7 @@ def build_fact_result() -> ResolvedFactBuildResult:
         country_code="RU",
         city_name="Moscow",
         created_at=datetime(2026, 4, 23, 9, 5, tzinfo=UTC),
-        metadata={"bootstrap_policy": "single_source_authoritative"},
+        metadata={"bootstrap_policy": SINGLE_SOURCE_AUTHORITATIVE_POLICY},
     )
     return ResolvedFactBuildResult(
         university=university,

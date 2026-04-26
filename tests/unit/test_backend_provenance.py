@@ -15,6 +15,7 @@ from apps.backend.app.provenance import (
     UniversityProvenanceReadService,
     UniversityProvenanceRepository,
 )
+from apps.normalizer.app.resolution import CANONICAL_FIELD_POLICY
 from libs.domain.university import UniversityCard
 
 
@@ -108,7 +109,7 @@ def build_repository_datasets(university_id: UUID) -> dict[str, list[dict[str, A
                     sort_keys=True,
                 ),
                 "fact_score": 0.99,
-                "resolution_policy": "single_source_authoritative_highest_confidence",
+                "resolution_policy": CANONICAL_FIELD_POLICY,
                 "card_version": 1,
                 "resolved_at": now,
                 "metadata": json.dumps(

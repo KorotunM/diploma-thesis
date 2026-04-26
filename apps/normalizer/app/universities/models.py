@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from apps.normalizer.app.claims import ClaimEvidenceRecord, ClaimRecord
+from apps.normalizer.app.resolution import SourceTrustTier
 
 
 class SourceAuthorityRecord(BaseModel):
@@ -15,7 +16,7 @@ class SourceAuthorityRecord(BaseModel):
     source_id: UUID
     source_key: str
     source_type: str
-    trust_tier: str
+    trust_tier: SourceTrustTier
     is_active: bool
     metadata: dict[str, Any] = Field(default_factory=dict)
 

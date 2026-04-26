@@ -14,6 +14,10 @@ from apps.normalizer.app.claims import (
     ParsedDocumentSnapshot,
 )
 from apps.normalizer.app.persistence import json_from_db, json_to_db
+from apps.normalizer.app.resolution import (
+    SINGLE_SOURCE_AUTHORITATIVE_POLICY,
+    SourceTrustTier,
+)
 from apps.normalizer.app.universities import (
     UniversityBootstrapError,
     UniversityBootstrapRepository,
@@ -46,7 +50,7 @@ class FakeUniversityBootstrapSession:
                 "source_id": self.source_id,
                 "source_key": "msu-official",
                 "source_type": "official_site",
-                "trust_tier": "authoritative",
+                "trust_tier": SourceTrustTier.AUTHORITATIVE.value,
                 "is_active": True,
                 "metadata": json_to_db({"owner": "admissions"}),
             }
@@ -183,8 +187,9 @@ def test_university_bootstrap_creates_core_record_from_authoritative_claims() ->
     assert result.university.canonical_name == "Example University"
     assert result.university.canonical_domain == "example.edu"
     assert result.university.city_name == "Moscow"
-    assert result.university.metadata["bootstrap_policy"] == "single_source_authoritative"
+    assert result.university.metadata["bootstrap_policy"] == SINGLE_SOURCE_AUTHORITATIVE_POLICY
     assert result.university.metadata["source_id"] == str(session.source_id)
+    assert result.university.metadata["trust_tier"] == SourceTrustTier.AUTHORITATIVE.value
     assert result.university.metadata["claim_ids"] == [
         str(claim.claim_id) for claim in claim_result.claims
     ]
@@ -214,12 +219,12 @@ def test_university_bootstrap_is_idempotent_for_same_source() -> None:
 def test_university_bootstrap_rejects_non_authoritative_or_inactive_source() -> None:
     session = FakeUniversityBootstrapSession()
     service = build_service(session)
-    session.sources["msu-official"]["trust_tier"] = "trusted"
+    session.sources["msu-official"]["trust_tier"] = SourceTrustTier.TRUSTED.value
 
     with pytest.raises(UniversityBootstrapError):
         service.bootstrap_single_source_authoritative(build_claim_result())
 
-    session.sources["msu-official"]["trust_tier"] = "authoritative"
+    session.sources["msu-official"]["trust_tier"] = SourceTrustTier.AUTHORITATIVE.value
     session.sources["msu-official"]["is_active"] = False
 
     with pytest.raises(UniversityBootstrapError):

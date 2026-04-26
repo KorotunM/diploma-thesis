@@ -3,6 +3,7 @@ from libs.storage import get_postgres_session_factory
 from .cards import UniversityCardProjectionRepository, UniversityCardProjectionService
 from .claims import ClaimBuildRepository, ClaimBuildService
 from .facts import ResolvedFactGenerationService, ResolvedFactRepository
+from .resolution import FieldResolutionPolicyMatrix
 from .universities import UniversityBootstrapRepository, UniversityBootstrapService
 
 
@@ -24,11 +25,17 @@ def create_claim_build_service(session) -> ClaimBuildService:
 
 
 def create_university_bootstrap_service(session) -> UniversityBootstrapService:
-    return UniversityBootstrapService(UniversityBootstrapRepository(session))
+    return UniversityBootstrapService(
+        UniversityBootstrapRepository(session),
+        policy_matrix=FieldResolutionPolicyMatrix(),
+    )
 
 
 def create_resolved_fact_generation_service(session) -> ResolvedFactGenerationService:
-    return ResolvedFactGenerationService(ResolvedFactRepository(session))
+    return ResolvedFactGenerationService(
+        ResolvedFactRepository(session),
+        policy_matrix=FieldResolutionPolicyMatrix(),
+    )
 
 
 def create_university_card_projection_service(session) -> UniversityCardProjectionService:

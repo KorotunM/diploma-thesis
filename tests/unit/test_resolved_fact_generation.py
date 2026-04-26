@@ -13,6 +13,11 @@ from apps.normalizer.app.facts import (
     deterministic_resolved_fact_id,
 )
 from apps.normalizer.app.persistence import json_from_db
+from apps.normalizer.app.resolution import (
+    CANONICAL_FIELD_POLICY,
+    SINGLE_SOURCE_AUTHORITATIVE_POLICY,
+    SourceTrustTier,
+)
 from apps.normalizer.app.universities import (
     SourceAuthorityRecord,
     UniversityBootstrapResult,
@@ -138,7 +143,7 @@ def build_bootstrap_result() -> UniversityBootstrapResult:
             source_id=uuid4(),
             source_key="msu-official",
             source_type="official_site",
-            trust_tier="authoritative",
+            trust_tier=SourceTrustTier.AUTHORITATIVE,
             is_active=True,
         ),
         university=UniversityRecord(
@@ -148,7 +153,7 @@ def build_bootstrap_result() -> UniversityBootstrapResult:
             country_code="RU",
             city_name="Moscow",
             created_at=datetime(2026, 4, 23, 9, 5, tzinfo=UTC),
-            metadata={"bootstrap_policy": "single_source_authoritative"},
+            metadata={"bootstrap_policy": SINGLE_SOURCE_AUTHORITATIVE_POLICY},
         ),
         claims_used=claims,
         evidence_used=[evidence_for(claim_record) for claim_record in claims],
@@ -176,9 +181,7 @@ def test_resolved_fact_generation_persists_canonical_fields() -> None:
     assert by_field["contacts.website"].value == "https://example.edu"
     assert by_field["location.city"].value == "Moscow"
     assert by_field["location.country_code"].value == "RU"
-    assert by_field["contacts.website"].resolution_policy == (
-        "single_source_authoritative_highest_confidence"
-    )
+    assert by_field["contacts.website"].resolution_policy == CANONICAL_FIELD_POLICY
     assert by_field["canonical_name"].selected_claim_ids == [
         bootstrap_result.claims_used[0].claim_id
     ]
@@ -186,6 +189,13 @@ def test_resolved_fact_generation_persists_canonical_fields() -> None:
         bootstrap_result.evidence_used[0].evidence_id
     ]
     assert by_field["canonical_name"].metadata["source_key"] == "msu-official"
+    assert (
+        by_field["canonical_name"].metadata["source_trust_tier"]
+        == SourceTrustTier.AUTHORITATIVE.value
+    )
+    assert by_field["canonical_name"].metadata["field_resolution_policy"] == (
+        CANONICAL_FIELD_POLICY
+    )
     assert by_field["canonical_name"].metadata["source_urls"] == [
         "https://example.edu/admissions"
     ]
