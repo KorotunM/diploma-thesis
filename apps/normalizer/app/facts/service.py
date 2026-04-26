@@ -125,6 +125,14 @@ class ResolvedFactGenerationService:
             metadata={
                 "source_key": claim.source_key,
                 "source_trust_tier": source_trust_tier.value,
+                "source_keys": sorted(
+                    {
+                        candidate.source_key
+                        for candidate in bootstrap_result.claims_used
+                        if candidate.field_name == claim.field_name
+                        and candidate.value is not None
+                    }
+                ),
                 "parser_version": claim.parser_version,
                 "normalizer_version": claim.normalizer_version,
                 "entity_hint": claim.entity_hint,
