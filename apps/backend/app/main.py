@@ -2,7 +2,11 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 
-from apps.backend.app.cards import UniversityCardNotFoundError, UniversityCardReadService
+from apps.backend.app.cards import (
+    UniversityCardNotFoundError,
+    UniversityCardReadService,
+    UniversityCardResponse,
+)
 from apps.backend.app.dependencies import (
     get_university_card_read_service,
     get_university_provenance_read_service,
@@ -52,13 +56,13 @@ def search_universities(query: str = "") -> dict[str, object]:
 
 @app.get(
     "/api/v1/universities/{university_id}",
-    response_model=UniversityCard,
+    response_model=UniversityCardResponse,
     tags=["backend"],
 )
 def get_university_card(
     university_id: UUID,
     service: UniversityCardReadService = CARD_READ_SERVICE_DEPENDENCY,
-) -> UniversityCard:
+) -> UniversityCardResponse:
     try:
         return service.get_latest_card(university_id)
     except UniversityCardNotFoundError as exc:
