@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from apps.normalizer.app.claims import ClaimEvidenceRecord, ClaimRecord
 from apps.normalizer.app.persistence import json_from_db, json_to_db, sql_text
 
 from .models import (
@@ -44,6 +45,97 @@ class UniversityBootstrapRepository:
         if row is None:
             return None
         return self._source_from_row(row)
+
+    def find_university_by_canonical_domain(
+        self,
+        canonical_domain: str,
+    ) -> UniversityRecord | None:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    university_id,
+                    canonical_name,
+                    canonical_domain,
+                    country_code,
+                    city_name,
+                    created_at,
+                    metadata
+                FROM core.university
+                WHERE canonical_domain = :canonical_domain
+                """
+            ),
+            {"canonical_domain": canonical_domain},
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        return self._university_from_row(row)
+
+    def list_claims_for_university(
+        self,
+        university_id: UUID,
+    ) -> list[ClaimRecord]:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    claim_id,
+                    parsed_document_id,
+                    source_key,
+                    field_name,
+                    value_json,
+                    entity_hint,
+                    parser_version,
+                    normalizer_version,
+                    parser_confidence,
+                    created_at,
+                    metadata
+                FROM normalize.claim
+                WHERE claim_id::text IN (
+                    SELECT jsonb_array_elements_text(
+                        COALESCE(metadata -> 'claim_ids', '[]'::jsonb)
+                    )
+                    FROM core.university
+                    WHERE university_id = :university_id
+                )
+                ORDER BY source_key ASC, field_name ASC, claim_id ASC
+                """
+            ),
+            {"university_id": university_id},
+        )
+        return [self._claim_from_row(row) for row in result.mappings().all()]
+
+    def list_evidence_for_university(
+        self,
+        university_id: UUID,
+    ) -> list[ClaimEvidenceRecord]:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    evidence_id,
+                    claim_id,
+                    raw_artifact_id,
+                    fragment_id,
+                    source_key,
+                    source_url,
+                    captured_at,
+                    metadata
+                FROM normalize.claim_evidence
+                WHERE claim_id::text IN (
+                    SELECT jsonb_array_elements_text(
+                        COALESCE(metadata -> 'claim_ids', '[]'::jsonb)
+                    )
+                    FROM core.university
+                    WHERE university_id = :university_id
+                )
+                ORDER BY source_key ASC, source_url ASC, evidence_id ASC
+                """
+            ),
+            {"university_id": university_id},
+        )
+        return [self._evidence_from_row(row) for row in result.mappings().all()]
 
     def upsert_university(
         self,
@@ -107,6 +199,37 @@ class UniversityBootstrapRepository:
             source_type=row["source_type"],
             trust_tier=row["trust_tier"],
             is_active=row["is_active"],
+            metadata=json_from_db(row["metadata"]),
+        )
+
+    @staticmethod
+    def _claim_from_row(row: Any) -> ClaimRecord:
+        value_payload = json_from_db(row["value_json"])
+        return ClaimRecord(
+            claim_id=row["claim_id"],
+            parsed_document_id=row["parsed_document_id"],
+            source_key=row["source_key"],
+            field_name=row["field_name"],
+            value=value_payload.get("value"),
+            value_type=value_payload.get("value_type", "unknown"),
+            entity_hint=row["entity_hint"],
+            parser_version=row["parser_version"],
+            normalizer_version=row["normalizer_version"],
+            parser_confidence=row["parser_confidence"],
+            created_at=row["created_at"],
+            metadata=json_from_db(row["metadata"]),
+        )
+
+    @staticmethod
+    def _evidence_from_row(row: Any) -> ClaimEvidenceRecord:
+        return ClaimEvidenceRecord(
+            evidence_id=row["evidence_id"],
+            claim_id=row["claim_id"],
+            source_key=row["source_key"],
+            source_url=row["source_url"],
+            raw_artifact_id=row["raw_artifact_id"],
+            fragment_id=row["fragment_id"],
+            captured_at=row["captured_at"],
             metadata=json_from_db(row["metadata"]),
         )
 

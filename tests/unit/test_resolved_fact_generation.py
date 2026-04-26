@@ -224,3 +224,53 @@ def test_resolved_fact_generation_is_idempotent_by_university_field_and_card_ver
         )
         for field_name in CANONICAL_FACT_FIELDS
     }
+
+
+def test_resolved_fact_generation_prefers_authoritative_claims_in_dual_source_merge() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    aggregator_city = claim(
+        field_name="location.city",
+        value="Moscow City",
+        confidence=0.99,
+    ).model_copy(update={"source_key": "msu-aggregator"})
+    aggregator_website = claim(
+        field_name="contacts.website",
+        value="https://directory.example.edu",
+        confidence=0.97,
+    ).model_copy(update={"source_key": "msu-aggregator"})
+    dual_source = bootstrap_result.model_copy(
+        update={
+            "sources_used": [
+                bootstrap_result.source,
+                bootstrap_result.source.model_copy(
+                    update={
+                        "source_key": "msu-aggregator",
+                        "source_type": "aggregator",
+                        "trust_tier": SourceTrustTier.TRUSTED,
+                    }
+                ),
+            ],
+            "claims_used": [
+                *bootstrap_result.claims_used,
+                aggregator_city,
+                aggregator_website,
+            ],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                evidence_for(aggregator_city),
+                evidence_for(aggregator_website),
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(dual_source)
+    by_field = {fact.field_name: fact for fact in result.facts}
+
+    assert by_field["location.city"].value == "Moscow"
+    assert by_field["contacts.website"].value == "https://example.edu"
+    assert by_field["location.city"].metadata["source_key"] == "msu-official"
+    assert by_field["location.city"].metadata["source_trust_tier"] == (
+        SourceTrustTier.AUTHORITATIVE.value
+    )

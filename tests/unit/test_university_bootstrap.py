@@ -183,6 +183,7 @@ def test_university_bootstrap_creates_core_record_from_authoritative_claims() ->
     result = service.bootstrap_single_source_authoritative(claim_result)
 
     assert result.source.source_key == "msu-official"
+    assert [source.source_key for source in result.sources_used] == ["msu-official"]
     assert result.university.university_id == deterministic_university_id("msu-official")
     assert result.university.canonical_name == "Example University"
     assert result.university.canonical_domain == "example.edu"
@@ -199,6 +200,8 @@ def test_university_bootstrap_creates_core_record_from_authoritative_claims() ->
     assert result.university.metadata["source_urls"] == [
         "https://example.edu/admissions"
     ]
+    assert result.university.metadata["source_keys"] == ["msu-official"]
+    assert result.university.metadata["source_snapshots"][0]["source_key"] == "msu-official"
     assert len(session.universities) == 1
     assert session.commit_count == 1
 

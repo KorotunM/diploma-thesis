@@ -48,6 +48,7 @@ class UniversityBootstrapResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: SourceAuthorityRecord
+    sources_used: list[SourceAuthorityRecord] = Field(default_factory=list)
     university: UniversityRecord
     claims_used: list[ClaimRecord]
     evidence_used: list[ClaimEvidenceRecord] = Field(default_factory=list)

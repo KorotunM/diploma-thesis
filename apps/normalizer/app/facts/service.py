@@ -40,6 +40,12 @@ class ResolvedFactGenerationService:
         bootstrap_result: UniversityBootstrapResult,
     ) -> ResolvedFactBuildResult:
         source_tiers = source_tier_map(
+            {
+                source.source_key: source.trust_tier
+                for source in (
+                    bootstrap_result.sources_used or [bootstrap_result.source]
+                )
+            },
             default_source_key=bootstrap_result.source.source_key,
             default_trust_tier=bootstrap_result.source.trust_tier,
         )
