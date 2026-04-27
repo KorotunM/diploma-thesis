@@ -10,6 +10,10 @@ from apps.normalizer.app.claims import (
     ClaimEvidenceRecord,
     ClaimRecord,
 )
+from apps.normalizer.app.matching import (
+    UniversityExactMatchCandidate,
+    UniversityExactMatchService,
+)
 from apps.normalizer.app.resolution import (
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
     FieldResolutionPolicyMatrix,
@@ -25,7 +29,7 @@ from .models import (
 )
 from .repository import UniversityBootstrapRepository, deterministic_university_id
 
-AUTHORITATIVE_EXACT_DOMAIN_MERGE_POLICY = "authoritative_anchor_exact_domain_merge"
+AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY = "authoritative_anchor_exact_match_merge"
 
 
 class UniversityBootstrapError(ValueError):
@@ -38,9 +42,13 @@ class UniversityBootstrapService:
         repository: UniversityBootstrapRepository,
         *,
         policy_matrix: FieldResolutionPolicyMatrix | None = None,
+        exact_match_service: UniversityExactMatchService | None = None,
     ) -> None:
         self._repository = repository
         self._policy_matrix = policy_matrix or FieldResolutionPolicyMatrix()
+        self._exact_match_service = exact_match_service or UniversityExactMatchService(
+            repository
+        )
 
     def consolidate_claims(
         self,
@@ -96,16 +104,19 @@ class UniversityBootstrapService:
             source=source,
         )
         canonical_domain = self._canonical_domain(claims_by_field)
-        if canonical_domain is None:
-            raise UniversityBootstrapError(
-                f"Source {source.source_key} does not provide contacts.website for merge."
+        canonical_name = self._canonical_name_optional(claims_by_field)
+        match = self._exact_match_service.match(
+            UniversityExactMatchCandidate(
+                canonical_domain=canonical_domain,
+                canonical_name=canonical_name,
             )
-        university = self._repository.find_university_by_canonical_domain(canonical_domain)
-        if university is None:
+        )
+        if match is None:
             raise UniversityBootstrapError(
-                f"No authoritative university was found for canonical domain {canonical_domain}."
+                "No authoritative university was found for the provided exact match keys."
             )
 
+        university = match.university
         anchor_source = self._anchor_source(university)
         existing_claims = self._repository.list_claims_for_university(
             university.university_id
@@ -131,7 +142,8 @@ class UniversityBootstrapService:
                 claim_result=claim_result,
                 combined_claims=combined_claims,
                 combined_evidence=combined_evidence,
-                matched_by="canonical_domain",
+                matched_by=match.matched_by,
+                matched_value=match.matched_value,
             ),
         )
         persisted = self._repository.upsert_university(candidate)
@@ -256,12 +268,18 @@ class UniversityBootstrapService:
         return sorted(merged.values(), key=lambda record: record.source_key)
 
     def _canonical_name(self, claims_by_field: dict[str, ClaimRecord]) -> str:
-        value = self._string_claim_value(claims_by_field, "canonical_name")
+        value = self._canonical_name_optional(claims_by_field)
         if not value:
             raise UniversityBootstrapError(
                 "Authoritative bootstrap requires canonical_name claim."
             )
         return value
+
+    def _canonical_name_optional(
+        self,
+        claims_by_field: dict[str, ClaimRecord],
+    ) -> str | None:
+        return self._string_claim_value(claims_by_field, "canonical_name")
 
     def _canonical_domain(self, claims_by_field: dict[str, ClaimRecord]) -> str | None:
         website = self._string_claim_value(claims_by_field, "contacts.website")
@@ -330,11 +348,14 @@ class UniversityBootstrapService:
         combined_claims: list[ClaimRecord],
         combined_evidence: list[ClaimEvidenceRecord],
         matched_by: str,
+        matched_value: str,
     ) -> dict[str, Any]:
         return {
-            "bootstrap_policy": AUTHORITATIVE_EXACT_DOMAIN_MERGE_POLICY,
-            "merge_strategy": AUTHORITATIVE_EXACT_DOMAIN_MERGE_POLICY,
+            "bootstrap_policy": AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY,
+            "merge_strategy": AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY,
+            "match_strategy": "exact",
             "matched_by": matched_by,
+            "matched_value": matched_value,
             "source_id": str(anchor_source.source_id),
             "source_key": anchor_source.source_key,
             "source_type": anchor_source.source_type,

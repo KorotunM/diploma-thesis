@@ -72,6 +72,32 @@ class UniversityBootstrapRepository:
             return None
         return self._university_from_row(row)
 
+    def find_university_by_canonical_name(
+        self,
+        canonical_name: str,
+    ) -> UniversityRecord | None:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    university_id,
+                    canonical_name,
+                    canonical_domain,
+                    country_code,
+                    city_name,
+                    created_at,
+                    metadata
+                FROM core.university
+                WHERE canonical_name = :canonical_name
+                """
+            ),
+            {"canonical_name": canonical_name},
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        return self._university_from_row(row)
+
     def list_claims_for_university(
         self,
         university_id: UUID,

@@ -268,6 +268,8 @@ class InMemoryDualSourceSession:
             return MappingResult(row=self.sources.get(params["source_key"]))
         if "from core.university" in sql and "where canonical_domain = :canonical_domain" in sql:
             return MappingResult(row=self._find_university_by_domain(params["canonical_domain"]))
+        if "from core.university" in sql and "where canonical_name = :canonical_name" in sql:
+            return MappingResult(row=self._find_university_by_name(params["canonical_name"]))
         if "from normalize.claim_evidence" in sql and "from core.university" in sql:
             return MappingResult(rows=self._list_evidence_for_university(params["university_id"]))
         if "from normalize.claim" in sql and "from core.university" in sql:
@@ -330,6 +332,12 @@ class InMemoryDualSourceSession:
     def _find_university_by_domain(self, canonical_domain: str) -> dict[str, Any] | None:
         for row in self.universities.values():
             if row["canonical_domain"] == canonical_domain:
+                return row
+        return None
+
+    def _find_university_by_name(self, canonical_name: str) -> dict[str, Any] | None:
+        for row in self.universities.values():
+            if row["canonical_name"].strip().lower() == canonical_name.strip().lower():
                 return row
         return None
 
@@ -512,9 +520,11 @@ def test_dual_source_merge_prefers_authoritative_claims_and_exposes_rationale() 
         "msu-aggregator",
     }
     assert merged_bootstrap.university.metadata["merge_strategy"] == (
-        "authoritative_anchor_exact_domain_merge"
+        "authoritative_anchor_exact_match_merge"
     )
+    assert merged_bootstrap.university.metadata["match_strategy"] == "exact"
     assert merged_bootstrap.university.metadata["matched_by"] == "canonical_domain"
+    assert merged_bootstrap.university.metadata["matched_value"] == "example.edu"
 
     facts_by_field = {fact.field_name: fact for fact in fact_result.facts}
     assert facts_by_field["canonical_name"].value == "Example University"

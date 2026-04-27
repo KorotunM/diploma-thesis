@@ -155,6 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_claim_evidence_claim ON normalize.claim_evidence 
 CREATE INDEX IF NOT EXISTS idx_claim_evidence_raw_artifact ON normalize.claim_evidence (raw_artifact_id);
 CREATE INDEX IF NOT EXISTS idx_claim_evidence_fragment ON normalize.claim_evidence (fragment_id);
 CREATE INDEX IF NOT EXISTS idx_university_canonical_domain ON core.university (canonical_domain);
+CREATE INDEX IF NOT EXISTS idx_university_canonical_name ON core.university (canonical_name);
 CREATE INDEX IF NOT EXISTS idx_university_canonical_name_trgm ON core.university USING gin (canonical_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_resolved_fact_university_card ON core.resolved_fact (university_id, card_version);
 CREATE INDEX IF NOT EXISTS idx_delivery_search_text ON delivery.university_card USING gin (search_text);

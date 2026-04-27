@@ -76,6 +76,8 @@ class FakeUniversityMergeSession:
             return MappingResult(row=self.sources.get(params["source_key"]))
         if "from core.university" in sql and "where canonical_domain = :canonical_domain" in sql:
             return MappingResult(row=self._find_university(params["canonical_domain"]))
+        if "from core.university" in sql and "where canonical_name = :canonical_name" in sql:
+            return MappingResult(row=self._find_university_by_name(params["canonical_name"]))
         if "from normalize.claim_evidence" in sql and "from core.university" in sql:
             return MappingResult(rows=self._evidence_for_university(params["university_id"]))
         if "from normalize.claim" in sql and "from core.university" in sql:
@@ -90,6 +92,12 @@ class FakeUniversityMergeSession:
     def _find_university(self, canonical_domain: str) -> dict[str, Any] | None:
         for row in self.universities.values():
             if row["canonical_domain"] == canonical_domain:
+                return row
+        return None
+
+    def _find_university_by_name(self, canonical_name: str) -> dict[str, Any] | None:
+        for row in self.universities.values():
+            if row["canonical_name"].strip().lower() == canonical_name.strip().lower():
                 return row
         return None
 
@@ -136,7 +144,7 @@ def build_claim_result(
     parser_profile: str,
     parser_version: str,
     canonical_name: str,
-    website: str,
+    website: str | None,
     city: str,
     country_code: str,
 ) -> ClaimBuildResult:
@@ -154,12 +162,15 @@ def build_claim_result(
         parsed_at=datetime(2026, 4, 26, 8, 55, tzinfo=UTC),
         metadata={},
     )
-    claim_specs = [
-        ("canonical_name", canonical_name, 0.91),
-        ("contacts.website", website, 0.89),
-        ("location.city", city, 0.87),
-        ("location.country_code", country_code, 0.85),
-    ]
+    claim_specs = [("canonical_name", canonical_name, 0.91)]
+    if website is not None:
+        claim_specs.append(("contacts.website", website, 0.89))
+    claim_specs.extend(
+        [
+            ("location.city", city, 0.87),
+            ("location.country_code", country_code, 0.85),
+        ]
+    )
     claims: list[ClaimRecord] = []
     evidence: list[ClaimEvidenceRecord] = []
     for index, (field_name, value, confidence) in enumerate(claim_specs):
@@ -183,7 +194,7 @@ def build_claim_result(
                 evidence_id=uuid4(),
                 claim_id=claim.claim_id,
                 source_key=source_key,
-                source_url=website,
+                source_url=website or "https://directory.example.com/universities/example",
                 raw_artifact_id=raw_artifact_id,
                 fragment_id=uuid4(),
                 captured_at=datetime(2026, 4, 26, 8, 50, tzinfo=UTC),
@@ -276,9 +287,11 @@ def test_secondary_aggregator_claims_merge_into_existing_authoritative_universit
     assert len(merged.evidence_used) == 8
     assert merged.university.canonical_domain == "example.edu"
     assert merged.university.metadata["merge_strategy"] == (
-        "authoritative_anchor_exact_domain_merge"
+        "authoritative_anchor_exact_match_merge"
     )
+    assert merged.university.metadata["match_strategy"] == "exact"
     assert merged.university.metadata["matched_by"] == "canonical_domain"
+    assert merged.university.metadata["matched_value"] == "example.edu"
     assert merged.university.metadata["source_key"] == "msu-official"
     assert merged.university.metadata["source_keys"] == [
         "msu-aggregator",
@@ -292,4 +305,44 @@ def test_secondary_aggregator_claims_merge_into_existing_authoritative_universit
     assert set(snapshots) == {"msu-official", "msu-aggregator"}
     assert snapshots["msu-official"]["trust_tier"] == SourceTrustTier.AUTHORITATIVE.value
     assert snapshots["msu-aggregator"]["trust_tier"] == SourceTrustTier.TRUSTED.value
+    assert session.commit_count == 2
+
+
+def test_secondary_aggregator_claims_fall_back_to_exact_canonical_name_match() -> None:
+    session = FakeUniversityMergeSession()
+    service = build_service(session)
+    official = build_claim_result(
+        source_key="msu-official",
+        parser_profile="official_site.default",
+        parser_version="official.0.1.0",
+        canonical_name="Example University",
+        website="https://www.example.edu/admissions",
+        city="Moscow",
+        country_code="RU",
+    )
+    aggregator = build_claim_result(
+        source_key="msu-aggregator",
+        parser_profile="aggregator.default",
+        parser_version="aggregator.0.1.0",
+        canonical_name=" Example   University ",
+        website=None,
+        city="Moscow City",
+        country_code="RU",
+    )
+    register_claim_result(session, official)
+    register_claim_result(session, aggregator)
+
+    first = service.bootstrap_single_source_authoritative(official)
+    merged = service.consolidate_claims(aggregator)
+
+    assert merged.university.university_id == first.university.university_id
+    assert merged.university.canonical_domain == "example.edu"
+    assert merged.university.metadata["merge_strategy"] == (
+        "authoritative_anchor_exact_match_merge"
+    )
+    assert merged.university.metadata["match_strategy"] == "exact"
+    assert merged.university.metadata["matched_by"] == "canonical_name"
+    assert merged.university.metadata["matched_value"] == "Example University"
+    assert len(merged.claims_used) == 7
+    assert len(merged.evidence_used) == 7
     assert session.commit_count == 2
