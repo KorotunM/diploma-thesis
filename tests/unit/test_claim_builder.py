@@ -268,3 +268,51 @@ def test_claim_build_service_requires_existing_parsed_document() -> None:
         service.build_claims_from_extracted_fragments(
             build_payload(session).model_copy(update={"parsed_document_id": uuid4()})
         )
+
+
+def test_claim_build_repository_preserves_rating_claim_metadata_and_value_types() -> None:
+    session = FakeClaimBuildSession()
+    session.fragments.append(
+        {
+            "fragment_id": uuid4(),
+            "parsed_document_id": session.parsed_document_id,
+            "raw_artifact_id": session.raw_artifact_id,
+            "source_key": "msu-ranking",
+            "source_url": "https://rankings.example.com/universities/example-university",
+            "captured_at": session.captured_at,
+            "field_name": "ratings.year",
+            "value": json_to_db({"value": 2026}),
+            "value_type": "int",
+            "locator": "$.ranking_entry.year",
+            "confidence": 0.97,
+            "metadata": json_to_db(
+                {
+                    "adapter_key": "rankings:0.1.0",
+                    "adapter_family": "rankings",
+                    "rating_item_key": "qs-world:2026:world_overall:example-university",
+                    "provider_key": "qs-world",
+                    "provider_name": "QS World University Rankings",
+                    "source_field": "ranking.year",
+                }
+            ),
+        }
+    )
+    repository = ClaimBuildRepository(session=session, sql_text=lambda value: value)
+    parsed_document = repository.get_parsed_document(session.parsed_document_id)
+
+    assert parsed_document is not None
+    claims = repository.upsert_claims_from_fragments(
+        parsed_document=parsed_document,
+        fragments=repository.list_extracted_fragments(session.parsed_document_id),
+        normalizer_version="normalizer.0.1.0",
+    )
+
+    rating_claim = next(claim for claim in claims if claim.field_name == "ratings.year")
+    assert rating_claim.value == 2026
+    assert rating_claim.value_type == "int"
+    assert rating_claim.metadata["fragment_metadata"]["rating_item_key"] == (
+        "qs-world:2026:world_overall:example-university"
+    )
+    assert rating_claim.metadata["fragment_metadata"]["provider_name"] == (
+        "QS World University Rankings"
+    )

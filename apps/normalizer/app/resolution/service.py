@@ -22,9 +22,16 @@ TRUSTED_FIRST_TIERS = (
     SourceTrustTier.AUXILIARY,
     SourceTrustTier.EXPERIMENTAL,
 )
+RANKING_FIRST_TIERS = (
+    SourceTrustTier.TRUSTED,
+    SourceTrustTier.AUTHORITATIVE,
+    SourceTrustTier.AUXILIARY,
+    SourceTrustTier.EXPERIMENTAL,
+)
 SINGLE_SOURCE_AUTHORITATIVE_POLICY = "single_source_authoritative"
 CANONICAL_FIELD_POLICY = "tiered_authority_highest_confidence"
 SUPPORTING_FIELD_POLICY = "tiered_supporting_union"
+RATING_FIELD_POLICY = "ranking_provider_highest_confidence"
 
 DEFAULT_FIELD_POLICIES: tuple[FieldResolutionPolicy, ...] = (
     FieldResolutionPolicy(
@@ -78,6 +85,34 @@ DEFAULT_FIELD_POLICIES: tuple[FieldResolutionPolicy, ...] = (
         allowed_tiers=TRUSTED_FIRST_TIERS,
         strategy=FieldResolutionStrategy.UNION_BY_TRUST_TIER,
         multi_value=True,
+    ),
+    FieldResolutionPolicy(
+        field_name="ratings.provider",
+        policy_name=RATING_FIELD_POLICY,
+        preferred_tiers=RANKING_FIRST_TIERS,
+        allowed_tiers=RANKING_FIRST_TIERS,
+        strategy=FieldResolutionStrategy.PREFER_HIGHER_TRUST_TIER,
+    ),
+    FieldResolutionPolicy(
+        field_name="ratings.year",
+        policy_name=RATING_FIELD_POLICY,
+        preferred_tiers=RANKING_FIRST_TIERS,
+        allowed_tiers=RANKING_FIRST_TIERS,
+        strategy=FieldResolutionStrategy.PREFER_HIGHER_TRUST_TIER,
+    ),
+    FieldResolutionPolicy(
+        field_name="ratings.metric",
+        policy_name=RATING_FIELD_POLICY,
+        preferred_tiers=RANKING_FIRST_TIERS,
+        allowed_tiers=RANKING_FIRST_TIERS,
+        strategy=FieldResolutionStrategy.PREFER_HIGHER_TRUST_TIER,
+    ),
+    FieldResolutionPolicy(
+        field_name="ratings.value",
+        policy_name=RATING_FIELD_POLICY,
+        preferred_tiers=RANKING_FIRST_TIERS,
+        allowed_tiers=RANKING_FIRST_TIERS,
+        strategy=FieldResolutionStrategy.PREFER_HIGHER_TRUST_TIER,
     ),
 )
 

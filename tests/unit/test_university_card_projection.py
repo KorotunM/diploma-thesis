@@ -8,10 +8,15 @@ from apps.normalizer.app.cards import (
     UniversityCardProjectionRepository,
     UniversityCardProjectionService,
 )
-from apps.normalizer.app.facts import ResolvedFactBuildResult, ResolvedFactRecord
+from apps.normalizer.app.facts import (
+    RATING_FIELD_PREFIX,
+    ResolvedFactBuildResult,
+    ResolvedFactRecord,
+)
 from apps.normalizer.app.persistence import json_from_db
 from apps.normalizer.app.resolution import (
     CANONICAL_FIELD_POLICY,
+    RATING_FIELD_POLICY,
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
 )
 from apps.normalizer.app.universities import UniversityRecord, deterministic_university_id
@@ -72,6 +77,9 @@ def fact(
     score: float,
     card_version: int = 1,
     evidence_id: UUID | None = None,
+    value_type: str = "str",
+    resolution_policy: str = CANONICAL_FIELD_POLICY,
+    metadata: dict[str, Any] | None = None,
 ) -> ResolvedFactRecord:
     selected_evidence_id = evidence_id or uuid4()
     return ResolvedFactRecord(
@@ -79,14 +87,15 @@ def fact(
         university_id=university_id,
         field_name=field_name,
         value=value,
-        value_type="str",
+        value_type=value_type,
         fact_score=score,
-        resolution_policy=CANONICAL_FIELD_POLICY,
+        resolution_policy=resolution_policy,
         selected_claim_ids=[uuid4()],
         selected_evidence_ids=[selected_evidence_id],
         card_version=card_version,
         resolved_at=datetime(2026, 4, 23, 10, 0, tzinfo=UTC),
-        metadata={
+        metadata=metadata
+        or {
             "source_key": "msu-official",
             "source_urls": ["https://example.edu/admissions"],
         },
@@ -131,6 +140,25 @@ def build_fact_result() -> ResolvedFactBuildResult:
                 value="RU",
                 score=0.8,
             ),
+            fact(
+                university_id=university_id,
+                field_name=f"{RATING_FIELD_PREFIX}qs-world:2026:world_overall:example-university",
+                value={
+                    "provider": "QS World University Rankings",
+                    "year": 2026,
+                    "metric": "world_overall",
+                    "value": "151",
+                },
+                value_type="rating_item",
+                resolution_policy=RATING_FIELD_POLICY,
+                score=0.95,
+                metadata={
+                    "source_key": "qs-world-ranking",
+                    "source_urls": [
+                        "https://rankings.example.com/universities/example-university"
+                    ],
+                },
+            ),
         ],
     )
 
@@ -161,6 +189,10 @@ def test_university_card_projection_persists_card_version_and_delivery_card() ->
     assert card.contacts.website == "https://example.edu"
     assert card.location.city == "Moscow"
     assert card.location.country == "RU"
+    assert card.ratings[0].provider == "QS World University Rankings"
+    assert card.ratings[0].year == 2026
+    assert card.ratings[0].metric == "world_overall"
+    assert card.ratings[0].value == "151"
     assert card.version.card_version == 1
     assert card.version.generated_at == session.generated_at
     assert card.sources[0].source_key == "msu-official"

@@ -10,6 +10,7 @@ from libs.domain.university.models import (
     FieldAttribution,
     InstitutionalInfo,
     LocationInfo,
+    RatingItem,
     ReviewSummary,
     UniversityCard,
 )
@@ -93,7 +94,7 @@ class UniversityCardProjectionService:
             ),
             programs=[],
             tuition=[],
-            ratings=[],
+            ratings=self._ratings(fact_result.facts),
             dormitory={},
             reviews=ReviewSummary(),
             sources=self._sources(fact_result.facts),
@@ -157,3 +158,14 @@ class UniversityCardProjectionService:
             for source_url in source_urls
             if isinstance(source_url, str)
         ]
+
+    @staticmethod
+    def _ratings(facts: list[ResolvedFactRecord]) -> list[RatingItem]:
+        ratings: list[RatingItem] = []
+        for fact in sorted(facts, key=lambda item: item.field_name):
+            if not fact.field_name.startswith("ratings."):
+                continue
+            if not isinstance(fact.value, dict):
+                continue
+            ratings.append(RatingItem.model_validate(fact.value))
+        return ratings

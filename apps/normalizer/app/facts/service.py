@@ -4,6 +4,7 @@ from uuid import UUID
 
 from apps.normalizer.app.claims import ClaimEvidenceRecord, ClaimRecord
 from apps.normalizer.app.resolution import (
+    RATING_FIELD_POLICY,
     FieldResolutionPolicyMatrix,
     SourceTrustTier,
     source_tier_map,
@@ -18,6 +19,13 @@ CANONICAL_FACT_FIELDS = (
     "contacts.website",
     "location.city",
     "location.country_code",
+)
+RATING_FIELD_PREFIX = "ratings."
+RATING_COMPONENT_FIELDS = (
+    "ratings.provider",
+    "ratings.year",
+    "ratings.metric",
+    "ratings.value",
 )
 
 
@@ -64,6 +72,13 @@ class ResolvedFactGenerationService:
             for field_name in self._canonical_fields
             if (claim := claims_by_field.get(field_name)) is not None
         ]
+        candidates.extend(
+            self._rating_candidates(
+                bootstrap_result=bootstrap_result,
+                evidence_by_claim_id=evidence_by_claim_id,
+                source_tiers=source_tiers,
+            )
+        )
         facts = self._repository.upsert_resolved_facts(candidates)
         self._repository.commit()
         return ResolvedFactBuildResult(
@@ -148,3 +163,172 @@ class ResolvedFactGenerationService:
                 "source_urls": sorted({record.source_url for record in evidence}),
             },
         )
+
+    def _rating_candidates(
+        self,
+        *,
+        bootstrap_result: UniversityBootstrapResult,
+        evidence_by_claim_id: dict[UUID, list[ClaimEvidenceRecord]],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> list[ResolvedFactCandidate]:
+        claims_by_item_key = self._rating_claims_by_item_key(bootstrap_result.claims_used)
+        candidates: list[ResolvedFactCandidate] = []
+        for rating_item_key, rating_claims in sorted(claims_by_item_key.items()):
+            selected_claims = self._select_rating_claims(
+                claims=rating_claims,
+                source_tiers=source_tiers,
+            )
+            if selected_claims is None:
+                continue
+            evidence = self._selected_rating_evidence(
+                selected_claims=selected_claims,
+                evidence_by_claim_id=evidence_by_claim_id,
+            )
+            candidates.append(
+                self._rating_candidate(
+                    bootstrap_result=bootstrap_result,
+                    rating_item_key=rating_item_key,
+                    selected_claims=selected_claims,
+                    evidence=evidence,
+                    source_tiers=source_tiers,
+                )
+            )
+        return candidates
+
+    @staticmethod
+    def _rating_claims_by_item_key(
+        claims: list[ClaimRecord],
+    ) -> dict[str, list[ClaimRecord]]:
+        grouped: dict[str, list[ClaimRecord]] = {}
+        for claim in claims:
+            if claim.field_name not in RATING_COMPONENT_FIELDS:
+                continue
+            rating_item_key = ResolvedFactGenerationService._rating_item_key(claim)
+            if rating_item_key is None:
+                continue
+            grouped.setdefault(rating_item_key, []).append(claim)
+        return grouped
+
+    def _select_rating_claims(
+        self,
+        *,
+        claims: list[ClaimRecord],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> dict[str, ClaimRecord] | None:
+        selected: dict[str, ClaimRecord] = {}
+        for field_name in RATING_COMPONENT_FIELDS:
+            claim = self._policy_matrix.select_best_claim(
+                field_name=field_name,
+                claims=(item for item in claims if item.field_name == field_name),
+                source_tiers=source_tiers,
+            )
+            if claim is None:
+                return None
+            selected[field_name] = claim
+        return selected
+
+    @staticmethod
+    def _selected_rating_evidence(
+        *,
+        selected_claims: dict[str, ClaimRecord],
+        evidence_by_claim_id: dict[UUID, list[ClaimEvidenceRecord]],
+    ) -> list[ClaimEvidenceRecord]:
+        evidence: dict[UUID, ClaimEvidenceRecord] = {}
+        for field_name in RATING_COMPONENT_FIELDS:
+            claim = selected_claims[field_name]
+            for record in evidence_by_claim_id.get(claim.claim_id, []):
+                evidence.setdefault(record.evidence_id, record)
+        return list(evidence.values())
+
+    def _rating_candidate(
+        self,
+        *,
+        bootstrap_result: UniversityBootstrapResult,
+        rating_item_key: str,
+        selected_claims: dict[str, ClaimRecord],
+        evidence: list[ClaimEvidenceRecord],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> ResolvedFactCandidate:
+        provider_claim = selected_claims["ratings.provider"]
+        year_claim = selected_claims["ratings.year"]
+        metric_claim = selected_claims["ratings.metric"]
+        value_claim = selected_claims["ratings.value"]
+        selected_rating_claims = [
+            selected_claims[field_name] for field_name in RATING_COMPONENT_FIELDS
+        ]
+        source_key = value_claim.source_key
+        policy = self._policy_matrix.policy_for("ratings.value")
+        rating_field_name = f"{RATING_FIELD_PREFIX}{rating_item_key}"
+        return ResolvedFactCandidate(
+            resolved_fact_id=deterministic_resolved_fact_id(
+                university_id=bootstrap_result.university.university_id,
+                field_name=rating_field_name,
+                card_version=self._card_version,
+            ),
+            university_id=bootstrap_result.university.university_id,
+            field_name=rating_field_name,
+            value={
+                "provider": provider_claim.value,
+                "year": year_claim.value,
+                "metric": metric_claim.value,
+                "value": value_claim.value,
+            },
+            value_type="rating_item",
+            fact_score=min(claim.parser_confidence for claim in selected_rating_claims),
+            resolution_policy=RATING_FIELD_POLICY,
+            card_version=self._card_version,
+            selected_claim_ids=[claim.claim_id for claim in selected_rating_claims],
+            selected_evidence_ids=[record.evidence_id for record in evidence],
+            metadata={
+                "source_key": source_key,
+                "source_trust_tier": source_tiers[source_key].value,
+                "source_keys": sorted(
+                    {
+                        claim.source_key
+                        for claim in bootstrap_result.claims_used
+                        if self._rating_item_key(claim) == rating_item_key
+                    }
+                ),
+                "parser_version": value_claim.parser_version,
+                "normalizer_version": value_claim.normalizer_version,
+                "entity_hint": value_claim.entity_hint,
+                "bootstrap_policy": bootstrap_result.university.metadata.get(
+                    "bootstrap_policy"
+                ),
+                "field_resolution_policy": policy.policy_name,
+                "allowed_trust_tiers": [tier.value for tier in policy.allowed_tiers],
+                "preferred_trust_tiers": [tier.value for tier in policy.preferred_tiers],
+                "resolution_strategy": policy.strategy.value,
+                "source_urls": sorted({record.source_url for record in evidence}),
+                "rating_item_key": rating_item_key,
+                "provider_name": self._metadata_string(provider_claim, "provider_name")
+                or self._string_value(provider_claim),
+                "provider_key": self._metadata_string(provider_claim, "provider_key")
+                or self._metadata_string(value_claim, "provider_key"),
+                "rank_display": self._metadata_string(value_claim, "rank_display"),
+                "scale": self._metadata_string(value_claim, "scale"),
+                "rating_components": list(RATING_COMPONENT_FIELDS),
+            },
+        )
+
+    @staticmethod
+    def _metadata_string(claim: ClaimRecord, key: str) -> str | None:
+        fragment_metadata = claim.metadata.get("fragment_metadata")
+        if isinstance(fragment_metadata, dict):
+            value = fragment_metadata.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        value = claim.metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return None
+
+    @staticmethod
+    def _rating_item_key(claim: ClaimRecord) -> str | None:
+        return ResolvedFactGenerationService._metadata_string(claim, "rating_item_key")
+
+    @staticmethod
+    def _string_value(claim: ClaimRecord) -> str | None:
+        if isinstance(claim.value, str) and claim.value.strip():
+            return claim.value.strip()
+        return None

@@ -2,6 +2,7 @@ from .models import FieldResolutionPolicy, FieldResolutionStrategy, SourceTrustT
 from .service import (
     CANONICAL_FIELD_POLICY,
     DEFAULT_FIELD_POLICIES,
+    RATING_FIELD_POLICY,
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
     SUPPORTING_FIELD_POLICY,
     FieldResolutionPolicyMatrix,
@@ -14,6 +15,7 @@ __all__ = [
     "FieldResolutionPolicy",
     "FieldResolutionPolicyMatrix",
     "FieldResolutionStrategy",
+    "RATING_FIELD_POLICY",
     "SINGLE_SOURCE_AUTHORITATIVE_POLICY",
     "SUPPORTING_FIELD_POLICY",
     "SourceTrustTier",

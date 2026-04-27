@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from apps.normalizer.app.claims import ClaimEvidenceRecord, ClaimRecord
 from apps.normalizer.app.facts import (
     CANONICAL_FACT_FIELDS,
+    RATING_FIELD_PREFIX,
     ResolvedFactGenerationService,
     ResolvedFactRepository,
     deterministic_resolved_fact_id,
@@ -15,6 +16,7 @@ from apps.normalizer.app.facts import (
 from apps.normalizer.app.persistence import json_from_db
 from apps.normalizer.app.resolution import (
     CANONICAL_FIELD_POLICY,
+    RATING_FIELD_POLICY,
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
     SourceTrustTier,
 )
@@ -75,13 +77,24 @@ def claim(
     confidence: float,
     claim_id: UUID | None = None,
 ) -> ClaimRecord:
+    value_type = "null"
+    if isinstance(value, str):
+        value_type = "str"
+    elif isinstance(value, int):
+        value_type = "int"
+    elif isinstance(value, float):
+        value_type = "float"
+    elif isinstance(value, list):
+        value_type = "list"
+    elif isinstance(value, dict):
+        value_type = "dict"
     return ClaimRecord(
         claim_id=claim_id or uuid4(),
         parsed_document_id=uuid4(),
         source_key="msu-official",
         field_name=field_name,
         value=value,
-        value_type="str" if isinstance(value, str) else "null",
+        value_type=value_type,
         entity_hint="Example University",
         parser_version="0.1.0",
         normalizer_version="normalizer.0.1.0",
@@ -274,3 +287,122 @@ def test_resolved_fact_generation_prefers_authoritative_claims_in_dual_source_me
     assert by_field["location.city"].metadata["source_trust_tier"] == (
         SourceTrustTier.AUTHORITATIVE.value
     )
+
+
+def test_resolved_fact_generation_builds_structured_rating_fact() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    rating_item_key = "qs-world:2026:world_overall:example-university"
+    rating_source = bootstrap_result.source.model_copy(
+        update={
+            "source_key": "qs-world-ranking",
+            "source_type": "ranking",
+            "trust_tier": SourceTrustTier.TRUSTED,
+        }
+    )
+    rating_claims = [
+        claim(
+            field_name="ratings.provider",
+            value="QS World University Rankings",
+            confidence=0.98,
+        ).model_copy(
+            update={
+                "source_key": "qs-world-ranking",
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "rating_item_key": rating_item_key,
+                        "provider_key": "qs-world",
+                        "provider_name": "QS World University Rankings",
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="ratings.year",
+            value=2026,
+            confidence=0.97,
+        ).model_copy(
+            update={
+                "source_key": "qs-world-ranking",
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "rating_item_key": rating_item_key,
+                        "provider_key": "qs-world",
+                        "provider_name": "QS World University Rankings",
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="ratings.metric",
+            value="world_overall",
+            confidence=0.96,
+        ).model_copy(
+            update={
+                "source_key": "qs-world-ranking",
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "rating_item_key": rating_item_key,
+                        "provider_key": "qs-world",
+                        "provider_name": "QS World University Rankings",
+                        "scale": "global",
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="ratings.value",
+            value="151",
+            confidence=0.95,
+        ).model_copy(
+            update={
+                "source_key": "qs-world-ranking",
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "rating_item_key": rating_item_key,
+                        "provider_key": "qs-world",
+                        "provider_name": "QS World University Rankings",
+                        "rank_display": "#151",
+                        "scale": "global",
+                    },
+                },
+            }
+        ),
+    ]
+    enriched_bootstrap = bootstrap_result.model_copy(
+        update={
+            "sources_used": [bootstrap_result.source, rating_source],
+            "claims_used": [*bootstrap_result.claims_used, *rating_claims],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                *[evidence_for(claim_record) for claim_record in rating_claims],
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(enriched_bootstrap)
+    by_field = {fact.field_name: fact for fact in result.facts}
+    rating_field_name = f"{RATING_FIELD_PREFIX}{rating_item_key}"
+
+    assert rating_field_name in by_field
+    rating_fact = by_field[rating_field_name]
+    assert rating_fact.value == {
+        "provider": "QS World University Rankings",
+        "year": 2026,
+        "metric": "world_overall",
+        "value": "151",
+    }
+    assert rating_fact.value_type == "rating_item"
+    assert rating_fact.resolution_policy == RATING_FIELD_POLICY
+    assert rating_fact.metadata["provider_key"] == "qs-world"
+    assert rating_fact.metadata["rank_display"] == "#151"
+    assert rating_fact.metadata["scale"] == "global"
+    assert rating_fact.metadata["source_key"] == "qs-world-ranking"
+    assert rating_fact.metadata["source_trust_tier"] == SourceTrustTier.TRUSTED.value
+    assert len(rating_fact.selected_claim_ids) == 4
+    assert len(rating_fact.selected_evidence_ids) == 4
