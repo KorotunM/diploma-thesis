@@ -1,0 +1,20 @@
+{
+  "provider": {
+    "key": "qs-world",
+    "name": "QS World University Rankings"
+  },
+  "ranking_entry": {
+    "entry_id": "qs-world:2026:world_overall:example-university",
+    "year": 2026,
+    "metric": "world_overall",
+    "value": "151",
+    "rank_display": "#151",
+    "scale": "global",
+    "detail_url": "https://rankings.example.com/universities/example-university",
+    "university": {
+      "display_name": "Example University",
+      "official_website": "https://example.edu",
+      "country_code": "RU"
+    }
+  }
+}
