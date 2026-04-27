@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from difflib import SequenceMatcher
 from typing import Any
 from uuid import UUID, uuid4
+
+import pytest
 
 from apps.normalizer.app.claims import (
     ClaimBuildResult,
@@ -12,8 +15,10 @@ from apps.normalizer.app.claims import (
     ParsedDocumentSnapshot,
 )
 from apps.normalizer.app.persistence import json_from_db, json_to_db
+from apps.normalizer.app.review_required import ReviewRequiredEmitter
 from apps.normalizer.app.resolution import SourceTrustTier
 from apps.normalizer.app.universities import (
+    UniversityBootstrapError,
     UniversityBootstrapRepository,
     UniversityBootstrapService,
     deterministic_university_id,
@@ -42,6 +47,28 @@ class MappingResult:
 
     def all(self) -> list[dict[str, Any]]:
         return self._rows
+
+
+class FakePublishResult:
+    def __init__(self, queue_name: str) -> None:
+        self.queue_name = queue_name
+        self.exchange_name = "delivery.events"
+        self.routing_key = "review.required"
+
+
+class FakeReviewPublisher:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def publish(self, payload, *, queue_name: str, headers: dict | None = None):
+        self.calls.append(
+            {
+                "payload": payload,
+                "queue_name": queue_name,
+                "headers": headers,
+            }
+        )
+        return FakePublishResult(queue_name)
 
 
 class FakeUniversityMergeSession:
@@ -78,6 +105,14 @@ class FakeUniversityMergeSession:
             return MappingResult(row=self._find_university(params["canonical_domain"]))
         if "from core.university" in sql and "where canonical_name = :canonical_name" in sql:
             return MappingResult(row=self._find_university_by_name(params["canonical_name"]))
+        if "similarity(canonical_name::text, :canonical_name)" in sql:
+            return MappingResult(
+                rows=self._find_universities_by_name_similarity(
+                    canonical_name=params["canonical_name"],
+                    threshold=params["threshold"],
+                    limit=params["limit"],
+                )
+            )
         if "from normalize.claim_evidence" in sql and "from core.university" in sql:
             return MappingResult(rows=self._evidence_for_university(params["university_id"]))
         if "from normalize.claim" in sql and "from core.university" in sql:
@@ -100,6 +135,36 @@ class FakeUniversityMergeSession:
             if row["canonical_name"].strip().lower() == canonical_name.strip().lower():
                 return row
         return None
+
+    def _find_universities_by_name_similarity(
+        self,
+        *,
+        canonical_name: str,
+        threshold: float,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        candidates: list[dict[str, Any]] = []
+        for row in self.universities.values():
+            similarity_score = SequenceMatcher(
+                None,
+                row["canonical_name"].strip().lower(),
+                canonical_name.strip().lower(),
+            ).ratio()
+            if similarity_score >= threshold:
+                candidates.append(
+                    {
+                        **row,
+                        "similarity_score": similarity_score,
+                    }
+                )
+        candidates.sort(
+            key=lambda row: (
+                -row["similarity_score"],
+                row["canonical_name"],
+                str(row["university_id"]),
+            )
+        )
+        return candidates[:limit]
 
     def _claims_for_university(self, university_id: UUID) -> list[dict[str, Any]]:
         university = self.universities[university_id]
@@ -239,9 +304,18 @@ def register_claim_result(
         }
 
 
-def build_service(session: FakeUniversityMergeSession) -> UniversityBootstrapService:
+def build_service(
+    session: FakeUniversityMergeSession,
+    *,
+    review_publisher: FakeReviewPublisher | None = None,
+) -> UniversityBootstrapService:
     return UniversityBootstrapService(
-        UniversityBootstrapRepository(session=session, sql_text=lambda value: value)
+        UniversityBootstrapRepository(session=session, sql_text=lambda value: value),
+        review_required_emitter=(
+            ReviewRequiredEmitter(publisher=review_publisher)
+            if review_publisher is not None
+            else None
+        ),
     )
 
 
@@ -292,6 +366,7 @@ def test_secondary_aggregator_claims_merge_into_existing_authoritative_universit
     assert merged.university.metadata["match_strategy"] == "exact"
     assert merged.university.metadata["matched_by"] == "canonical_domain"
     assert merged.university.metadata["matched_value"] == "example.edu"
+    assert merged.university.metadata["similarity_score"] is None
     assert merged.university.metadata["source_key"] == "msu-official"
     assert merged.university.metadata["source_keys"] == [
         "msu-aggregator",
@@ -343,6 +418,99 @@ def test_secondary_aggregator_claims_fall_back_to_exact_canonical_name_match() -
     assert merged.university.metadata["match_strategy"] == "exact"
     assert merged.university.metadata["matched_by"] == "canonical_name"
     assert merged.university.metadata["matched_value"] == "Example University"
+    assert merged.university.metadata["similarity_score"] is None
     assert len(merged.claims_used) == 7
     assert len(merged.evidence_used) == 7
     assert session.commit_count == 2
+
+
+def test_secondary_claims_can_auto_merge_by_confident_trigram_name_match() -> None:
+    session = FakeUniversityMergeSession()
+    service = build_service(session)
+    official = build_claim_result(
+        source_key="msu-official",
+        parser_profile="official_site.default",
+        parser_version="official.0.1.0",
+        canonical_name="Example University",
+        website="https://www.example.edu/admissions",
+        city="Moscow",
+        country_code="RU",
+    )
+    aggregator = build_claim_result(
+        source_key="msu-aggregator",
+        parser_profile="aggregator.default",
+        parser_version="aggregator.0.1.0",
+        canonical_name="Example Univercity",
+        website=None,
+        city="Moscow City",
+        country_code="RU",
+    )
+    register_claim_result(session, official)
+    register_claim_result(session, aggregator)
+
+    first = service.bootstrap_single_source_authoritative(official)
+    merged = service.consolidate_claims(aggregator)
+
+    assert merged.university.university_id == first.university.university_id
+    assert merged.university.metadata["match_strategy"] == "trigram"
+    assert merged.university.metadata["matched_by"] == "canonical_name"
+    assert merged.university.metadata["matched_value"] == "Example Univercity"
+    assert merged.university.metadata["similarity_score"] == pytest.approx(
+        0.9444,
+        abs=1e-3,
+    )
+    assert session.commit_count == 2
+
+
+def test_secondary_claims_emit_review_required_for_gray_zone_trigram_match() -> None:
+    session = FakeUniversityMergeSession()
+    review_publisher = FakeReviewPublisher()
+    service = build_service(session, review_publisher=review_publisher)
+    official = build_claim_result(
+        source_key="msu-official",
+        parser_profile="official_site.default",
+        parser_version="official.0.1.0",
+        canonical_name="Example University",
+        website="https://www.example.edu/admissions",
+        city="Moscow",
+        country_code="RU",
+    )
+    aggregator = build_claim_result(
+        source_key="msu-aggregator",
+        parser_profile="aggregator.default",
+        parser_version="aggregator.0.1.0",
+        canonical_name="Example Univ",
+        website=None,
+        city="Moscow City",
+        country_code="RU",
+    )
+    register_claim_result(session, official)
+    register_claim_result(session, aggregator)
+
+    service.bootstrap_single_source_authoritative(official)
+
+    with pytest.raises(
+        UniversityBootstrapError,
+        match="Gray-zone trigram match requires manual review before merge.",
+    ):
+        service.consolidate_claims(aggregator)
+
+    assert len(session.universities) == 1
+    assert session.commit_count == 1
+    assert review_publisher.calls[0]["queue_name"] == "review.required"
+    event = review_publisher.calls[0]["payload"]
+    assert event["event_name"] == "review.required.v1"
+    assert event["payload"]["reason"] == "gray_zone_trigram_match"
+    assert event["payload"]["priority"] == "high"
+    assert event["payload"]["university_id"] == str(
+        deterministic_university_id("msu-official")
+    )
+    assert len(event["payload"]["evidence_ids"]) == 3
+    assert event["payload"]["metadata"]["match_strategy"] == "trigram"
+    assert event["payload"]["metadata"]["matched_by"] == "canonical_name"
+    assert event["payload"]["metadata"]["matched_value"] == "Example Univ"
+    assert event["payload"]["metadata"]["source_key"] == "msu-aggregator"
+    assert event["payload"]["metadata"]["candidates"][0]["canonical_name"] == (
+        "Example University"
+    )
+    assert review_publisher.calls[0]["headers"]["event_name"] == "review.required.v1"

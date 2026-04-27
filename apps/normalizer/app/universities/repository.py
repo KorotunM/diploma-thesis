@@ -11,6 +11,7 @@ from .models import (
     SourceAuthorityRecord,
     UniversityBootstrapCandidate,
     UniversityRecord,
+    UniversitySimilarityCandidate,
 )
 
 
@@ -97,6 +98,45 @@ class UniversityBootstrapRepository:
         if row is None:
             return None
         return self._university_from_row(row)
+
+    def find_universities_by_canonical_name_similarity(
+        self,
+        canonical_name: str,
+        *,
+        threshold: float,
+        limit: int,
+    ) -> list[UniversitySimilarityCandidate]:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    university_id,
+                    canonical_name,
+                    canonical_domain,
+                    country_code,
+                    city_name,
+                    created_at,
+                    metadata,
+                    similarity(canonical_name::text, :canonical_name) AS similarity_score
+                FROM core.university
+                WHERE similarity(canonical_name::text, :canonical_name) >= :threshold
+                ORDER BY similarity_score DESC, canonical_name ASC, university_id ASC
+                LIMIT :limit
+                """
+            ),
+            {
+                "canonical_name": canonical_name,
+                "threshold": threshold,
+                "limit": limit,
+            },
+        )
+        return [
+            UniversitySimilarityCandidate(
+                university=self._university_from_row(row),
+                similarity_score=float(row["similarity_score"]),
+            )
+            for row in result.mappings().all()
+        ]
 
     def list_claims_for_university(
         self,

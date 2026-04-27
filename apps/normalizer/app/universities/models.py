@@ -44,6 +44,13 @@ class UniversityRecord(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class UniversitySimilarityCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    university: UniversityRecord
+    similarity_score: float
+
+
 class UniversityBootstrapResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

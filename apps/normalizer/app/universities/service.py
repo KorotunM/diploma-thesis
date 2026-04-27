@@ -11,9 +11,12 @@ from apps.normalizer.app.claims import (
     ClaimRecord,
 )
 from apps.normalizer.app.matching import (
-    UniversityExactMatchCandidate,
-    UniversityExactMatchService,
+    MatchStrategy,
+    UniversityMatchDecision,
+    UniversityMatchCandidate,
+    UniversityMatchService,
 )
+from apps.normalizer.app.review_required import ReviewRequiredEmitter
 from apps.normalizer.app.resolution import (
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
     FieldResolutionPolicyMatrix,
@@ -42,13 +45,13 @@ class UniversityBootstrapService:
         repository: UniversityBootstrapRepository,
         *,
         policy_matrix: FieldResolutionPolicyMatrix | None = None,
-        exact_match_service: UniversityExactMatchService | None = None,
+        match_service: UniversityMatchService | None = None,
+        review_required_emitter: ReviewRequiredEmitter | None = None,
     ) -> None:
         self._repository = repository
         self._policy_matrix = policy_matrix or FieldResolutionPolicyMatrix()
-        self._exact_match_service = exact_match_service or UniversityExactMatchService(
-            repository
-        )
+        self._match_service = match_service or UniversityMatchService(repository)
+        self._review_required_emitter = review_required_emitter
 
     def consolidate_claims(
         self,
@@ -105,13 +108,22 @@ class UniversityBootstrapService:
         )
         canonical_domain = self._canonical_domain(claims_by_field)
         canonical_name = self._canonical_name_optional(claims_by_field)
-        match = self._exact_match_service.match(
-            UniversityExactMatchCandidate(
+        match = self._match_service.match(
+            UniversityMatchCandidate(
                 canonical_domain=canonical_domain,
                 canonical_name=canonical_name,
             )
         )
-        if match is None:
+        if match.status == "review_required":
+            self._emit_review_required(
+                source=source,
+                claim_result=claim_result,
+                match=match,
+            )
+            raise UniversityBootstrapError(
+                "Gray-zone trigram match requires manual review before merge."
+            )
+        if match.status != "matched" or match.university is None:
             raise UniversityBootstrapError(
                 "No authoritative university was found for the provided exact match keys."
             )
@@ -144,6 +156,8 @@ class UniversityBootstrapService:
                 combined_evidence=combined_evidence,
                 matched_by=match.matched_by,
                 matched_value=match.matched_value,
+                match_strategy=match.strategy,
+                similarity_score=match.similarity_score,
             ),
         )
         persisted = self._repository.upsert_university(candidate)
@@ -349,13 +363,16 @@ class UniversityBootstrapService:
         combined_evidence: list[ClaimEvidenceRecord],
         matched_by: str,
         matched_value: str,
+        match_strategy: MatchStrategy | None,
+        similarity_score: float | None,
     ) -> dict[str, Any]:
         return {
             "bootstrap_policy": AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY,
             "merge_strategy": AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY,
-            "match_strategy": "exact",
+            "match_strategy": match_strategy,
             "matched_by": matched_by,
             "matched_value": matched_value,
+            "similarity_score": similarity_score,
             "source_id": str(anchor_source.source_id),
             "source_key": anchor_source.source_key,
             "source_type": anchor_source.source_type,
@@ -371,6 +388,22 @@ class UniversityBootstrapService:
                 claim_result=claim_result,
             ),
         }
+
+    def _emit_review_required(
+        self,
+        *,
+        source: SourceAuthorityRecord,
+        claim_result: ClaimBuildResult,
+        match: UniversityMatchDecision,
+    ) -> None:
+        if self._review_required_emitter is None:
+            return
+        self._review_required_emitter.emit_gray_zone_match(
+            source=source,
+            claim_result=claim_result,
+            decision=match,
+            trace_id=claim_result.parsed_document.crawl_run_id,
+        )
 
     def _merge_source_snapshots(
         self,

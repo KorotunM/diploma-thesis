@@ -3,20 +3,33 @@ from .models import (
     UniversityBootstrapCandidate,
     UniversityBootstrapResult,
     UniversityRecord,
+    UniversitySimilarityCandidate,
 )
 from .repository import (
     UniversityBootstrapRepository,
     deterministic_university_id,
 )
-from .service import UniversityBootstrapError, UniversityBootstrapService
 
 __all__ = [
     "SourceAuthorityRecord",
     "UniversityBootstrapCandidate",
-    "UniversityBootstrapError",
     "UniversityBootstrapRepository",
     "UniversityBootstrapResult",
-    "UniversityBootstrapService",
     "UniversityRecord",
+    "UniversitySimilarityCandidate",
     "deterministic_university_id",
+    "UniversityBootstrapError",
+    "UniversityBootstrapService",
 ]
+
+
+def __getattr__(name: str):
+    if name == "UniversityBootstrapError":
+        from .service import UniversityBootstrapError
+
+        return UniversityBootstrapError
+    if name == "UniversityBootstrapService":
+        from .service import UniversityBootstrapService
+
+        return UniversityBootstrapService
+    raise AttributeError(name)

@@ -1,13 +1,18 @@
 from .models import (
     MatchField,
-    UniversityExactMatchCandidate,
-    UniversityExactMatchResult,
+    MatchStatus,
+    MatchStrategy,
+    UniversityMatchCandidate,
+    UniversityMatchDecision,
 )
-from .service import UniversityExactMatchService
+from .service import UniversityExactMatchService, UniversityMatchService
 
 __all__ = [
     "MatchField",
-    "UniversityExactMatchCandidate",
-    "UniversityExactMatchResult",
+    "MatchStatus",
+    "MatchStrategy",
+    "UniversityMatchCandidate",
+    "UniversityMatchDecision",
     "UniversityExactMatchService",
+    "UniversityMatchService",
 ]

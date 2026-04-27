@@ -2,24 +2,32 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from apps.normalizer.app.universities.models import UniversityRecord
+from apps.normalizer.app.universities.models import (
+    UniversityRecord,
+    UniversitySimilarityCandidate,
+)
 
 MatchField = Literal["canonical_domain", "canonical_name"]
+MatchStatus = Literal["matched", "review_required", "unmatched"]
+MatchStrategy = Literal["exact", "trigram"]
 
 
-class UniversityExactMatchCandidate(BaseModel):
+class UniversityMatchCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     canonical_domain: str | None = None
     canonical_name: str | None = None
 
 
-class UniversityExactMatchResult(BaseModel):
+class UniversityMatchDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    university: UniversityRecord
-    matched_by: MatchField
-    matched_value: str
-    strategy: Literal["exact"] = "exact"
+    status: MatchStatus
+    university: UniversityRecord | None = None
+    matched_by: MatchField | None = None
+    matched_value: str | None = None
+    strategy: MatchStrategy | None = None
+    similarity_score: float | None = None
+    review_candidates: list[UniversitySimilarityCandidate] = Field(default_factory=list)

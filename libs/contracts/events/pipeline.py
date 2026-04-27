@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class EventHeader(BaseModel):
@@ -109,6 +109,7 @@ class ReviewRequiredPayload(BaseModel):
     university_id: UUID | None = None
     evidence_ids: list[UUID] = Field(default_factory=list)
     queue_name: str = "review.required"
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReviewRequiredEvent(BaseModel):
