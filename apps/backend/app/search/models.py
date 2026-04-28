@@ -22,6 +22,7 @@ class UniversitySearchHitRecord(BaseModel):
     text_rank: float = 0.0
     trigram_score: float = 0.0
     combined_score: float = 0.0
+    total_count: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -39,9 +40,21 @@ class UniversitySearchResultItem(BaseModel):
     match_signals: list[str] = Field(default_factory=list)
 
 
+class UniversitySearchFilters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    city: str | None = None
+    country: str | None = None
+    source_type: str | None = None
+
+
 class UniversitySearchResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     query: str
     total: int
+    page: int
+    page_size: int
+    has_more: bool
+    filters: UniversitySearchFilters = Field(default_factory=UniversitySearchFilters)
     items: list[UniversitySearchResultItem] = Field(default_factory=list)

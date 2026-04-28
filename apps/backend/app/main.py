@@ -42,10 +42,21 @@ def backend_overview() -> dict[str, object]:
 @app.get("/api/v1/search", response_model=UniversitySearchResponse, tags=["backend"])
 def search_universities(
     query: str = "",
-    limit: int = 20,
+    city: str | None = None,
+    country: str | None = None,
+    source_type: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
     service: UniversitySearchService = SEARCH_SERVICE_DEPENDENCY,
 ) -> UniversitySearchResponse:
-    return service.search(query, limit=limit)
+    return service.search(
+        query,
+        city=city,
+        country=country,
+        source_type=source_type,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @app.get(
