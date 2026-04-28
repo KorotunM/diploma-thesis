@@ -10,13 +10,14 @@ from apps.backend.app.cards import (
 from apps.backend.app.dependencies import (
     get_university_card_read_service,
     get_university_provenance_read_service,
+    get_university_search_service,
 )
 from apps.backend.app.provenance import (
     UniversityProvenanceNotFoundError,
     UniversityProvenanceReadService,
     UniversityProvenanceTrace,
 )
-from libs.domain.university import UniversityCard
+from apps.backend.app.search import UniversitySearchResponse, UniversitySearchService
 from libs.observability import create_service_app
 
 app = create_service_app(
@@ -26,6 +27,7 @@ app = create_service_app(
 
 CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
 PROVENANCE_READ_SERVICE_DEPENDENCY = Depends(get_university_provenance_read_service)
+SEARCH_SERVICE_DEPENDENCY = Depends(get_university_search_service)
 
 
 @app.get("/", tags=["backend"])
@@ -37,21 +39,13 @@ def backend_overview() -> dict[str, object]:
     }
 
 
-@app.get("/api/v1/search", tags=["backend"])
-def search_universities(query: str = "") -> dict[str, object]:
-    card = UniversityCard.sample()
-    return {
-        "query": query,
-        "total": 1,
-        "items": [
-            {
-                "university_id": str(card.university_id),
-                "canonical_name": card.canonical_name.value,
-                "city": card.location.city,
-                "website": card.contacts.website,
-            }
-        ],
-    }
+@app.get("/api/v1/search", response_model=UniversitySearchResponse, tags=["backend"])
+def search_universities(
+    query: str = "",
+    limit: int = 20,
+    service: UniversitySearchService = SEARCH_SERVICE_DEPENDENCY,
+) -> UniversitySearchResponse:
+    return service.search(query, limit=limit)
 
 
 @app.get(
