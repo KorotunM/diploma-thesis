@@ -8,8 +8,12 @@ from libs.storage import (
 from .cards import UniversityCardProjectionRepository, UniversityCardProjectionService
 from .claims import ClaimBuildRepository, ClaimBuildService
 from .facts import ResolvedFactGenerationService, ResolvedFactRepository
-from .review_required import ReviewRequiredEmitter
 from .resolution import FieldResolutionPolicyMatrix
+from .review_required import ReviewRequiredEmitter
+from .search_docs import (
+    UniversitySearchDocProjectionRepository,
+    UniversitySearchDocProjectionService,
+)
 from .universities import UniversityBootstrapRepository, UniversityBootstrapService
 
 
@@ -56,4 +60,9 @@ def create_resolved_fact_generation_service(session) -> ResolvedFactGenerationSe
 
 
 def create_university_card_projection_service(session) -> UniversityCardProjectionService:
-    return UniversityCardProjectionService(UniversityCardProjectionRepository(session))
+    return UniversityCardProjectionService(
+        UniversityCardProjectionRepository(session),
+        search_doc_service=UniversitySearchDocProjectionService(
+            UniversitySearchDocProjectionRepository(session)
+        ),
+    )

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from apps.normalizer.app.search_docs import UniversitySearchDocRecord
 from libs.domain.university import UniversityCard
 
 
@@ -33,3 +34,4 @@ class UniversityCardProjectionResult(BaseModel):
 
     card_version: CardVersionRecord
     projection: CardProjectionRecord
+    search_doc: UniversitySearchDocRecord

@@ -21,6 +21,10 @@ from apps.normalizer.app.resolution import (
     FieldResolutionPolicyMatrix,
     SourceTrustTier,
 )
+from apps.normalizer.app.search_docs import (
+    UniversitySearchDocProjectionRepository,
+    UniversitySearchDocProjectionService,
+)
 from apps.normalizer.app.universities import (
     UniversityBootstrapRepository,
     UniversityBootstrapService,
@@ -83,6 +87,7 @@ class InMemoryDualSourceSession:
         self.resolved_facts: dict[UUID, dict[str, Any]] = {}
         self.card_versions: dict[tuple[UUID, int], dict[str, Any]] = {}
         self.delivery_cards: dict[tuple[UUID, int], dict[str, Any]] = {}
+        self.search_docs: dict[tuple[UUID, int], dict[str, Any]] = {}
         self.seed_documents()
 
     def seed_documents(self) -> None:
@@ -282,6 +287,8 @@ class InMemoryDualSourceSession:
             return MappingResult(row=self._upsert_card_version(params))
         if "insert into delivery.university_card" in sql:
             return MappingResult(row=self._upsert_delivery_card(params))
+        if "insert into delivery.university_search_doc" in sql:
+            return MappingResult(row=self._upsert_search_doc(params))
         if "from delivery.university_card" in sql and "order by card_version desc" in sql:
             return MappingResult(row=self._latest_delivery_card(params["university_id"]))
         if "from core.resolved_fact" in sql and "card_version = :card_version" in sql:
@@ -410,6 +417,12 @@ class InMemoryDualSourceSession:
         self.delivery_cards[key] = row
         return row
 
+    def _upsert_search_doc(self, params: dict[str, Any]) -> dict[str, Any]:
+        key = (params["university_id"], params["card_version"])
+        row = dict(params)
+        self.search_docs[key] = row
+        return row
+
     def _latest_delivery_card(self, university_id: UUID) -> dict[str, Any] | None:
         candidates = [
             row for (candidate_university_id, _), row in self.delivery_cards.items()
@@ -450,6 +463,10 @@ def build_services(session: InMemoryDualSourceSession) -> tuple[
         session=session,
         sql_text=lambda value: value,
     )
+    search_docs_repository = UniversitySearchDocProjectionRepository(
+        session=session,
+        sql_text=lambda value: value,
+    )
     backend_repository = UniversityCardReadRepository(
         session=session,
         sql_text=lambda value: value,
@@ -465,7 +482,12 @@ def build_services(session: InMemoryDualSourceSession) -> tuple[
             facts_repository,
             policy_matrix=policy_matrix,
         ),
-        UniversityCardProjectionService(cards_repository),
+        UniversityCardProjectionService(
+            cards_repository,
+            search_doc_service=UniversitySearchDocProjectionService(
+                search_docs_repository
+            ),
+        ),
         UniversityCardReadService(backend_repository),
     )
 
@@ -558,4 +580,10 @@ def test_dual_source_merge_prefers_authoritative_claims_and_exposes_rationale() 
         "location.city",
         "location.country_code",
     ]
+    assert (
+        session.search_docs[
+            (projection_result.projection.university_id, projection_result.projection.card_version)
+        ]["canonical_name"]
+        == "Example University"
+    )
     assert session.commit_count == 6

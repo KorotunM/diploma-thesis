@@ -12,17 +12,17 @@ from apps.normalizer.app.claims import (
 )
 from apps.normalizer.app.matching import (
     MatchStrategy,
-    UniversityMatchDecision,
     UniversityMatchCandidate,
+    UniversityMatchDecision,
     UniversityMatchService,
 )
-from apps.normalizer.app.review_required import ReviewRequiredEmitter
 from apps.normalizer.app.resolution import (
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
     FieldResolutionPolicyMatrix,
     SourceTrustTier,
     source_tier_map,
 )
+from apps.normalizer.app.review_required import ReviewRequiredEmitter
 
 from .models import (
     SourceAuthorityRecord,

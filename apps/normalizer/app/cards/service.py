@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from apps.normalizer.app.facts import ResolvedFactBuildResult, ResolvedFactRecord
+from apps.normalizer.app.search_docs import UniversitySearchDocProjectionService
 from libs.domain.university.models import (
     CardVersionInfo,
     ConfidenceValue,
@@ -25,9 +26,11 @@ class UniversityCardProjectionService:
         repository: UniversityCardProjectionRepository,
         *,
         normalizer_version: str = "normalizer.0.1.0",
+        search_doc_service: UniversitySearchDocProjectionService,
     ) -> None:
         self._repository = repository
         self._normalizer_version = normalizer_version
+        self._search_doc_service = search_doc_service
 
     def create_projection(
         self,
@@ -48,10 +51,12 @@ class UniversityCardProjectionService:
             card=card,
             generated_at=persisted_version.generated_at,
         )
+        search_doc = self._search_doc_service.refresh_for_card(card)
         self._repository.commit()
         return UniversityCardProjectionResult(
             card_version=persisted_version,
             projection=projection,
+            search_doc=search_doc,
         )
 
     @staticmethod

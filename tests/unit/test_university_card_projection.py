@@ -19,6 +19,10 @@ from apps.normalizer.app.resolution import (
     RATING_FIELD_POLICY,
     SINGLE_SOURCE_AUTHORITATIVE_POLICY,
 )
+from apps.normalizer.app.search_docs import (
+    UniversitySearchDocProjectionRepository,
+    UniversitySearchDocProjectionService,
+)
 from apps.normalizer.app.universities import UniversityRecord, deterministic_university_id
 from libs.domain.university import UniversityCard
 
@@ -39,6 +43,7 @@ class FakeCardProjectionSession:
         self.generated_at = datetime(2026, 4, 23, 11, 0, tzinfo=UTC)
         self.card_versions: dict[tuple[UUID, int], dict[str, Any]] = {}
         self.projections: dict[tuple[UUID, int], dict[str, Any]] = {}
+        self.search_docs: dict[tuple[UUID, int], dict[str, Any]] = {}
         self.commit_count = 0
 
     def execute(self, statement: str, params: dict[str, Any]) -> MappingResult:
@@ -47,6 +52,8 @@ class FakeCardProjectionSession:
             return MappingResult(self._upsert_card_version(params))
         if "insert into delivery.university_card" in sql:
             return MappingResult(self._upsert_projection(params))
+        if "insert into delivery.university_search_doc" in sql:
+            return MappingResult(self._upsert_search_doc(params))
         raise AssertionError(f"Unexpected SQL statement: {statement}")
 
     def commit(self) -> None:
@@ -66,6 +73,12 @@ class FakeCardProjectionSession:
         key = (params["university_id"], params["card_version"])
         row = dict(params)
         self.projections[key] = row
+        return row
+
+    def _upsert_search_doc(self, params: dict[str, Any]) -> dict[str, Any]:
+        key = (params["university_id"], params["card_version"])
+        row = dict(params)
+        self.search_docs[key] = row
         return row
 
 
@@ -165,7 +178,13 @@ def build_fact_result() -> ResolvedFactBuildResult:
 
 def build_service(session: FakeCardProjectionSession) -> UniversityCardProjectionService:
     return UniversityCardProjectionService(
-        UniversityCardProjectionRepository(session=session, sql_text=lambda value: value)
+        UniversityCardProjectionRepository(session=session, sql_text=lambda value: value),
+        search_doc_service=UniversitySearchDocProjectionService(
+            UniversitySearchDocProjectionRepository(
+                session=session,
+                sql_text=lambda value: value,
+            )
+        ),
     )
 
 
@@ -198,10 +217,29 @@ def test_university_card_projection_persists_card_version_and_delivery_card() ->
     assert card.sources[0].source_key == "msu-official"
     assert card.sources[0].source_url == "https://example.edu/admissions"
     assert len(card.sources[0].evidence_ids) == 4
+    assert result.search_doc.university_id == fact_result.university.university_id
+    assert result.search_doc.card_version == 1
+    assert result.search_doc.canonical_name == "Example University"
+    assert result.search_doc.canonical_name_normalized == "example university"
+    assert result.search_doc.website_domain == "example.edu"
+    assert result.search_doc.city_name == "Moscow"
+    assert result.search_doc.country_code == "RU"
+    assert result.search_doc.search_document["ratings"][0]["provider"] == (
+        "QS World University Rankings"
+    )
     stored_card = json_from_db(
         session.projections[(fact_result.university.university_id, 1)]["card_json"]
     )
     assert stored_card["canonical_name"]["value"] == "Example University"
+    stored_search_doc = json_from_db(
+        session.search_docs[(fact_result.university.university_id, 1)]["search_document"]
+    )
+    assert stored_search_doc["canonical_name"] == "Example University"
+    assert (
+        session.search_docs[(fact_result.university.university_id, 1)]["search_text_source"]
+        == "Example University example university example.edu Moscow RU "
+        "QS World University Rankings 2026 world_overall 151"
+    )
     assert session.commit_count == 1
 
 
@@ -215,6 +253,8 @@ def test_university_card_projection_is_idempotent_by_university_and_card_version
 
     assert second.card_version == first.card_version
     assert second.projection.card == first.projection.card
+    assert second.search_doc == first.search_doc
     assert len(session.card_versions) == 1
     assert len(session.projections) == 1
+    assert len(session.search_docs) == 1
     assert session.commit_count == 2
