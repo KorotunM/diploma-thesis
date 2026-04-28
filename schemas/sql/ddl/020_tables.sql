@@ -145,6 +145,25 @@ CREATE TABLE IF NOT EXISTS delivery.university_card (
     PRIMARY KEY (university_id, card_version)
 );
 
+CREATE TABLE IF NOT EXISTS delivery.university_search_doc (
+    university_id uuid NOT NULL,
+    card_version integer NOT NULL,
+    canonical_name text NOT NULL,
+    canonical_name_normalized text NOT NULL,
+    website_url text,
+    website_domain citext,
+    country_code text,
+    city_name text,
+    aliases text[] NOT NULL DEFAULT '{}',
+    search_document jsonb NOT NULL DEFAULT '{}'::jsonb,
+    search_text tsvector NOT NULL,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    generated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (university_id, card_version),
+    FOREIGN KEY (university_id, card_version)
+        REFERENCES core.card_version(university_id, card_version)
+);
+
 CREATE INDEX IF NOT EXISTS idx_raw_artifact_sha256 ON ingestion.raw_artifact (sha256);
 CREATE INDEX IF NOT EXISTS idx_parsed_document_raw_artifact ON parsing.parsed_document (raw_artifact_id);
 CREATE INDEX IF NOT EXISTS idx_extracted_fragment_document ON parsing.extracted_fragment (parsed_document_id);
@@ -159,3 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_university_canonical_name ON core.university (can
 CREATE INDEX IF NOT EXISTS idx_university_canonical_name_trgm ON core.university USING gin (canonical_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_resolved_fact_university_card ON core.resolved_fact (university_id, card_version);
 CREATE INDEX IF NOT EXISTS idx_delivery_search_text ON delivery.university_card USING gin (search_text);
+CREATE INDEX IF NOT EXISTS idx_university_search_doc_search_text ON delivery.university_search_doc USING gin (search_text);
+CREATE INDEX IF NOT EXISTS idx_university_search_doc_canonical_name_trgm ON delivery.university_search_doc USING gin (canonical_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_university_search_doc_filters ON delivery.university_search_doc (country_code, city_name);
+CREATE INDEX IF NOT EXISTS idx_university_search_doc_website_domain ON delivery.university_search_doc (website_domain);
