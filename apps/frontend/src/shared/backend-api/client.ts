@@ -27,12 +27,32 @@ export class BackendApiClient {
   async searchUniversities(
     params: {
       query?: string;
+      city?: string;
+      country?: string;
+      sourceType?: string;
+      page?: number;
+      pageSize?: number;
     } = {},
     options?: JsonHttpRequestOptions,
   ): Promise<BackendSearchResponse> {
     const search = new URLSearchParams();
     if (params.query) {
       search.set("query", params.query);
+    }
+    if (params.city) {
+      search.set("city", params.city);
+    }
+    if (params.country) {
+      search.set("country", params.country);
+    }
+    if (params.sourceType) {
+      search.set("source_type", params.sourceType);
+    }
+    if (params.page && params.page > 1) {
+      search.set("page", String(params.page));
+    }
+    if (params.pageSize) {
+      search.set("page_size", String(params.pageSize));
     }
     const suffix = search.size > 0 ? `?${search.toString()}` : "";
     return this.http.get<BackendSearchResponse>(`/api/v1/search${suffix}`, options);

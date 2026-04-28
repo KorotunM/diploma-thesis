@@ -1,6 +1,7 @@
 export { BackendApiClient } from "./client";
 export type { BackendApiClientOptions } from "./client";
 export type {
+  BackendSearchFiltersDto,
   BackendSearchItem,
   BackendSearchResponse,
   ClaimEvidenceTraceDto,

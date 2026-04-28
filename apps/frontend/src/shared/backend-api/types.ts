@@ -1,13 +1,28 @@
 export interface BackendSearchItem {
   university_id: string;
+  card_version: number;
   canonical_name: string;
   city: string | null;
+  country_code: string | null;
   website: string | null;
+  aliases: string[];
+  score: number;
+  match_signals: string[];
+}
+
+export interface BackendSearchFiltersDto {
+  city: string | null;
+  country: string | null;
+  source_type: string | null;
 }
 
 export interface BackendSearchResponse {
   query: string;
   total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+  filters: BackendSearchFiltersDto;
   items: BackendSearchItem[];
 }
 

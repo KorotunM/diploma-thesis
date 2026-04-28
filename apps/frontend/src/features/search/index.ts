@@ -1,2 +1,2 @@
 export { useUniversitySearch } from "./useUniversitySearch";
-export type { UniversitySearchSnapshot } from "./models";
+export type { SearchQueryState, UniversitySearchSnapshot } from "./models";
