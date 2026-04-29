@@ -5,8 +5,10 @@ from .topology import (
     QUEUES,
     ExchangeDefinition,
     QueueDefinition,
+    dead_queue_for,
     get_exchange_definition,
     get_queue_definition,
+    retry_queue_for,
 )
 from .transport import (
     RabbitMQConsumer,
@@ -37,7 +39,9 @@ __all__ = [
     "create_queue_entities",
     "create_rabbitmq_connection",
     "declare_rabbitmq_topology",
+    "dead_queue_for",
     "get_exchange_definition",
     "get_queue_definition",
     "get_rabbitmq_connection",
+    "retry_queue_for",
 ]

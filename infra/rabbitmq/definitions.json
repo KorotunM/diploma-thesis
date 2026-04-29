@@ -4,9 +4,12 @@
     { "name": "parser.jobs", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
     { "name": "normalize.jobs", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
     { "name": "delivery.events", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
-    { "name": "parser.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
-    { "name": "normalize.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
-    { "name": "delivery.dlx", "vhost": "/", "type": "fanout", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+    { "name": "parser.retry", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "normalize.retry", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "delivery.retry", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "parser.dead", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "normalize.dead", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "delivery.dead", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
   ],
   "queues": [
     {
@@ -14,56 +17,212 @@
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "parser.dlx" }
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "parser.dead",
+        "x-dead-letter-routing-key": "high"
+      }
     },
     {
       "name": "parser.bulk",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "parser.dlx" }
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "parser.dead",
+        "x-dead-letter-routing-key": "bulk"
+      }
+    },
+    {
+      "name": "parser.high.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "parser.jobs",
+        "x-dead-letter-routing-key": "high",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "parser.bulk.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "parser.jobs",
+        "x-dead-letter-routing-key": "bulk",
+        "x-message-ttl": 120000
+      }
     },
     {
       "name": "normalize.high",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "normalize.dlx" }
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "normalize.dead",
+        "x-dead-letter-routing-key": "high"
+      }
     },
     {
       "name": "normalize.bulk",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "normalize.dlx" }
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "normalize.dead",
+        "x-dead-letter-routing-key": "bulk"
+      }
+    },
+    {
+      "name": "normalize.high.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "normalize.jobs",
+        "x-dead-letter-routing-key": "high",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "normalize.bulk.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "normalize.jobs",
+        "x-dead-letter-routing-key": "bulk",
+        "x-message-ttl": 120000
+      }
     },
     {
       "name": "card.updated",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "delivery.dlx" }
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "delivery.dead",
+        "x-dead-letter-routing-key": "card.updated"
+      }
     },
     {
       "name": "review.required",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
-      "arguments": { "x-queue-type": "quorum", "x-dead-letter-exchange": "delivery.dlx" }
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "delivery.dead",
+        "x-dead-letter-routing-key": "review.required"
+      }
     },
-    { "name": "parser.dead", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
-    { "name": "normalize.dead", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
-    { "name": "delivery.dead", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+    {
+      "name": "card.updated.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "delivery.events",
+        "x-dead-letter-routing-key": "card.updated",
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "review.required.retry",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "delivery.events",
+        "x-dead-letter-routing-key": "review.required",
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "parser.high.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "parser.bulk.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "normalize.high.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "normalize.bulk.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "card.updated.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "review.required.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
   ],
   "bindings": [
     { "source": "parser.jobs", "vhost": "/", "destination": "parser.high", "destination_type": "queue", "routing_key": "high", "arguments": {} },
     { "source": "parser.jobs", "vhost": "/", "destination": "parser.bulk", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
+    { "source": "parser.retry", "vhost": "/", "destination": "parser.high.retry", "destination_type": "queue", "routing_key": "high", "arguments": {} },
+    { "source": "parser.retry", "vhost": "/", "destination": "parser.bulk.retry", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
     { "source": "normalize.jobs", "vhost": "/", "destination": "normalize.high", "destination_type": "queue", "routing_key": "high", "arguments": {} },
     { "source": "normalize.jobs", "vhost": "/", "destination": "normalize.bulk", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
+    { "source": "normalize.retry", "vhost": "/", "destination": "normalize.high.retry", "destination_type": "queue", "routing_key": "high", "arguments": {} },
+    { "source": "normalize.retry", "vhost": "/", "destination": "normalize.bulk.retry", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
     { "source": "delivery.events", "vhost": "/", "destination": "card.updated", "destination_type": "queue", "routing_key": "card.updated", "arguments": {} },
     { "source": "delivery.events", "vhost": "/", "destination": "review.required", "destination_type": "queue", "routing_key": "review.required", "arguments": {} },
-    { "source": "parser.dlx", "vhost": "/", "destination": "parser.dead", "destination_type": "queue", "routing_key": "", "arguments": {} },
-    { "source": "normalize.dlx", "vhost": "/", "destination": "normalize.dead", "destination_type": "queue", "routing_key": "", "arguments": {} },
-    { "source": "delivery.dlx", "vhost": "/", "destination": "delivery.dead", "destination_type": "queue", "routing_key": "", "arguments": {} }
+    { "source": "delivery.retry", "vhost": "/", "destination": "card.updated.retry", "destination_type": "queue", "routing_key": "card.updated", "arguments": {} },
+    { "source": "delivery.retry", "vhost": "/", "destination": "review.required.retry", "destination_type": "queue", "routing_key": "review.required", "arguments": {} },
+    { "source": "parser.dead", "vhost": "/", "destination": "parser.high.dead", "destination_type": "queue", "routing_key": "high", "arguments": {} },
+    { "source": "parser.dead", "vhost": "/", "destination": "parser.bulk.dead", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
+    { "source": "normalize.dead", "vhost": "/", "destination": "normalize.high.dead", "destination_type": "queue", "routing_key": "high", "arguments": {} },
+    { "source": "normalize.dead", "vhost": "/", "destination": "normalize.bulk.dead", "destination_type": "queue", "routing_key": "bulk", "arguments": {} },
+    { "source": "delivery.dead", "vhost": "/", "destination": "card.updated.dead", "destination_type": "queue", "routing_key": "card.updated", "arguments": {} },
+    { "source": "delivery.dead", "vhost": "/", "destination": "review.required.dead", "destination_type": "queue", "routing_key": "review.required", "arguments": {} }
   ]
 }

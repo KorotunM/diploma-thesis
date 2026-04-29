@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from libs.storage.rabbitmq.topology import EXCHANGE_DEFINITIONS, QUEUE_DEFINITIONS
+from libs.storage.rabbitmq.topology import (
+    EXCHANGE_DEFINITIONS,
+    QUEUE_DEFINITIONS,
+    dead_queue_for,
+    retry_queue_for,
+)
 from libs.storage.rabbitmq.transport import (
     RabbitMQConsumer,
     RabbitMQPublisher,
@@ -142,6 +147,39 @@ def test_build_rabbitmq_connection_options_and_retry_policy() -> None:
         "interval_start": 0,
         "interval_step": 1,
         "interval_max": 3,
+    }
+
+
+def test_topology_declares_retry_and_dead_letter_lanes_per_flow() -> None:
+    queue_definitions = {definition.name: definition for definition in QUEUE_DEFINITIONS}
+
+    assert retry_queue_for("parser.high") == "parser.high.retry"
+    assert retry_queue_for("normalize.bulk") == "normalize.bulk.retry"
+    assert retry_queue_for("card.updated") == "card.updated.retry"
+    assert dead_queue_for("parser.high") == "parser.high.dead"
+    assert dead_queue_for("review.required") == "review.required.dead"
+
+    assert queue_definitions["parser.high"].queue_arguments() == {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "parser.dead",
+        "x-dead-letter-routing-key": "high",
+    }
+    assert queue_definitions["parser.high.retry"].queue_arguments() == {
+        "x-message-ttl": 30000,
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "parser.jobs",
+        "x-dead-letter-routing-key": "high",
+    }
+    assert queue_definitions["normalize.bulk.retry"].queue_arguments() == {
+        "x-message-ttl": 120000,
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "normalize.jobs",
+        "x-dead-letter-routing-key": "bulk",
+    }
+    assert queue_definitions["review.required"].queue_arguments() == {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "delivery.dead",
+        "x-dead-letter-routing-key": "review.required",
     }
 
 

@@ -458,7 +458,7 @@ Definition of done:
 2. `feat(scripts): add fixture capture and backfill flow for three MVP sources`
 3. `test(regression): add captured raw-page regression suite for adapters and normalization rules`
 
-### День 11. Добить операционную пригодность MVP
+### День 11. Добить операционную пригодность MVP - Реализуем его сейчас
 
 Цель дня:
 
