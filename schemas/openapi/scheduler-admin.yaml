@@ -29,6 +29,38 @@ paths:
           description: Source endpoint was not found
         "502":
           description: Crawl request could not be published to RabbitMQ
+  /admin/v1/freshness:
+    get:
+      summary: Compute source freshness from observed crawl activity
+      parameters:
+        - in: query
+          name: include_inactive
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Freshness overview computed from sources endpoints runs and raw artifacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreshnessOverviewResponse"
+  /admin/v1/freshness/monitor-jobs:
+    post:
+      summary: Run stale-source monitoring and emit review.required for stale scheduled sources
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaleSourceMonitoringRunRequest"
+      responses:
+        "202":
+          description: Stale-source monitoring completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaleSourceMonitoringRunResponse"
 components:
   schemas:
     ManualCrawlTriggerRequest:
@@ -102,3 +134,167 @@ components:
         event:
           type: object
           additionalProperties: true
+    FreshnessState:
+      type: string
+      enum: [fresh, aging, stale, scheduled, manual, unknown, inactive]
+    SourceFreshnessSnapshot:
+      type: object
+      required:
+        - source_id
+        - source_key
+        - source_type
+        - trust_tier
+        - is_active
+        - endpoint_count
+        - scheduled_endpoint_count
+        - endpoint_urls
+        - metadata
+        - freshness_state
+        - freshness_reason
+        - checked_at
+      properties:
+        source_id:
+          type: string
+          format: uuid
+        source_key:
+          type: string
+        source_type:
+          type: string
+        trust_tier:
+          type: string
+        is_active:
+          type: boolean
+        endpoint_count:
+          type: integer
+        scheduled_endpoint_count:
+          type: integer
+        refresh_interval_seconds:
+          type: integer
+          nullable: true
+        endpoint_urls:
+          type: array
+          items:
+            type: string
+        last_observed_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_attempted_at:
+          type: string
+          format: date-time
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+        freshness_state:
+          $ref: "#/components/schemas/FreshnessState"
+        freshness_reason:
+          type: string
+        stale_since:
+          type: string
+          format: date-time
+          nullable: true
+        checked_at:
+          type: string
+          format: date-time
+    FreshnessOverviewResponse:
+      type: object
+      required:
+        - checked_at
+        - total_sources
+        - active_sources
+        - scheduled_sources
+        - fresh_sources
+        - aging_sources
+        - stale_sources
+        - policy_only_sources
+        - inactive_sources
+        - sources
+      properties:
+        checked_at:
+          type: string
+          format: date-time
+        total_sources:
+          type: integer
+        active_sources:
+          type: integer
+        scheduled_sources:
+          type: integer
+        fresh_sources:
+          type: integer
+        aging_sources:
+          type: integer
+        stale_sources:
+          type: integer
+        policy_only_sources:
+          type: integer
+        inactive_sources:
+          type: integer
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceFreshnessSnapshot"
+    StaleSourceMonitoringRunRequest:
+      type: object
+      properties:
+        monitor_run_id:
+          type: string
+          format: uuid
+        dry_run:
+          type: boolean
+          default: false
+        include_inactive:
+          type: boolean
+          default: true
+        emit_review_required:
+          type: boolean
+          default: true
+    StaleSourceMonitoringJobResult:
+      type: object
+      required:
+        - source_key
+        - freshness_state
+        - emitted_review_required
+        - metadata_updated
+      properties:
+        source_key:
+          type: string
+        freshness_state:
+          $ref: "#/components/schemas/FreshnessState"
+        emitted_review_required:
+          type: boolean
+        metadata_updated:
+          type: boolean
+        stale_since:
+          type: string
+          format: date-time
+          nullable: true
+    StaleSourceMonitoringRunResponse:
+      type: object
+      required:
+        - monitor_run_id
+        - checked_at
+        - total_sources
+        - stale_sources
+        - emitted_review_required_count
+        - metadata_updated_count
+        - items
+      properties:
+        monitor_run_id:
+          type: string
+          format: uuid
+        checked_at:
+          type: string
+          format: date-time
+        total_sources:
+          type: integer
+        stale_sources:
+          type: integer
+        emitted_review_required_count:
+          type: integer
+        metadata_updated_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaleSourceMonitoringJobResult"
