@@ -16,6 +16,22 @@ class FakePutResult:
         self.version_id = version_id
 
 
+class FakeGetResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+        self.closed = False
+        self.released = False
+
+    def read(self) -> bytes:
+        return self._payload
+
+    def close(self) -> None:
+        self.closed = True
+
+    def release_conn(self) -> None:
+        self.released = True
+
+
 class FakeMinioClientClass:
     def __init__(self, **kwargs) -> None:
         self.kwargs = kwargs
@@ -31,6 +47,8 @@ class FakeMinioClient:
         self.failing_buckets = set(failing_buckets or set())
         self.created_buckets: list[tuple[str, str]] = []
         self.put_calls: list[dict[str, object]] = []
+        self.get_calls: list[tuple[str, str]] = []
+        self.object_payloads: dict[tuple[str, str], bytes] = {}
 
     def bucket_exists(self, bucket_name: str) -> bool:
         if bucket_name in self.failing_buckets:
@@ -62,6 +80,10 @@ class FakeMinioClient:
             }
         )
         return FakePutResult(etag="etag-1", version_id="v1")
+
+    def get_object(self, bucket_name: str, object_name: str) -> FakeGetResponse:
+        self.get_calls.append((bucket_name, object_name))
+        return FakeGetResponse(self.object_payloads[(bucket_name, object_name)])
 
 
 class FakeRuntime:
@@ -126,6 +148,21 @@ def test_minio_storage_client_put_bytes_wraps_payload_and_returns_result() -> No
             "metadata": {"sha256": "abc"},
         }
     ]
+
+
+def test_minio_storage_client_get_bytes_reads_and_releases_object() -> None:
+    settings = PlatformSettings(service_name="parser").minio
+    client = FakeMinioClient(existing_buckets={"raw-html"})
+    client.object_payloads[("raw-html", "objects/abc.html")] = b"hello world"
+    storage = MinIOStorageClient(client=client, settings=settings)
+
+    payload = storage.get_bytes(
+        bucket_name="raw-html",
+        object_name="objects/abc.html",
+    )
+
+    assert payload == b"hello world"
+    assert client.get_calls == [("raw-html", "objects/abc.html")]
 
 
 def test_probe_minio_bucket_readiness_reports_missing_buckets() -> None:

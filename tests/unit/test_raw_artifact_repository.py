@@ -23,6 +23,9 @@ class FakeMappingResult:
     def one(self):
         return self._row
 
+    def one_or_none(self):
+        return self._row
+
 
 class FakeRawArtifactSession:
     def __init__(self) -> None:
@@ -52,6 +55,16 @@ class FakeRawArtifactSession:
                     "metadata": json.dumps(existing_metadata),
                 }
             self.rows[key] = row
+            return FakeMappingResult(row=row)
+        if "from ingestion.raw_artifact" in normalized_statement:
+            row = next(
+                (
+                    candidate
+                    for candidate in self.rows.values()
+                    if candidate["raw_artifact_id"] == params["raw_artifact_id"]
+                ),
+                None,
+            )
             return FakeMappingResult(row=row)
 
         raise AssertionError(f"Unexpected statement: {statement}")
@@ -163,6 +176,18 @@ def test_raw_artifact_repository_merges_metadata_on_same_source_sha256() -> None
     assert second.metadata["minio_etag"] == "etag-2"
     assert second.metadata["retry"] == 1
     assert second.metadata["parser_profile"] == "official_site.default"
+
+
+def test_raw_artifact_repository_get_by_id_returns_persisted_record() -> None:
+    context = build_context()
+    artifact = build_stored_artifact()
+    session = FakeRawArtifactSession()
+    repository = RawArtifactRepository(session, sql_text=lambda statement: statement)
+    persisted = repository.upsert_from_artifact(context=context, artifact=artifact)
+
+    record = repository.get_by_id(persisted.raw_artifact_id)
+
+    assert record == persisted
 
 
 def test_raw_artifact_repository_requires_minio_storage_pointer() -> None:

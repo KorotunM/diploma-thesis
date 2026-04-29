@@ -115,6 +115,23 @@ class MinIOStorageClient:
             version_id=getattr(result, "version_id", None),
         )
 
+    def get_bytes(
+        self,
+        *,
+        bucket_name: str,
+        object_name: str,
+    ) -> bytes:
+        response = self._client.get_object(bucket_name, object_name)
+        try:
+            return response.read()
+        finally:
+            close = getattr(response, "close", None)
+            if callable(close):
+                close()
+            release_conn = getattr(response, "release_conn", None)
+            if callable(release_conn):
+                release_conn()
+
 
 def get_minio_storage_client(
     service_name: str | None = None,

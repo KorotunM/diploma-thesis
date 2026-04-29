@@ -35,14 +35,25 @@ class FakeFetcher:
 
 
 class MappingResult:
-    def __init__(self, row: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        row: dict[str, Any] | None = None,
+        rows: list[dict[str, Any]] | None = None,
+    ) -> None:
         self._row = row
+        self._rows = rows or []
 
     def mappings(self) -> MappingResult:
         return self
 
     def one(self) -> dict[str, Any]:
         return self._row
+
+    def one_or_none(self) -> dict[str, Any] | None:
+        return self._row
+
+    def all(self) -> list[dict[str, Any]]:
+        return self._rows
 
 
 class FakeParsedDocumentSession:
@@ -59,6 +70,17 @@ class FakeParsedDocumentSession:
         if "insert into parsing.extracted_fragment" in sql:
             row = self._upsert_fragment(params)
             return MappingResult(row)
+        if "from parsing.parsed_document" in sql:
+            row = self.documents.get((params["raw_artifact_id"], params["parser_version"]))
+            return MappingResult(row)
+        if "from parsing.extracted_fragment" in sql:
+            rows = [
+                fragment
+                for fragment in self.fragments.values()
+                if fragment["parsed_document_id"] == params["parsed_document_id"]
+            ]
+            rows.sort(key=lambda row: (row["field_name"], str(row["fragment_id"])))
+            return MappingResult(rows=rows)
         raise AssertionError(f"Unexpected SQL statement: {statement}")
 
     def commit(self) -> None:
@@ -170,6 +192,32 @@ def test_parsed_document_repository_is_idempotent_by_raw_artifact_and_parser_ver
 
     assert second.parsed_document_id == first.parsed_document_id
     assert len(session.documents) == 1
+
+
+def test_parsed_document_repository_can_load_document_and_fragments_for_replay() -> None:
+    execution_result = build_official_execution_result()
+    session = FakeParsedDocumentSession()
+    repository = ParsedDocumentRepository(session=session, sql_text=lambda value: value)
+
+    persisted_document = repository.upsert_document(execution_result=execution_result)
+    persisted_fragments = repository.upsert_fragments(
+        parsed_document=persisted_document,
+        fragments=execution_result.fragments,
+    )
+
+    loaded_document = repository.get_document_by_raw_artifact_and_parser_version(
+        raw_artifact_id=persisted_document.raw_artifact_id,
+        parser_version=persisted_document.parser_version,
+    )
+    loaded_fragments = repository.list_fragments_for_document(
+        persisted_document.parsed_document_id
+    )
+
+    assert loaded_document == persisted_document
+    assert loaded_fragments == sorted(
+        persisted_fragments,
+        key=lambda fragment: (fragment.field_name, str(fragment.fragment_id)),
+    )
 
 
 def test_parsed_document_repository_requires_completed_execution_artifact_and_records() -> None:

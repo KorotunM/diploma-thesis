@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from apps.parser.app.persistence import json_from_db, json_to_db, sql_text
 from libs.source_sdk import ExtractedFragment, IntermediateRecord, ParserExecutionResult
@@ -111,6 +111,42 @@ class ParsedDocumentRepository:
         )
         return self._document_from_row(result.mappings().one())
 
+    def get_document_by_raw_artifact_and_parser_version(
+        self,
+        *,
+        raw_artifact_id: UUID,
+        parser_version: str,
+    ) -> ParsedDocumentRecord | None:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    parsed_document_id,
+                    crawl_run_id,
+                    raw_artifact_id,
+                    source_key,
+                    parser_profile,
+                    parser_version,
+                    entity_type,
+                    entity_hint,
+                    extracted_fragment_count,
+                    parsed_at,
+                    metadata
+                FROM parsing.parsed_document
+                WHERE raw_artifact_id = :raw_artifact_id
+                  AND parser_version = :parser_version
+                """
+            ),
+            {
+                "raw_artifact_id": raw_artifact_id,
+                "parser_version": parser_version,
+            },
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        return self._document_from_row(row)
+
     def upsert_fragments(
         self,
         *,
@@ -191,6 +227,33 @@ class ParsedDocumentRepository:
             )
             records.append(self._fragment_from_row(result.mappings().one()))
         return records
+
+    def list_fragments_for_document(
+        self,
+        parsed_document_id: UUID,
+    ) -> list[ExtractedFragmentRecord]:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    fragment_id,
+                    parsed_document_id,
+                    raw_artifact_id,
+                    source_key,
+                    field_name,
+                    value,
+                    value_type,
+                    locator,
+                    confidence,
+                    metadata
+                FROM parsing.extracted_fragment
+                WHERE parsed_document_id = :parsed_document_id
+                ORDER BY field_name ASC, fragment_id ASC
+                """
+            ),
+            {"parsed_document_id": parsed_document_id},
+        )
+        return [self._fragment_from_row(row) for row in result.mappings().all()]
 
     def commit(self) -> None:
         self._session.commit()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from apps.parser.app.persistence import json_from_db, json_to_db, sql_text
 from libs.source_sdk import FetchContext, FetchedArtifact
@@ -118,6 +119,37 @@ class RawArtifactRepository:
             },
         )
         return self._record_from_row(result.mappings().one())
+
+    def get_by_id(self, raw_artifact_id: UUID) -> RawArtifactRecord | None:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    raw_artifact_id,
+                    crawl_run_id,
+                    source_key,
+                    source_url,
+                    final_url,
+                    http_status,
+                    content_type,
+                    content_length,
+                    sha256,
+                    storage_bucket,
+                    storage_object_key,
+                    etag,
+                    last_modified,
+                    fetched_at,
+                    metadata
+                FROM ingestion.raw_artifact
+                WHERE raw_artifact_id = :raw_artifact_id
+                """
+            ),
+            {"raw_artifact_id": raw_artifact_id},
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        return self._record_from_row(row)
 
     def commit(self) -> None:
         self._session.commit()
