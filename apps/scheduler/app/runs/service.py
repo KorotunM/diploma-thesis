@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from typing import Any, Protocol
+from time import perf_counter
 
 from apps.scheduler.app.sources.endpoint_repository import SourceEndpointRepository
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
+from libs.observability import DomainMetricsCollector, get_domain_metrics
 
 from .models import (
     CrawlJobAcceptedResponse,
@@ -60,15 +62,18 @@ class ManualCrawlTriggerService:
         endpoint_repository: SourceEndpointRepository,
         run_repository: PipelineRunRepository,
         publisher: CrawlRequestPublisher,
+        metrics_collector: DomainMetricsCollector | None = None,
     ) -> None:
         self._endpoint_repository = endpoint_repository
         self._run_repository = run_repository
         self._publisher = publisher
+        self._metrics = metrics_collector or get_domain_metrics()
 
     def trigger_manual_crawl(
         self,
         request: ManualCrawlTriggerRequest,
     ) -> CrawlJobAcceptedResponse:
+        started_at = perf_counter()
         endpoint = self._endpoint_repository.get(request.source_key, request.endpoint_id)
         if endpoint is None:
             raise ManualCrawlEndpointNotFoundError(request.source_key, request.endpoint_id)
@@ -134,6 +139,12 @@ class ManualCrawlTriggerService:
                 finish=True,
             )
             self._run_repository.commit()
+            self._metrics.record_crawl_job(
+                status="failed",
+                trigger_type=payload.trigger,
+                priority=payload.priority,
+                parser_profile=payload.parser_profile,
+            )
             raise CrawlRequestPublishError(payload.crawl_run_id, queue_name, str(exc)) from exc
 
         published_run = self._run_repository.transition(
@@ -152,6 +163,12 @@ class ManualCrawlTriggerService:
                 f"Pipeline run {payload.crawl_run_id} was not found after crawl request publish"
             )
         self._run_repository.commit()
+        self._metrics.record_crawl_job(
+            status="published",
+            trigger_type=payload.trigger,
+            priority=payload.priority,
+            parser_profile=payload.parser_profile,
+        )
 
         return CrawlJobAcceptedResponse(
             pipeline_run=PipelineRunResponse.model_validate(published_run),

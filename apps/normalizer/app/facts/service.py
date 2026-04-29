@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import perf_counter
 from uuid import UUID
 
 from apps.normalizer.app.claims import ClaimEvidenceRecord, ClaimRecord
@@ -10,6 +11,7 @@ from apps.normalizer.app.resolution import (
     source_tier_map,
 )
 from apps.normalizer.app.universities import UniversityBootstrapResult
+from libs.observability import DomainMetricsCollector, get_domain_metrics
 
 from .models import ResolvedFactBuildResult, ResolvedFactCandidate
 from .repository import ResolvedFactRepository, deterministic_resolved_fact_id
@@ -37,54 +39,106 @@ class ResolvedFactGenerationService:
         canonical_fields: tuple[str, ...] = CANONICAL_FACT_FIELDS,
         card_version: int = 1,
         policy_matrix: FieldResolutionPolicyMatrix | None = None,
+        metrics_collector: DomainMetricsCollector | None = None,
     ) -> None:
         self._repository = repository
         self._canonical_fields = canonical_fields
         self._card_version = card_version
         self._policy_matrix = policy_matrix or FieldResolutionPolicyMatrix()
+        self._metrics = metrics_collector or get_domain_metrics()
 
     def generate_for_bootstrap(
         self,
         bootstrap_result: UniversityBootstrapResult,
     ) -> ResolvedFactBuildResult:
-        source_tiers = source_tier_map(
-            {
-                source.source_key: source.trust_tier
-                for source in (
-                    bootstrap_result.sources_used or [bootstrap_result.source]
-                )
-            },
-            default_source_key=bootstrap_result.source.source_key,
-            default_trust_tier=bootstrap_result.source.trust_tier,
-        )
-        claims_by_field = self._best_claims_by_field(
-            bootstrap_result.claims_used,
-            source_tiers=source_tiers,
-        )
-        evidence_by_claim_id = self._evidence_by_claim_id(bootstrap_result.evidence_used)
-        candidates = [
-            self._candidate_from_claim(
-                bootstrap_result=bootstrap_result,
-                claim=claim,
-                evidence=evidence_by_claim_id.get(claim.claim_id, []),
-                source_trust_tier=source_tiers[claim.source_key],
+        started_at = perf_counter()
+        parser_version = self._parser_version(bootstrap_result)
+        normalizer_version = self._normalizer_version(bootstrap_result)
+        source_count = len(bootstrap_result.sources_used or [bootstrap_result.source])
+        try:
+            source_tiers = source_tier_map(
+                {
+                    source.source_key: source.trust_tier
+                    for source in (
+                        bootstrap_result.sources_used or [bootstrap_result.source]
+                    )
+                },
+                default_source_key=bootstrap_result.source.source_key,
+                default_trust_tier=bootstrap_result.source.trust_tier,
             )
-            for field_name in self._canonical_fields
-            if (claim := claims_by_field.get(field_name)) is not None
-        ]
-        candidates.extend(
-            self._rating_candidates(
+            claims_by_field = self._best_claims_by_field(
+                bootstrap_result.claims_used,
+                source_tiers=source_tiers,
+            )
+            evidence_by_claim_id = self._evidence_by_claim_id(bootstrap_result.evidence_used)
+            candidates = [
+                self._candidate_from_claim(
+                    bootstrap_result=bootstrap_result,
+                    claim=claim,
+                    evidence=evidence_by_claim_id.get(claim.claim_id, []),
+                    source_trust_tier=source_tiers[claim.source_key],
+                )
+                for field_name in self._canonical_fields
+                if (claim := claims_by_field.get(field_name)) is not None
+            ]
+            rating_candidates = self._rating_candidates(
                 bootstrap_result=bootstrap_result,
                 evidence_by_claim_id=evidence_by_claim_id,
                 source_tiers=source_tiers,
             )
-        )
-        facts = self._repository.upsert_resolved_facts(candidates)
-        self._repository.commit()
-        return ResolvedFactBuildResult(
-            university=bootstrap_result.university,
-            facts=facts,
-        )
+            candidates.extend(rating_candidates)
+            facts = self._repository.upsert_resolved_facts(candidates)
+            self._repository.commit()
+            self._metrics.record_normalize_run(
+                status="succeeded",
+                parser_version=parser_version,
+                normalizer_version=normalizer_version,
+                claim_count=len(bootstrap_result.claims_used),
+                evidence_count=len(bootstrap_result.evidence_used),
+                resolved_fact_count=len(facts),
+                source_count=source_count,
+                rating_fact_count=len(rating_candidates),
+                duration_seconds=perf_counter() - started_at,
+            )
+            return ResolvedFactBuildResult(
+                university=bootstrap_result.university,
+                facts=facts,
+            )
+        except Exception:
+            self._metrics.record_normalize_run(
+                status="failed",
+                parser_version=parser_version,
+                normalizer_version=normalizer_version,
+                claim_count=len(bootstrap_result.claims_used),
+                evidence_count=len(bootstrap_result.evidence_used),
+                resolved_fact_count=0,
+                source_count=source_count,
+                rating_fact_count=0,
+                duration_seconds=perf_counter() - started_at,
+            )
+            raise
+
+    @staticmethod
+    def _parser_version(bootstrap_result: UniversityBootstrapResult) -> str:
+        versions = {claim.parser_version for claim in bootstrap_result.claims_used}
+        if not versions:
+            return "unknown"
+        if len(versions) == 1:
+            return next(iter(versions))
+        return "mixed"
+
+    @staticmethod
+    def _normalizer_version(bootstrap_result: UniversityBootstrapResult) -> str:
+        versions = {
+            claim.normalizer_version
+            for claim in bootstrap_result.claims_used
+            if claim.normalizer_version
+        }
+        if not versions:
+            return "unknown"
+        if len(versions) == 1:
+            return next(iter(versions))
+        return "mixed"
 
     def _best_claims_by_field(
         self,

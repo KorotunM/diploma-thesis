@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from time import perf_counter
 from uuid import UUID
 
 from apps.normalizer.app.facts import ResolvedFactBuildResult, ResolvedFactRecord
 from apps.normalizer.app.search_docs import UniversitySearchDocProjectionService
+from libs.observability import DomainMetricsCollector, get_domain_metrics
 from libs.domain.university.models import (
     CardVersionInfo,
     ConfidenceValue,
@@ -27,37 +29,59 @@ class UniversityCardProjectionService:
         *,
         normalizer_version: str = "normalizer.0.1.0",
         search_doc_service: UniversitySearchDocProjectionService,
+        metrics_collector: DomainMetricsCollector | None = None,
     ) -> None:
         self._repository = repository
         self._normalizer_version = normalizer_version
         self._search_doc_service = search_doc_service
+        self._metrics = metrics_collector or get_domain_metrics()
 
     def create_projection(
         self,
         fact_result: ResolvedFactBuildResult,
     ) -> UniversityCardProjectionResult:
-        card_version = self._card_version(fact_result.facts)
-        persisted_version = self._repository.upsert_card_version(
-            university_id=fact_result.university.university_id,
-            card_version=card_version,
-            normalizer_version=self._normalizer_version,
-        )
-        card = self._build_card(
-            fact_result=fact_result,
-            generated_at=persisted_version.generated_at,
-            card_version=card_version,
-        )
-        projection = self._repository.upsert_delivery_projection(
-            card=card,
-            generated_at=persisted_version.generated_at,
-        )
-        search_doc = self._search_doc_service.refresh_for_card(card)
-        self._repository.commit()
-        return UniversityCardProjectionResult(
-            card_version=persisted_version,
-            projection=projection,
-            search_doc=search_doc,
-        )
+        started_at = perf_counter()
+        try:
+            card_version = self._card_version(fact_result.facts)
+            persisted_version = self._repository.upsert_card_version(
+                university_id=fact_result.university.university_id,
+                card_version=card_version,
+                normalizer_version=self._normalizer_version,
+            )
+            card = self._build_card(
+                fact_result=fact_result,
+                generated_at=persisted_version.generated_at,
+                card_version=card_version,
+            )
+            projection = self._repository.upsert_delivery_projection(
+                card=card,
+                generated_at=persisted_version.generated_at,
+            )
+            search_doc = self._search_doc_service.refresh_for_card(card)
+            self._repository.commit()
+            self._metrics.record_card_build(
+                status="succeeded",
+                normalizer_version=self._normalizer_version,
+                resolved_fact_count=len(fact_result.facts),
+                rating_count=len(card.ratings),
+                duration_seconds=perf_counter() - started_at,
+                search_doc_refreshed=search_doc is not None,
+            )
+            return UniversityCardProjectionResult(
+                card_version=persisted_version,
+                projection=projection,
+                search_doc=search_doc,
+            )
+        except Exception:
+            self._metrics.record_card_build(
+                status="failed",
+                normalizer_version=self._normalizer_version,
+                resolved_fact_count=len(fact_result.facts),
+                rating_count=0,
+                duration_seconds=perf_counter() - started_at,
+                search_doc_refreshed=False,
+            )
+            raise
 
     @staticmethod
     def _card_version(facts: list[ResolvedFactRecord]) -> int:

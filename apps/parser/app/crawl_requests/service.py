@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from time import perf_counter
 from uuid import UUID
 
 from apps.parser.app.parse_completed import (
@@ -15,6 +16,7 @@ from apps.parser.app.parsed_documents import (
 )
 from apps.parser.app.raw_artifacts import RawArtifactPersistenceService, RawArtifactRecord
 from libs.contracts.events import CrawlRequestEvent
+from libs.observability import DomainMetricsCollector, get_domain_metrics
 from libs.source_sdk import (
     FetchContext,
     FetchedArtifact,
@@ -40,63 +42,88 @@ class CrawlRequestProcessingService:
         parsed_document_service: ParsedDocumentPersistenceService | None = None,
         source_adapters: Sequence[SourceAdapter] = (),
         parse_completed_emitter: ParseCompletedEmitter | None = None,
+        metrics_collector: DomainMetricsCollector | None = None,
     ) -> None:
         self._fetcher = fetcher
         self._raw_artifact_service = raw_artifact_service
         self._parsed_document_service = parsed_document_service
         self._source_adapters = tuple(source_adapters)
         self._parse_completed_emitter = parse_completed_emitter
+        self._metrics = metrics_collector or get_domain_metrics()
 
     async def process(self, event: CrawlRequestEvent) -> CrawlRequestProcessingResult:
         context = FetchContext.from_crawl_request(event.payload)
-        fetched_artifact = await self._fetcher.fetch(context)
-        stored_artifact, raw_record = (
-            await self._raw_artifact_service.persist_after_successful_fetch(
-                context=context,
-                artifact=fetched_artifact,
+        started_at = perf_counter()
+        try:
+            fetched_artifact = await self._fetcher.fetch(context)
+            stored_artifact, raw_record = (
+                await self._raw_artifact_service.persist_after_successful_fetch(
+                    context=context,
+                    artifact=fetched_artifact,
+                )
             )
-        )
-        parsed_document, extracted_fragments = await self._persist_parsed_document(
-            context=context,
-            stored_artifact=stored_artifact,
-        )
-        parse_completed = self._emit_parse_completed(
-            context=context,
-            raw_record=raw_record,
-            parsed_document=parsed_document,
-            extracted_fragments=extracted_fragments,
-            trace_id=event.header.trace_id or event.header.event_id,
-        )
-        return CrawlRequestProcessingResult(
-            event_id=event.header.event_id,
-            trace_id=event.header.trace_id,
-            crawl_run_id=context.crawl_run_id,
-            source_key=context.source_key,
-            endpoint_url=context.endpoint_url,
-            parser_profile=context.parser_profile,
-            raw_artifact=raw_record,
-            parsed_document=parsed_document,
-            extracted_fragments=extracted_fragments,
-            parse_completed=parse_completed,
-            processed_at=utc_now(),
-            metadata={
-                "raw_bucket": stored_artifact.storage_bucket,
-                "raw_object_key": stored_artifact.storage_object_key,
-                "sha256": stored_artifact.sha256,
-                "idempotency_key": f"{context.source_key}:{stored_artifact.sha256}",
-                "parsed_document_id": (
-                    str(parsed_document.parsed_document_id) if parsed_document else None
+            parsed_document, extracted_fragments = await self._persist_parsed_document(
+                context=context,
+                stored_artifact=stored_artifact,
+            )
+            parse_completed = self._emit_parse_completed(
+                context=context,
+                raw_record=raw_record,
+                parsed_document=parsed_document,
+                extracted_fragments=extracted_fragments,
+                trace_id=event.header.trace_id or event.header.event_id,
+            )
+            result = CrawlRequestProcessingResult(
+                event_id=event.header.event_id,
+                trace_id=event.header.trace_id,
+                crawl_run_id=context.crawl_run_id,
+                source_key=context.source_key,
+                endpoint_url=context.endpoint_url,
+                parser_profile=context.parser_profile,
+                raw_artifact=raw_record,
+                parsed_document=parsed_document,
+                extracted_fragments=extracted_fragments,
+                parse_completed=parse_completed,
+                processed_at=utc_now(),
+                metadata={
+                    "raw_bucket": stored_artifact.storage_bucket,
+                    "raw_object_key": stored_artifact.storage_object_key,
+                    "sha256": stored_artifact.sha256,
+                    "idempotency_key": f"{context.source_key}:{stored_artifact.sha256}",
+                    "parsed_document_id": (
+                        str(parsed_document.parsed_document_id) if parsed_document else None
+                    ),
+                    "parse_completed_event_id": (
+                        str(parse_completed.event.header.event_id)
+                        if parse_completed
+                        else None
+                    ),
+                    "parse_completed_queue": (
+                        parse_completed.queue_name if parse_completed else None
+                    ),
+                },
+            )
+            self._metrics.record_parse_run(
+                status="parsed" if parsed_document is not None else "raw_only",
+                parser_profile=context.parser_profile,
+                parser_version=(
+                    parsed_document.parser_version if parsed_document is not None else "unparsed"
                 ),
-                "parse_completed_event_id": (
-                    str(parse_completed.event.header.event_id)
-                    if parse_completed
-                    else None
-                ),
-                "parse_completed_queue": (
-                    parse_completed.queue_name if parse_completed else None
-                ),
-            },
-        )
+                fragment_count=len(extracted_fragments),
+                duration_seconds=perf_counter() - started_at,
+                parse_completed_emitted=parse_completed is not None,
+            )
+            return result
+        except Exception:
+            self._metrics.record_parse_run(
+                status="failed",
+                parser_profile=context.parser_profile,
+                parser_version="unknown",
+                fragment_count=0,
+                duration_seconds=perf_counter() - started_at,
+                parse_completed_emitted=False,
+            )
+            raise
 
     async def _persist_parsed_document(
         self,
