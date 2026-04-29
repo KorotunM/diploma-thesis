@@ -31,6 +31,8 @@ export function useUniversityCardLookup() {
 
   useEffect(() => {
     if (!activeUniversityId) {
+      setSnapshot(null);
+      setError(null);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -41,10 +43,12 @@ export function useUniversityCardLookup() {
     const isInitialLoad = lastLoadedUniversityIdRef.current !== activeUniversityId;
 
     if (isInitialLoad) {
+      setSnapshot(null);
       setLoading(true);
     } else {
       setRefreshing(true);
     }
+    setError(null);
 
     void loadUniversityCard({
       runtime,
@@ -65,6 +69,7 @@ export function useUniversityCardLookup() {
         if (disposed || isAbortError(nextError)) {
           return;
         }
+        setSnapshot(null);
         if (nextError instanceof HttpRequestError && nextError.status === 404) {
           setError(`University card ${activeUniversityId} was not found in delivery projection.`);
           return;
@@ -95,6 +100,7 @@ export function useUniversityCardLookup() {
   );
 
   return {
+    activeUniversityId,
     draftUniversityId,
     snapshot,
     error,
@@ -104,6 +110,7 @@ export function useUniversityCardLookup() {
     canSubmit,
     setDraftUniversityId: (value: string) => {
       setDraftUniversityId(value);
+      setError(null);
       if (!value.trim()) {
         setValidationError(null);
         return;
@@ -125,6 +132,7 @@ export function useUniversityCardLookup() {
         return;
       }
       setValidationError(null);
+      setError(null);
       setActiveUniversityId(nextUniversityId);
     },
     clear: () => {

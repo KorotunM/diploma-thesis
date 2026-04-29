@@ -176,6 +176,64 @@ body {
   color: #8c4d16;
 }
 
+.view-state {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed rgba(19, 34, 56, 0.14);
+  border-radius: 18px;
+  background: rgba(247, 250, 252, 0.84);
+}
+
+.view-state strong,
+.view-state p,
+.view-state small {
+  margin: 0;
+}
+
+.view-state p,
+.view-state small {
+  color: #5b6f82;
+}
+
+.view-state-compact {
+  padding: 14px;
+}
+
+.view-state-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #e7edf3;
+  color: #39516b;
+}
+
+.view-state-loading .view-state-badge {
+  background: #e1edf8;
+  color: #25507a;
+}
+
+.view-state-error .view-state-badge {
+  background: #ffe2d4;
+  color: #9b4520;
+}
+
+.view-state-empty .view-state-badge {
+  background: #edf3e7;
+  color: #47623c;
+}
+
+.view-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .summary-grid,
 .service-grid,
 .search-results,

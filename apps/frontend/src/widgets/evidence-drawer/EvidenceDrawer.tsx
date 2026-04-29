@@ -1,7 +1,9 @@
 import { useEvidenceDrawer } from "../../features/evidence-drawer";
+import { ViewState } from "../../shared/ui/view-state";
 
 export function EvidenceDrawer() {
   const { activeUniversityId, snapshot, error, loading, refreshing } = useEvidenceDrawer();
+  const hasFieldAttributions = (snapshot?.fieldAttributions.length ?? 0) > 0;
 
   return (
     <section className="panel accent-panel evidence-panel">
@@ -15,17 +17,42 @@ export function EvidenceDrawer() {
           </p>
         </div>
         <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
-          {loading ? "Loading trace" : snapshot ? `${snapshot.provenance.chain.length} stages` : "Idle"}
+          {loading
+            ? "Loading trace"
+            : snapshot
+              ? `${snapshot.provenance.chain.length} stages`
+              : activeUniversityId
+                ? "Trace unavailable"
+                : "Awaiting selection"}
         </span>
       </div>
 
-      {error ? <p className="panel-alert">{error}</p> : null}
+      {error && snapshot ? <p className="panel-alert">{error}</p> : null}
 
       {!activeUniversityId ? (
-        <p className="empty-state">
-          Select a live university card first. The drawer follows the same `university_id` and
-          expands it into provenance and attribution details.
-        </p>
+        <ViewState
+          kind="empty"
+          title="No university selected yet"
+          message="Select a university card first. The drawer follows the same university_id and expands it into provenance details."
+        />
+      ) : null}
+
+      {activeUniversityId && loading && !snapshot ? (
+        <ViewState
+          kind="loading"
+          title="Loading provenance trace"
+          message="Resolving raw artifacts, parsed documents, claims, evidence and resolved facts."
+          detail={`university_id: ${activeUniversityId}`}
+        />
+      ) : null}
+
+      {activeUniversityId && !loading && !snapshot && error ? (
+        <ViewState
+          kind="error"
+          title="Provenance trace unavailable"
+          message={error}
+          detail="The card selection is preserved, so the trace will appear on the next successful lookup."
+        />
       ) : null}
 
       {snapshot ? (
@@ -62,21 +89,31 @@ export function EvidenceDrawer() {
                 </small>
               </div>
               <div className="attribution-list">
-                {snapshot.fieldAttributions.map((item) => (
-                  <article key={item.fieldName} className="attribution-card">
-                    <div className="attribution-header">
-                      <strong>{item.fieldName}</strong>
-                      <span className="chip">{item.confidence.toFixed(2)}</span>
-                    </div>
-                    <p>{item.sourceKey ?? "source key unavailable"}</p>
-                    <div className="attribution-links">
-                      {item.sourceUrls.map((sourceUrl) => (
-                        <code key={sourceUrl}>{sourceUrl}</code>
-                      ))}
-                    </div>
-                    <small>{item.evidenceIds.length} evidence ids linked</small>
-                  </article>
-                ))}
+                {hasFieldAttributions
+                  ? snapshot.fieldAttributions.map((item) => (
+                      <article key={item.fieldName} className="attribution-card">
+                        <div className="attribution-header">
+                          <strong>{item.fieldName}</strong>
+                          <span className="chip">{item.confidence.toFixed(2)}</span>
+                        </div>
+                        <p>{item.sourceKey ?? "source key unavailable"}</p>
+                        <div className="attribution-links">
+                          {item.sourceUrls.map((sourceUrl) => (
+                            <code key={sourceUrl}>{sourceUrl}</code>
+                          ))}
+                        </div>
+                        <small>{item.evidenceIds.length} evidence ids linked</small>
+                      </article>
+                    ))
+                  : null}
+                {!hasFieldAttributions ? (
+                  <ViewState
+                    kind="empty"
+                    title="No field attribution rows"
+                    message="The provenance response did not include per-field source pointers for this card."
+                    compact
+                  />
+                ) : null}
               </div>
             </section>
 
@@ -108,9 +145,12 @@ export function EvidenceDrawer() {
                   </article>
                 ))}
                 {snapshot.evidenceChain.length === 0 ? (
-                  <p className="empty-state">
-                    Provenance exists but no claim evidence rows were attached to this card.
-                  </p>
+                  <ViewState
+                    kind="empty"
+                    title="No evidence rows attached"
+                    message="The provenance response exists, but this card has no linked claim_evidence rows yet."
+                    compact
+                  />
                 ) : null}
               </div>
             </section>

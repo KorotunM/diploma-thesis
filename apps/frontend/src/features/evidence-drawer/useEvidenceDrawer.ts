@@ -31,10 +31,12 @@ export function useEvidenceDrawer() {
     const isInitialLoad = lastLoadedUniversityIdRef.current !== activeUniversityId;
 
     if (isInitialLoad) {
+      setSnapshot(null);
       setLoading(true);
     } else {
       setRefreshing(true);
     }
+    setError(null);
 
     void loadEvidenceDrawer({
       runtime,
@@ -55,6 +57,7 @@ export function useEvidenceDrawer() {
         if (disposed || isAbortError(nextError)) {
           return;
         }
+        setSnapshot(null);
         if (nextError instanceof HttpRequestError && nextError.status === 404) {
           setError(`University provenance ${activeUniversityId} was not found.`);
           return;

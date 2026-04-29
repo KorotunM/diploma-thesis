@@ -1,7 +1,9 @@
 import { useUniversityCardLookup } from "../features/university-card";
+import { ViewState } from "../shared/ui/view-state";
 
 export function UniversityCardPage() {
   const {
+    activeUniversityId,
     draftUniversityId,
     snapshot,
     error,
@@ -22,12 +24,20 @@ export function UniversityCardPage() {
           <p className="section-kicker">Delivery Card</p>
           <h2>University card page on live delivery payload</h2>
           <p className="section-copy">
-            Card page now resolves a real `delivery.university_card` projection through backend
-            instead of rendering static placeholder fields.
+            Card page resolves a real `delivery.university_card` projection through the backend
+            and keeps attribution metadata visible next to the canonical fields.
           </p>
         </div>
         <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
-          {loading ? "Loading card" : card ? `v${card.version.card_version}` : "No card"}
+          {loading
+            ? "Loading card"
+            : card
+              ? `v${card.version.card_version}`
+              : error
+                ? "Card unavailable"
+                : activeUniversityId
+                  ? "No card"
+                  : "Awaiting selection"}
         </span>
       </div>
 
@@ -45,7 +55,7 @@ export function UniversityCardPage() {
             type="text"
             value={draftUniversityId}
             onChange={(event) => setDraftUniversityId(event.target.value)}
-            placeholder="00000000-0000-0000-0000-000000000000"
+            placeholder="Paste a university UUID from search results"
           />
         </label>
         <div className="card-actions">
@@ -129,16 +139,44 @@ export function UniversityCardPage() {
                   </article>
                 ))}
                 {card.sources.length === 0 ? (
-                  <p className="empty-state">No source attribution was attached to this projection.</p>
+                  <ViewState
+                    kind="empty"
+                    title="No source attribution attached"
+                    message="This projection does not yet reference provenance sources."
+                    compact
+                  />
                 ) : null}
               </div>
             </article>
           </div>
         </div>
       ) : (
-        <p className="empty-state card-empty-state">
-          Enter a live `university_id` from backend delivery projection to render the card payload.
-        </p>
+        <div className="card-empty-state">
+          {loading ? (
+            <ViewState
+              kind="loading"
+              title="Loading university card"
+              message="Fetching the latest delivery projection for the selected university."
+              detail={activeUniversityId ? `university_id: ${activeUniversityId}` : undefined}
+            />
+          ) : null}
+          {!loading && error ? (
+            <ViewState
+              kind="error"
+              title="University card unavailable"
+              message={error}
+              detail="Pick a university from search results or try another UUID."
+            />
+          ) : null}
+          {!loading && !error ? (
+            <ViewState
+              kind="empty"
+              title="No university selected yet"
+              message="Paste a university UUID or open a card from the live search results."
+              detail="The same selection also drives the evidence drawer."
+            />
+          ) : null}
+        </div>
       )}
     </section>
   );
