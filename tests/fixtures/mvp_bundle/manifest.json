@@ -1,0 +1,129 @@
+{
+  "bundle_name": "mvp-demo-bundle",
+  "captured_at": "2026-04-29T09:30:00Z",
+  "entries": [
+    {
+      "content_length": 318,
+      "content_type": "text/html; charset=utf-8",
+      "crawl_policy": {
+        "allowed_content_types": [
+          "text/html"
+        ],
+        "interval_seconds": null,
+        "max_retries": 2,
+        "render_mode": "http",
+        "request_headers": {
+          "x-fixture-run": "mvp-capture"
+        },
+        "respect_robots_txt": true,
+        "retry_backoff_seconds": 30,
+        "schedule_enabled": false,
+        "timeout_seconds": 45
+      },
+      "crawl_run_id": "33333333-3333-4333-8333-333333333333",
+      "endpoint_url": "https://example.edu/admissions",
+      "etag": "\"fixture-official-etag\"",
+      "fetched_at": "2026-04-29T09:00:00Z",
+      "final_url": "https://example.edu/admissions",
+      "fixture_file": "../parser_ingestion/official_site_admissions.html",
+      "fixture_id": "official",
+      "http_status": 200,
+      "last_modified": "Tue, 29 Apr 2026 08:55:00 GMT",
+      "metadata": {
+        "captured_from_raw_artifact_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+      },
+      "parser_profile": "official_site.default",
+      "priority": "high",
+      "raw_artifact_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "requested_at": "2026-04-29T08:59:00Z",
+      "response_headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "sha256": "f183377c22673254d324b171235f6096d695cef04f939d3641f7055d0004bec5",
+      "source_key": "msu-official",
+      "source_type": "official_site",
+      "trust_tier": "authoritative"
+    },
+    {
+      "content_length": 404,
+      "content_type": "application/json",
+      "crawl_policy": {
+        "allowed_content_types": [
+          "application/json"
+        ],
+        "interval_seconds": null,
+        "max_retries": 2,
+        "render_mode": "http",
+        "request_headers": {},
+        "respect_robots_txt": true,
+        "retry_backoff_seconds": 30,
+        "schedule_enabled": false,
+        "timeout_seconds": 30
+      },
+      "crawl_run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "endpoint_url": "https://aggregator.example/universities/example-university",
+      "etag": "\"fixture-aggregator-etag\"",
+      "fetched_at": "2026-04-29T09:05:00Z",
+      "final_url": "https://aggregator.example/universities/example-university",
+      "fixture_file": "../parser_ingestion/aggregator_university_profile.json",
+      "fixture_id": "aggregator",
+      "http_status": 200,
+      "last_modified": "Tue, 29 Apr 2026 09:00:00 GMT",
+      "metadata": {
+        "captured_from_raw_artifact_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+      },
+      "parser_profile": "aggregator.default",
+      "priority": "bulk",
+      "raw_artifact_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "requested_at": "2026-04-29T09:04:00Z",
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "sha256": "675b5eece3257f50463fdcb22d2709c1fcf31f06db883abc82b281d2eda72244",
+      "source_key": "study-aggregator",
+      "source_type": "aggregator",
+      "trust_tier": "trusted"
+    },
+    {
+      "content_length": 530,
+      "content_type": "application/json",
+      "crawl_policy": {
+        "allowed_content_types": [
+          "application/json"
+        ],
+        "interval_seconds": null,
+        "max_retries": 2,
+        "render_mode": "http",
+        "request_headers": {},
+        "respect_robots_txt": true,
+        "retry_backoff_seconds": 30,
+        "schedule_enabled": false,
+        "timeout_seconds": 30
+      },
+      "crawl_run_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "endpoint_url": "https://rankings.example.com/universities/example-university",
+      "etag": "\"fixture-ranking-etag\"",
+      "fetched_at": "2026-04-29T09:10:00Z",
+      "final_url": "https://rankings.example.com/universities/example-university",
+      "fixture_file": "../parser_ingestion/ranking_provider_university_profile.json",
+      "fixture_id": "ranking",
+      "http_status": 200,
+      "last_modified": "Tue, 29 Apr 2026 09:05:00 GMT",
+      "metadata": {
+        "captured_from_raw_artifact_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+      },
+      "parser_profile": "ranking.default",
+      "priority": "bulk",
+      "raw_artifact_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      "requested_at": "2026-04-29T09:09:00Z",
+      "response_headers": {
+        "content-type": "application/json"
+      },
+      "sha256": "87aaf8e298f3f3b5da881863657a65ba01eee3cceb9d96050a76e6ac3356610f",
+      "source_key": "qs-world-ranking",
+      "source_type": "ranking",
+      "trust_tier": "trusted"
+    }
+  ],
+  "schema_version": 1
+}
