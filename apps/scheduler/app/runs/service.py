@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, Protocol
-from time import perf_counter
 
 from apps.scheduler.app.sources.endpoint_repository import SourceEndpointRepository
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
@@ -73,7 +72,6 @@ class ManualCrawlTriggerService:
         self,
         request: ManualCrawlTriggerRequest,
     ) -> CrawlJobAcceptedResponse:
-        started_at = perf_counter()
         endpoint = self._endpoint_repository.get(request.source_key, request.endpoint_id)
         if endpoint is None:
             raise ManualCrawlEndpointNotFoundError(request.source_key, request.endpoint_id)

@@ -5,7 +5,6 @@ from uuid import UUID
 
 from apps.normalizer.app.facts import ResolvedFactBuildResult, ResolvedFactRecord
 from apps.normalizer.app.search_docs import UniversitySearchDocProjectionService
-from libs.observability import DomainMetricsCollector, get_domain_metrics
 from libs.domain.university.models import (
     CardVersionInfo,
     ConfidenceValue,
@@ -17,6 +16,7 @@ from libs.domain.university.models import (
     ReviewSummary,
     UniversityCard,
 )
+from libs.observability import DomainMetricsCollector, get_domain_metrics
 
 from .models import UniversityCardProjectionResult
 from .repository import UniversityCardProjectionRepository

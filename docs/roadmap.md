@@ -485,7 +485,7 @@ Definition of done:
 
 1. `feat(infra): configure retry and dead-letter behavior for parser normalize and delivery flows`
 2. `feat(scheduler): add freshness checks and stale-source monitoring jobs`
-3. `feat(observability): publish crawl parse normalize and card-build domain metrics`
+3. `feat(observability): publish crawl parse normalize and card-build domain metrics` - остановились ты, переспросить всё ли реализована для коммита этого
 4. `feat(observability): add starter prometheus and grafana dashboards for pipeline health`
 5. `test(integration): cover retry and dead-letter behavior on controlled worker failures`
 

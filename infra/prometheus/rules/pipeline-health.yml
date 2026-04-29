@@ -1,0 +1,54 @@
+groups:
+  - name: pipeline-health
+    interval: 30s
+    rules:
+      - record: pipeline:crawl_jobs_published:rate5m
+        expr: |
+          sum by (priority, parser_profile) (
+            rate(pipeline_crawl_jobs_total{status="published"}[5m])
+          )
+
+      - record: pipeline:parse_runs:rate5m
+        expr: |
+          sum by (status, parser_profile) (
+            rate(pipeline_parse_runs_total[5m])
+          )
+
+      - record: pipeline:normalize_runs:rate5m
+        expr: |
+          sum by (status, normalizer_version, source_count_bucket) (
+            rate(pipeline_normalize_runs_total[5m])
+          )
+
+      - record: pipeline:card_builds:rate5m
+        expr: |
+          sum by (status, normalizer_version) (
+            rate(pipeline_card_builds_total[5m])
+          )
+
+      - record: pipeline:parse_duration_seconds:p95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, parser_profile, parser_version) (
+              rate(pipeline_parse_duration_seconds_bucket[5m])
+            )
+          )
+
+      - record: pipeline:normalize_duration_seconds:p95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, parser_version, normalizer_version) (
+              rate(pipeline_normalize_duration_seconds_bucket[5m])
+            )
+          )
+
+      - record: pipeline:card_build_duration_seconds:p95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, normalizer_version) (
+              rate(pipeline_card_build_duration_seconds_bucket[5m])
+            )
+          )
