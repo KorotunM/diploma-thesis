@@ -5,8 +5,12 @@ from typing import Any
 
 from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 
+from .base import AggregatorFragmentExtractor
 
-class AggregatorPayloadExtractor:
+
+class AggregatorPayloadExtractor(AggregatorFragmentExtractor):
+    supported_parser_profiles = ("aggregator.default",)
+
     def extract(
         self,
         *,

@@ -13,7 +13,9 @@ from libs.source_sdk import (
     SourceAdapter,
 )
 
+from .base import AggregatorFragmentExtractor
 from .payload_extractor import AggregatorPayloadExtractor
+from .tabiturient_html_extractor import TabiturientUniversityHtmlExtractor
 
 AGGREGATOR_ADAPTER_VERSION = "0.1.0"
 
@@ -21,25 +23,32 @@ AGGREGATOR_ADAPTER_VERSION = "0.1.0"
 class AggregatorAdapter(SourceAdapter):
     source_key = "aggregators"
     adapter_version = AGGREGATOR_ADAPTER_VERSION
-    supported_parser_profiles = ("aggregator.default",)
+    supported_parser_profiles = (
+        "aggregator.default",
+        "aggregator.tabiturient.university_html",
+    )
 
     def __init__(
         self,
         *,
         fetcher: RawFetcher,
         raw_store: RawArtifactStore | None = None,
-        extractor: AggregatorPayloadExtractor | None = None,
+        extractor: AggregatorFragmentExtractor | None = None,
+        extractors: tuple[AggregatorFragmentExtractor, ...] | None = None,
     ) -> None:
         self._fetcher = fetcher
         self._raw_store = raw_store
-        self._extractor = extractor or AggregatorPayloadExtractor()
+        self._extractors = self._build_extractors(
+            extractor=extractor,
+            extractors=extractors,
+        )
 
     @property
     def adapter_key(self) -> str:
         return f"aggregators:{self.adapter_version}"
 
     def can_handle(self, context: FetchContext) -> bool:
-        return context.parser_profile in self.supported_parser_profiles
+        return self._resolve_extractor(context) is not None
 
     async def fetch(self, context: FetchContext) -> FetchedArtifact:
         return await self._fetcher.fetch(context)
@@ -58,7 +67,13 @@ class AggregatorAdapter(SourceAdapter):
         context: FetchContext,
         artifact: FetchedArtifact,
     ) -> Sequence[ExtractedFragment]:
-        return self._extractor.extract(context=context, artifact=artifact)
+        extractor = self._resolve_extractor(context)
+        if extractor is None:
+            raise ValueError(
+                "No aggregator extractor is registered for "
+                f"parser_profile={context.parser_profile}."
+            )
+        return extractor.extract(context=context, artifact=artifact)
 
     async def map_to_intermediate(
         self,
@@ -135,3 +150,33 @@ class AggregatorAdapter(SourceAdapter):
         if isinstance(value, float):
             return "float"
         return "str"
+
+    @staticmethod
+    def _build_extractors(
+        *,
+        extractor: AggregatorFragmentExtractor | None,
+        extractors: tuple[AggregatorFragmentExtractor, ...] | None,
+    ) -> tuple[AggregatorFragmentExtractor, ...]:
+        if extractor is not None and extractors is not None:
+            raise ValueError("Pass either extractor or extractors, not both.")
+        if extractors is not None:
+            return extractors
+        if extractor is not None:
+            return (extractor,)
+        return (
+            AggregatorPayloadExtractor(),
+            TabiturientUniversityHtmlExtractor(),
+        )
+
+    def _resolve_extractor(
+        self,
+        context: FetchContext,
+    ) -> AggregatorFragmentExtractor | None:
+        return next(
+            (
+                extractor
+                for extractor in self._extractors
+                if extractor.can_handle(context)
+            ),
+            None,
+        )

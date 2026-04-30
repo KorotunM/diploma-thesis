@@ -5,8 +5,12 @@ from typing import Any
 
 from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 
+from .base import RankingFragmentExtractor
 
-class RankingPayloadExtractor:
+
+class RankingPayloadExtractor(RankingFragmentExtractor):
+    supported_parser_profiles = ("ranking.default",)
+
     def extract(
         self,
         *,
@@ -281,6 +285,7 @@ class RankingPayloadExtractor:
         metadata: dict[str, Any] = {
             "source_field": source_field,
             "rating_item_key": rating_item_key,
+            "record_group_key": rating_item_key,
         }
         if provider_name is not None:
             metadata["provider_name"] = provider_name

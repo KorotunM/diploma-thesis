@@ -120,7 +120,7 @@
 Нужно от тебя:
 - ответ по expected ranking fields из commit 7.
 
-### Commit 9
+### Commit 9 - МЫ СЕЙЧАС НА ЭТОМ КОММИТЕ
 `test(parser): add KubSU abiturient page extractor specs for canonical and admission contact fields`
 
 Что делаем:
