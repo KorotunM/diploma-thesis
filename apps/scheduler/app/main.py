@@ -1,3 +1,4 @@
+from apps.scheduler.app.discovery.routes import router as discovery_router
 from apps.scheduler.app.freshness.routes import router as freshness_router
 from apps.scheduler.app.runs.routes import router as pipeline_run_router
 from apps.scheduler.app.sources.routes import router as source_registry_router
@@ -10,6 +11,7 @@ app = create_service_app(
 app.include_router(source_registry_router)
 app.include_router(pipeline_run_router)
 app.include_router(freshness_router)
+app.include_router(discovery_router)
 
 
 @app.get("/", tags=["scheduler"])
@@ -22,6 +24,7 @@ def scheduler_overview() -> dict[str, object]:
             "job planning",
             "manual trigger",
             "freshness tracking",
+            "endpoint discovery",
         ],
     }
 

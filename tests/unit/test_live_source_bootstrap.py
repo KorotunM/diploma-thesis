@@ -149,6 +149,12 @@ def test_live_mvp_source_seed_specs_match_registry_contract() -> None:
     assert aggregator.metadata["discovery_rules"][0]["child_parser_profile"] == (
         "aggregator.tabiturient.university_html"
     )
+    child_seed_spec = next(
+        value
+        for value in aggregator.metadata["endpoint_seed_specs"]
+        if value["parser_profile"] == "aggregator.tabiturient.university_html"
+    )
+    assert child_seed_spec["crawl_policy"]["allowed_content_types"] == ["text/html"]
 
     ranking = by_key["tabiturient-globalrating"]
     assert [endpoint.parser_profile for endpoint in ranking.endpoints] == [

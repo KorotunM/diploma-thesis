@@ -100,6 +100,10 @@ def _seed_source_spec_from_blueprint(
         "notes": blueprint.notes,
         "discovery_rules": [asdict(rule) for rule in blueprint.discovery_rules],
         "endpoint_blueprints": [asdict(endpoint) for endpoint in blueprint.endpoints],
+        "endpoint_seed_specs": [
+            _seed_endpoint_spec_from_blueprint(endpoint).to_dict()
+            for endpoint in blueprint.endpoints
+        ],
         "seeded_endpoint_count": len(concrete_endpoints),
     }
     return LiveSourceSeedSourceSpec(

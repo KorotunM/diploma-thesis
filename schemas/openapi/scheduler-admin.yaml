@@ -61,6 +61,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StaleSourceMonitoringRunResponse"
+  /admin/v1/discovery/materialize-jobs:
+    post:
+      summary: Fetch discovery sources and materialize child crawl endpoints
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoveryMaterializationRequest"
+      responses:
+        "202":
+          description: Discovery materialization completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryMaterializationResponse"
+        "400":
+          description: Discovery workflow could not be executed because source metadata or endpoint topology is invalid
+        "404":
+          description: Source was not found
 components:
   schemas:
     ManualCrawlTriggerRequest:
@@ -298,3 +318,69 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StaleSourceMonitoringJobResult"
+    DiscoveryMaterializationRequest:
+      type: object
+      properties:
+        discovery_run_id:
+          type: string
+          format: uuid
+        source_key:
+          type: string
+          default: tabiturient-aggregator
+        dry_run:
+          type: boolean
+          default: false
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          nullable: true
+    DiscoveryMaterializationResultItem:
+      type: object
+      required:
+        - endpoint_url
+        - parser_profile
+        - action
+      properties:
+        endpoint_url:
+          type: string
+        parser_profile:
+          type: string
+        action:
+          type: string
+          enum: [created, updated, existing, dry_run]
+    DiscoveryMaterializationResponse:
+      type: object
+      required:
+        - discovery_run_id
+        - source_key
+        - parent_endpoint_url
+        - fetched_at
+        - dry_run
+        - discovered_total
+        - materialized_count
+        - existing_count
+        - items
+      properties:
+        discovery_run_id:
+          type: string
+          format: uuid
+        source_key:
+          type: string
+        parent_endpoint_url:
+          type: string
+        fetched_at:
+          type: string
+          format: date-time
+        dry_run:
+          type: boolean
+        discovered_total:
+          type: integer
+        materialized_count:
+          type: integer
+        existing_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryMaterializationResultItem"
