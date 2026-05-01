@@ -4,7 +4,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from apps.parser.adapters.official_sites import OfficialSiteAdapter, OfficialSiteHtmlExtractor
+from apps.parser.adapters.official_sites import (
+    KubSUAbiturientHtmlExtractor,
+    OfficialSiteAdapter,
+    OfficialSiteHtmlExtractor,
+)
 from libs.source_sdk import FetchContext, FetchedArtifact, ParserExecutionStatus
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "parser_ingestion"
@@ -47,6 +51,15 @@ def build_context() -> FetchContext:
     )
 
 
+def build_kubsu_context() -> FetchContext:
+    return FetchContext(
+        crawl_run_id=uuid4(),
+        source_key="kubsu-official",
+        endpoint_url="https://www.kubsu.ru/ru/abiturient",
+        parser_profile="official_site.kubsu.abiturient_html",
+    )
+
+
 def build_artifact(payload: bytes | None = None) -> FetchedArtifact:
     content = payload or (FIXTURE_ROOT / "official_site_admissions.html").read_bytes()
     return FetchedArtifact(
@@ -60,6 +73,24 @@ def build_artifact(payload: bytes | None = None) -> FetchedArtifact:
         content_length=len(content),
         sha256=hashlib.sha256(content).hexdigest(),
         fetched_at=datetime(2026, 4, 21, 10, 0, tzinfo=UTC),
+        render_mode="http",
+        content=content,
+    )
+
+
+def build_kubsu_artifact(payload: bytes | None = None) -> FetchedArtifact:
+    content = payload or (FIXTURE_ROOT / "kubsu_abiturient_page.html").read_bytes()
+    return FetchedArtifact(
+        raw_artifact_id=uuid4(),
+        crawl_run_id=uuid4(),
+        source_key="kubsu-official",
+        source_url="https://www.kubsu.ru/ru/abiturient",
+        final_url="https://www.kubsu.ru/ru/abiturient",
+        http_status=200,
+        content_type="text/html; charset=utf-8",
+        content_length=len(content),
+        sha256=hashlib.sha256(content).hexdigest(),
+        fetched_at=datetime(2026, 5, 1, 10, 0, tzinfo=UTC),
         render_mode="http",
         content=content,
     )
@@ -107,6 +138,31 @@ def test_official_site_html_extractor_handles_address_and_phone_hints() -> None:
     assert by_field["contacts.phones"].value == ["+7 495 123-45-67"]
 
 
+def test_kubsu_abiturient_html_extractor_reads_canonical_and_admission_contacts() -> None:
+    context = build_kubsu_context()
+    artifact = build_kubsu_artifact()
+
+    fragments = KubSUAbiturientHtmlExtractor().extract(
+        context=context,
+        artifact=artifact,
+    )
+    by_field = {fragment.field_name: fragment for fragment in fragments}
+
+    assert by_field["canonical_name"].value == "Кубанский государственный университет"
+    assert by_field["canonical_name"].locator == "title"
+    assert by_field["contacts.website"].value == "https://www.kubsu.ru"
+    assert by_field["contacts.website"].locator == 'link[rel="canonical"]|endpoint_host'
+    assert by_field["contacts.emails"].value == ["abitur@kubsu.ru"]
+    assert by_field["contacts.emails"].locator == 'div#block-block-8 .icons.email'
+    assert by_field["contacts.phones"].value == ["+7 (861) 219-95-30"]
+    assert by_field["contacts.phones"].locator == 'div#block-block-8 .icons.phone'
+    assert all(fragment.source_key == "kubsu-official" for fragment in fragments)
+    assert (
+        by_field["contacts.emails"].metadata["source_field"]
+        == "footer.admission_email"
+    )
+
+
 def test_official_site_adapter_maps_fragments_to_intermediate_claims() -> None:
     context = build_context()
     artifact = build_artifact()
@@ -133,6 +189,27 @@ def test_official_site_adapter_maps_fragments_to_intermediate_claims() -> None:
     assert claims_by_field["location.city"]["raw_artifact_id"] == str(artifact.raw_artifact_id)
 
 
+def test_official_site_adapter_maps_kubsu_profile_fragments_to_intermediate_claims() -> None:
+    context = build_kubsu_context()
+    artifact = build_kubsu_artifact()
+    adapter = OfficialSiteAdapter(fetcher=FakeFetcher(artifact))
+    fragments = asyncio.run(adapter.extract(context, artifact))
+
+    records = asyncio.run(adapter.map_to_intermediate(context, artifact, fragments))
+
+    assert adapter.can_handle(context) is True
+    assert len(records) == 1
+    record = records[0]
+    assert record.source_key == "kubsu-official"
+    assert record.entity_type == "university"
+    assert record.entity_hint == "Кубанский государственный университет"
+    assert record.metadata["parser_profile"] == "official_site.kubsu.abiturient_html"
+    claims_by_field = {claim["field_name"]: claim for claim in record.claims}
+    assert claims_by_field["contacts.website"]["value"] == "https://www.kubsu.ru"
+    assert claims_by_field["contacts.phones"]["value"] == ["+7 (861) 219-95-30"]
+    assert claims_by_field["contacts.emails"]["value"] == ["abitur@kubsu.ru"]
+
+
 def test_official_site_adapter_executes_fetch_store_extract_and_map() -> None:
     context = build_context()
     artifact = build_artifact()
@@ -150,3 +227,22 @@ def test_official_site_adapter_executes_fetch_store_extract_and_map() -> None:
     assert result.artifact.storage_bucket == "raw-html"
     assert result.extracted_fragments == 4
     assert result.intermediate_records[0].entity_hint == "Example University"
+
+
+def test_official_site_adapter_executes_kubsu_profile_pipeline() -> None:
+    context = build_kubsu_context()
+    artifact = build_kubsu_artifact()
+    fetcher = FakeFetcher(artifact)
+    raw_store = FakeRawStore()
+    adapter = OfficialSiteAdapter(fetcher=fetcher, raw_store=raw_store)
+
+    result = asyncio.run(adapter.execute(context))
+
+    assert fetcher.calls == [context]
+    assert raw_store.calls == [(context, artifact)]
+    assert result.status == ParserExecutionStatus.SUCCEEDED
+    assert result.adapter_key == "official_sites:0.1.0"
+    assert result.artifact is not None
+    assert result.artifact.storage_bucket == "raw-html"
+    assert result.extracted_fragments == 4
+    assert result.intermediate_records[0].entity_hint == "Кубанский государственный университет"
