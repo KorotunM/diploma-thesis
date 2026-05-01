@@ -8,6 +8,8 @@ from urllib.parse import urljoin, urlparse
 
 from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 
+from .base import OfficialSiteFragmentExtractor
+
 EMAIL_PATTERN = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
 PHONE_PATTERN = re.compile(r"(?:\+?\d[\d\s().-]{7,}\d)")
 WHITESPACE_PATTERN = re.compile(r"\s+")
@@ -128,7 +130,9 @@ class _OfficialSiteHtmlParser(HTMLParser):
         return title or None
 
 
-class OfficialSiteHtmlExtractor:
+class OfficialSiteHtmlExtractor(OfficialSiteFragmentExtractor):
+    supported_parser_profiles = ("official_site.default",)
+
     def extract(
         self,
         *,

@@ -13,7 +13,9 @@ from libs.source_sdk import (
     SourceAdapter,
 )
 
+from .base import OfficialSiteFragmentExtractor
 from .html_extractor import OfficialSiteHtmlExtractor
+from .kubsu_abiturient_html_extractor import KubSUAbiturientHtmlExtractor
 
 OFFICIAL_SITE_SOURCE_KEY = "official_sites"
 OFFICIAL_SITE_ADAPTER_VERSION = "0.1.0"
@@ -22,25 +24,32 @@ OFFICIAL_SITE_ADAPTER_VERSION = "0.1.0"
 class OfficialSiteAdapter(SourceAdapter):
     source_key = OFFICIAL_SITE_SOURCE_KEY
     adapter_version = OFFICIAL_SITE_ADAPTER_VERSION
-    supported_parser_profiles = ("official_site.default",)
+    supported_parser_profiles = (
+        "official_site.default",
+        "official_site.kubsu.abiturient_html",
+    )
 
     def __init__(
         self,
         *,
         fetcher: RawFetcher,
         raw_store: RawArtifactStore | None = None,
-        extractor: OfficialSiteHtmlExtractor | None = None,
+        extractor: OfficialSiteFragmentExtractor | None = None,
+        extractors: tuple[OfficialSiteFragmentExtractor, ...] | None = None,
     ) -> None:
         self._fetcher = fetcher
         self._raw_store = raw_store
-        self._extractor = extractor or OfficialSiteHtmlExtractor()
+        self._extractors = self._build_extractors(
+            extractor=extractor,
+            extractors=extractors,
+        )
 
     @property
     def adapter_key(self) -> str:
         return f"official_sites:{self.adapter_version}"
 
     def can_handle(self, context: FetchContext) -> bool:
-        return context.parser_profile in self.supported_parser_profiles
+        return self._resolve_extractor(context) is not None
 
     async def fetch(self, context: FetchContext) -> FetchedArtifact:
         return await self._fetcher.fetch(context)
@@ -59,7 +68,13 @@ class OfficialSiteAdapter(SourceAdapter):
         context: FetchContext,
         artifact: FetchedArtifact,
     ) -> Sequence[ExtractedFragment]:
-        return self._extractor.extract(context=context, artifact=artifact)
+        extractor = self._resolve_extractor(context)
+        if extractor is None:
+            raise ValueError(
+                "No official-site extractor is registered for "
+                f"parser_profile={context.parser_profile}."
+            )
+        return extractor.extract(context=context, artifact=artifact)
 
     async def map_to_intermediate(
         self,
@@ -130,3 +145,33 @@ class OfficialSiteAdapter(SourceAdapter):
         if isinstance(value, float):
             return "float"
         return "str"
+
+    @staticmethod
+    def _build_extractors(
+        *,
+        extractor: OfficialSiteFragmentExtractor | None,
+        extractors: tuple[OfficialSiteFragmentExtractor, ...] | None,
+    ) -> tuple[OfficialSiteFragmentExtractor, ...]:
+        if extractor is not None and extractors is not None:
+            raise ValueError("Pass either extractor or extractors, not both.")
+        if extractors is not None:
+            return extractors
+        if extractor is not None:
+            return (extractor,)
+        return (
+            OfficialSiteHtmlExtractor(),
+            KubSUAbiturientHtmlExtractor(),
+        )
+
+    def _resolve_extractor(
+        self,
+        context: FetchContext,
+    ) -> OfficialSiteFragmentExtractor | None:
+        return next(
+            (
+                extractor
+                for extractor in self._extractors
+                if extractor.can_handle(context)
+            ),
+            None,
+        )
