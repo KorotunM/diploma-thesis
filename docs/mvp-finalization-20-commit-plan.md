@@ -93,7 +93,7 @@
 Нужно от тебя:
 - только ответ по полям из commit 5.
 
-### Commit 7
+### Commit 7 
 `test(parser): add tabiturient globalrating extractor specs for structured ranking rows`
 
 Что делаем:

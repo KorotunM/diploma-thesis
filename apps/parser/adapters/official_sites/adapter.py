@@ -16,6 +16,7 @@ from libs.source_sdk import (
 from .base import OfficialSiteFragmentExtractor
 from .html_extractor import OfficialSiteHtmlExtractor
 from .kubsu_abiturient_html_extractor import KubSUAbiturientHtmlExtractor
+from .kubsu_programs_html_extractor import KubSUProgramsHtmlExtractor
 
 OFFICIAL_SITE_SOURCE_KEY = "official_sites"
 OFFICIAL_SITE_ADAPTER_VERSION = "0.1.0"
@@ -27,6 +28,7 @@ class OfficialSiteAdapter(SourceAdapter):
     supported_parser_profiles = (
         "official_site.default",
         "official_site.kubsu.abiturient_html",
+        "official_site.kubsu.programs_html",
     )
 
     def __init__(
@@ -82,33 +84,33 @@ class OfficialSiteAdapter(SourceAdapter):
         artifact: FetchedArtifact,
         fragments: Sequence[ExtractedFragment],
     ) -> Sequence[IntermediateRecord]:
-        claims = [
-            self._claim_from_fragment(
-                context=context,
-                artifact=artifact,
-                fragment=fragment,
+        records: list[IntermediateRecord] = []
+        for group_key, grouped_fragments in self._group_fragments(fragments).items():
+            claims = [
+                self._claim_from_fragment(
+                    context=context,
+                    artifact=artifact,
+                    fragment=fragment,
+                )
+                for fragment in grouped_fragments
+            ]
+            records.append(
+                IntermediateRecord(
+                    source_key=context.source_key,
+                    entity_type=self._entity_type(grouped_fragments),
+                    entity_hint=self._entity_hint(grouped_fragments),
+                    claims=claims,
+                    fragment_ids=[fragment.fragment_id for fragment in grouped_fragments],
+                    metadata={
+                        "adapter_key": self.adapter_key,
+                        "adapter_version": self.adapter_version,
+                        "parser_profile": context.parser_profile,
+                        "raw_artifact_id": str(artifact.raw_artifact_id),
+                        "record_group_key": group_key,
+                    },
+                )
             )
-            for fragment in fragments
-        ]
-        canonical_name = next(
-            (fragment.value for fragment in fragments if fragment.field_name == "canonical_name"),
-            None,
-        )
-        return [
-            IntermediateRecord(
-                source_key=context.source_key,
-                entity_type="university",
-                entity_hint=canonical_name,
-                claims=claims,
-                fragment_ids=[fragment.fragment_id for fragment in fragments],
-                metadata={
-                    "adapter_key": self.adapter_key,
-                    "adapter_version": self.adapter_version,
-                    "parser_profile": context.parser_profile,
-                    "raw_artifact_id": str(artifact.raw_artifact_id),
-                },
-            )
-        ]
+        return records
 
     def _claim_from_fragment(
         self,
@@ -147,6 +149,44 @@ class OfficialSiteAdapter(SourceAdapter):
         return "str"
 
     @staticmethod
+    def _group_fragments(
+        fragments: Sequence[ExtractedFragment],
+    ) -> dict[str, list[ExtractedFragment]]:
+        groups: dict[str, list[ExtractedFragment]] = {}
+        for fragment in fragments:
+            raw_group_key = fragment.metadata.get("record_group_key")
+            group_key = (
+                str(raw_group_key).strip()
+                if isinstance(raw_group_key, str) and raw_group_key.strip()
+                else "__default__"
+            )
+            groups.setdefault(group_key, []).append(fragment)
+        return groups
+
+    @staticmethod
+    def _entity_hint(fragments: Sequence[ExtractedFragment]) -> str | None:
+        for field_name in ("canonical_name", "programs.name", "programs.code"):
+            value = next(
+                (
+                    fragment.value
+                    for fragment in fragments
+                    if fragment.field_name == field_name
+                ),
+                None,
+            )
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    @staticmethod
+    def _entity_type(fragments: Sequence[ExtractedFragment]) -> str:
+        for fragment in fragments:
+            entity_type = fragment.metadata.get("entity_type")
+            if isinstance(entity_type, str) and entity_type.strip():
+                return entity_type.strip()
+        return "university"
+
+    @staticmethod
     def _build_extractors(
         *,
         extractor: OfficialSiteFragmentExtractor | None,
@@ -161,6 +201,7 @@ class OfficialSiteAdapter(SourceAdapter):
         return (
             OfficialSiteHtmlExtractor(),
             KubSUAbiturientHtmlExtractor(),
+            KubSUProgramsHtmlExtractor(),
         )
 
     def _resolve_extractor(
