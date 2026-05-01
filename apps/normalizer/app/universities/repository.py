@@ -99,6 +99,32 @@ class UniversityBootstrapRepository:
             return None
         return self._university_from_row(row)
 
+    def find_university_by_id(
+        self,
+        university_id: UUID,
+    ) -> UniversityRecord | None:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    university_id,
+                    canonical_name,
+                    canonical_domain,
+                    country_code,
+                    city_name,
+                    created_at,
+                    metadata
+                FROM core.university
+                WHERE university_id = :university_id
+                """
+            ),
+            {"university_id": university_id},
+        )
+        row = result.mappings().one_or_none()
+        if row is None:
+            return None
+        return self._university_from_row(row)
+
     def find_universities_by_canonical_name_similarity(
         self,
         canonical_name: str,

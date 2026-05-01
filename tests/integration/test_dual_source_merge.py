@@ -238,6 +238,7 @@ class InMemoryDualSourceSession:
         value_type: str,
         locator: str,
         confidence: float,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return {
             "fragment_id": uuid4(),
@@ -251,7 +252,7 @@ class InMemoryDualSourceSession:
             "value_type": value_type,
             "locator": locator,
             "confidence": confidence,
-            "metadata": json_to_db({"seeded": True}),
+            "metadata": json_to_db(metadata or {"seeded": True}),
         }
 
     def execute(self, statement: str, params: dict[str, Any]) -> MappingResult:
@@ -279,6 +280,8 @@ class InMemoryDualSourceSession:
             return MappingResult(rows=self._list_evidence_for_university(params["university_id"]))
         if "from normalize.claim" in sql and "from core.university" in sql:
             return MappingResult(rows=self._list_claims_for_university(params["university_id"]))
+        if "from core.university" in sql and "where university_id = :university_id" in sql:
+            return MappingResult(row=self.universities.get(params["university_id"]))
         if "insert into core.university" in sql:
             return MappingResult(row=self._upsert_university(params))
         if "insert into core.resolved_fact" in sql:
@@ -496,10 +499,14 @@ def payload_for(
     session: InMemoryDualSourceSession,
     *,
     source_key: str,
+    parsed_document_id: UUID | None = None,
 ) -> NormalizeRequestPayload:
-    parsed_document = next(
-        row for row in session.parsed_documents.values() if row["source_key"] == source_key
-    )
+    if parsed_document_id is None:
+        parsed_document = next(
+            row for row in session.parsed_documents.values() if row["source_key"] == source_key
+        )
+    else:
+        parsed_document = session.parsed_documents[parsed_document_id]
     return NormalizeRequestPayload(
         crawl_run_id=parsed_document["crawl_run_id"],
         source_key=source_key,
@@ -587,3 +594,351 @@ def test_dual_source_merge_prefers_authoritative_claims_and_exposes_rationale() 
         == "Example University"
     )
     assert session.commit_count == 6
+
+
+def test_dual_source_merge_merges_authoritative_program_and_admission_claims_into_card() -> None:
+    session = InMemoryDualSourceSession()
+    session.sources["qs-world-ranking"] = {
+        "source_id": uuid4(),
+        "source_key": "qs-world-ranking",
+        "source_type": "ranking",
+        "trust_tier": SourceTrustTier.TRUSTED.value,
+        "is_active": True,
+        "metadata": json_to_db({"provider": "qs-world"}),
+    }
+
+    programs_document_id = uuid4()
+    programs_raw_artifact_id = uuid4()
+    session.parsed_documents[programs_document_id] = {
+        "parsed_document_id": programs_document_id,
+        "crawl_run_id": uuid4(),
+        "raw_artifact_id": programs_raw_artifact_id,
+        "source_key": "msu-official",
+        "parser_profile": "official_site.kubsu.programs_html",
+        "parser_version": "official.0.2.0",
+        "entity_type": "admission_program",
+        "entity_hint": "Geology",
+        "parsed_at": datetime(2026, 4, 26, 13, 5, tzinfo=UTC),
+        "metadata": json_to_db({"adapter": "official_sites"}),
+    }
+    session.fragments_by_document[programs_document_id] = [
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="contacts.emails",
+            value=["admissions@example.edu"],
+            value_type="list",
+            locator=".admission-email",
+            confidence=0.93,
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="contacts.phones",
+            value=["+7 495 000-00-00"],
+            value_type="list",
+            locator=".admission-phone",
+            confidence=0.92,
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="programs.faculty",
+            value="Faculty of Science",
+            value_type="str",
+            locator='table.programs row[key="science:05.03.01:0"].faculty',
+            confidence=0.99,
+            metadata={
+                "record_group_key": "science:05.03.01:0",
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_year": 2025,
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="programs.code",
+            value="05.03.01",
+            value_type="str",
+            locator='table.programs row[key="science:05.03.01:0"].code',
+            confidence=0.99,
+            metadata={
+                "record_group_key": "science:05.03.01:0",
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_year": 2025,
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="programs.name",
+            value="Geology",
+            value_type="str",
+            locator='table.programs row[key="science:05.03.01:0"].name',
+            confidence=0.98,
+            metadata={
+                "record_group_key": "science:05.03.01:0",
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_year": 2025,
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="programs.budget_places",
+            value=25,
+            value_type="int",
+            locator='table.programs row[key="science:05.03.01:0"].budget_places',
+            confidence=0.99,
+            metadata={
+                "record_group_key": "science:05.03.01:0",
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_year": 2025,
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="programs.passing_score",
+            value=182,
+            value_type="int",
+            locator='table.programs row[key="science:05.03.01:0"].passing_score',
+            confidence=0.99,
+            metadata={
+                "record_group_key": "science:05.03.01:0",
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_year": 2025,
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=programs_document_id,
+            raw_artifact_id=programs_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/programs",
+            field_name="programs.year",
+            value=2025,
+            value_type="int",
+            locator="table.programs.header.passing_year",
+            confidence=0.99,
+            metadata={
+                "record_group_key": "science:05.03.01:0",
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_year": 2025,
+            },
+        ),
+    ]
+
+    ranking_document_id = uuid4()
+    ranking_raw_artifact_id = uuid4()
+    rating_item_key = "qs-world:2026:world_overall:example-university"
+    session.parsed_documents[ranking_document_id] = {
+        "parsed_document_id": ranking_document_id,
+        "crawl_run_id": uuid4(),
+        "raw_artifact_id": ranking_raw_artifact_id,
+        "source_key": "qs-world-ranking",
+        "parser_profile": "ranking.qs_world_html",
+        "parser_version": "ranking.0.1.0",
+        "entity_type": "ranking_snapshot",
+        "entity_hint": "Example University",
+        "parsed_at": datetime(2026, 4, 26, 13, 20, tzinfo=UTC),
+        "metadata": json_to_db({"adapter": "rankings"}),
+    }
+    session.fragments_by_document[ranking_document_id] = [
+        session._fragment_row(
+            parsed_document_id=ranking_document_id,
+            raw_artifact_id=ranking_raw_artifact_id,
+            source_key="qs-world-ranking",
+            source_url="https://rankings.example.com/universities/example-university",
+            field_name="canonical_name",
+            value="Example University",
+            value_type="str",
+            locator="table.rankings.name",
+            confidence=0.94,
+        ),
+        session._fragment_row(
+            parsed_document_id=ranking_document_id,
+            raw_artifact_id=ranking_raw_artifact_id,
+            source_key="qs-world-ranking",
+            source_url="https://rankings.example.com/universities/example-university",
+            field_name="contacts.website",
+            value="https://example.edu",
+            value_type="str",
+            locator="table.rankings.website",
+            confidence=0.93,
+        ),
+        session._fragment_row(
+            parsed_document_id=ranking_document_id,
+            raw_artifact_id=ranking_raw_artifact_id,
+            source_key="qs-world-ranking",
+            source_url="https://rankings.example.com/universities/example-university",
+            field_name="ratings.provider",
+            value="QS World University Rankings",
+            value_type="str",
+            locator="table.rankings.provider",
+            confidence=0.98,
+            metadata={
+                "rating_item_key": rating_item_key,
+                "provider_key": "qs-world",
+                "provider_name": "QS World University Rankings",
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=ranking_document_id,
+            raw_artifact_id=ranking_raw_artifact_id,
+            source_key="qs-world-ranking",
+            source_url="https://rankings.example.com/universities/example-university",
+            field_name="ratings.year",
+            value=2026,
+            value_type="int",
+            locator="table.rankings.year",
+            confidence=0.97,
+            metadata={
+                "rating_item_key": rating_item_key,
+                "provider_key": "qs-world",
+                "provider_name": "QS World University Rankings",
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=ranking_document_id,
+            raw_artifact_id=ranking_raw_artifact_id,
+            source_key="qs-world-ranking",
+            source_url="https://rankings.example.com/universities/example-university",
+            field_name="ratings.metric",
+            value="world_overall",
+            value_type="str",
+            locator="table.rankings.metric",
+            confidence=0.96,
+            metadata={
+                "rating_item_key": rating_item_key,
+                "provider_key": "qs-world",
+                "provider_name": "QS World University Rankings",
+                "scale": "global",
+            },
+        ),
+        session._fragment_row(
+            parsed_document_id=ranking_document_id,
+            raw_artifact_id=ranking_raw_artifact_id,
+            source_key="qs-world-ranking",
+            source_url="https://rankings.example.com/universities/example-university",
+            field_name="ratings.value",
+            value="151",
+            value_type="str",
+            locator="table.rankings.value",
+            confidence=0.95,
+            metadata={
+                "rating_item_key": rating_item_key,
+                "provider_key": "qs-world",
+                "provider_name": "QS World University Rankings",
+                "rank_display": "#151",
+                "scale": "global",
+            },
+        ),
+    ]
+
+    (
+        claim_service,
+        bootstrap_service,
+        fact_service,
+        projection_service,
+        backend_card_service,
+    ) = build_services(session)
+
+    official_claims = claim_service.build_claims_from_extracted_fragments(
+        payload_for(session, source_key="msu-official")
+    )
+    official_bootstrap = bootstrap_service.consolidate_claims(official_claims)
+    programs_claims = claim_service.build_claims_from_extracted_fragments(
+        payload_for(
+            session,
+            source_key="msu-official",
+            parsed_document_id=programs_document_id,
+        )
+    )
+    merged_authoritative = bootstrap_service.consolidate_claims(programs_claims)
+    aggregator_claims = claim_service.build_claims_from_extracted_fragments(
+        payload_for(session, source_key="msu-aggregator")
+    )
+    merged_secondary = bootstrap_service.consolidate_claims(aggregator_claims)
+    ranking_claims = claim_service.build_claims_from_extracted_fragments(
+        payload_for(
+            session,
+            source_key="qs-world-ranking",
+            parsed_document_id=ranking_document_id,
+        )
+    )
+    merged_bootstrap = bootstrap_service.consolidate_claims(ranking_claims)
+    fact_result = fact_service.generate_for_bootstrap(merged_bootstrap)
+    projection_result = projection_service.create_projection(fact_result)
+    card_response = backend_card_service.get_latest_card(
+        projection_result.projection.university_id
+    )
+
+    assert merged_authoritative.university.university_id == official_bootstrap.university.university_id
+    assert merged_authoritative.university.metadata["merge_strategy"] == (
+        "authoritative_source_document_merge"
+    )
+    assert merged_secondary.university.metadata["merge_strategy"] == (
+        "authoritative_anchor_exact_match_merge"
+    )
+    assert {source.source_key for source in merged_bootstrap.sources_used} == {
+        "msu-official",
+        "msu-aggregator",
+        "qs-world-ranking",
+    }
+
+    facts_by_field = {fact.field_name: fact for fact in fact_result.facts}
+    assert facts_by_field["contacts.emails"].value == ["admissions@example.edu"]
+    assert facts_by_field["contacts.phones"].value == ["+7 495 000-00-00"]
+    program_fact = facts_by_field["programs.science:05.03.01:0"]
+    assert program_fact.value == {
+        "faculty": "Faculty of Science",
+        "code": "05.03.01",
+        "name": "Geology",
+        "budget_places": 25,
+        "passing_score": 182,
+        "year": 2025,
+    }
+    assert facts_by_field[
+        "ratings.qs-world:2026:world_overall:example-university"
+    ].value["value"] == "151"
+
+    assert card_response.contacts.emails == ["admissions@example.edu"]
+    assert card_response.contacts.phones == ["+7 495 000-00-00"]
+    assert len(card_response.programs) == 1
+    assert card_response.programs[0]["faculty"] == "Faculty of Science"
+    assert card_response.programs[0]["code"] == "05.03.01"
+    assert card_response.programs[0]["name"] == "Geology"
+    assert card_response.programs[0]["budget_places"] == 25
+    assert card_response.programs[0]["passing_score"] == 182
+    assert card_response.programs[0]["year"] == 2025
+    assert card_response.ratings[0].provider == "QS World University Rankings"
+    assert "programs.science:05.03.01:0" in card_response.field_attribution
+    assert card_response.field_attribution["contacts.emails"].source_key == "msu-official"
+    assert card_response.field_attribution["programs.science:05.03.01:0"].source_key == (
+        "msu-official"
+    )
+    assert {source.source_url for source in card_response.sources} == {
+        "https://www.example.edu/admissions",
+        "https://www.example.edu/programs",
+        "https://rankings.example.com/universities/example-university",
+    }

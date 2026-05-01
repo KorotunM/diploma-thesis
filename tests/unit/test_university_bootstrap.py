@@ -40,6 +40,9 @@ class MappingResult:
     def one_or_none(self) -> dict[str, Any] | None:
         return self._row
 
+    def all(self) -> list[dict[str, Any]]:
+        return [] if self._row is None else [self._row]
+
 
 class FakeUniversityBootstrapSession:
     def __init__(self) -> None:
@@ -62,6 +65,12 @@ class FakeUniversityBootstrapSession:
         sql = " ".join(statement.split()).lower()
         if "from ingestion.source" in sql:
             return MappingResult(self.sources.get(params["source_key"]))
+        if "from normalize.claim_evidence" in sql and "from core.university" in sql:
+            return MappingResult()
+        if "from normalize.claim" in sql and "from core.university" in sql:
+            return MappingResult()
+        if "from core.university" in sql and "where university_id = :university_id" in sql:
+            return MappingResult(self.universities.get(params["university_id"]))
         if "insert into core.university" in sql:
             return MappingResult(self._upsert_university(params))
         raise AssertionError(f"Unexpected SQL statement: {statement}")

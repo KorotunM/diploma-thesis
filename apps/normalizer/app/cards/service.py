@@ -3,7 +3,11 @@ from __future__ import annotations
 from time import perf_counter
 from uuid import UUID
 
-from apps.normalizer.app.facts import ResolvedFactBuildResult, ResolvedFactRecord
+from apps.normalizer.app.facts import (
+    PROGRAM_FIELD_PREFIX,
+    ResolvedFactBuildResult,
+    ResolvedFactRecord,
+)
 from apps.normalizer.app.search_docs import UniversitySearchDocProjectionService
 from libs.domain.university.models import (
     CardVersionInfo,
@@ -117,11 +121,13 @@ class UniversityCardProjectionService:
             ),
             contacts=ContactsInfo(
                 website=self._string_fact_value(facts_by_field.get("contacts.website")),
+                emails=self._string_list_fact_value(facts_by_field.get("contacts.emails")),
+                phones=self._string_list_fact_value(facts_by_field.get("contacts.phones")),
             ),
             institutional=InstitutionalInfo.model_validate(
                 {"type": None, "founded_year": None}
             ),
-            programs=[],
+            programs=self._programs(fact_result.facts),
             tuition=[],
             ratings=self._ratings(fact_result.facts),
             dormitory={},
@@ -151,6 +157,22 @@ class UniversityCardProjectionService:
             return None
         value = fact.value.strip()
         return value or None
+
+    @staticmethod
+    def _string_list_fact_value(fact: ResolvedFactRecord | None) -> list[str]:
+        if fact is None or not isinstance(fact.value, list):
+            return []
+        result: list[str] = []
+        seen: set[str] = set()
+        for value in fact.value:
+            if not isinstance(value, str):
+                continue
+            cleaned = value.strip()
+            if not cleaned or cleaned in seen:
+                continue
+            seen.add(cleaned)
+            result.append(cleaned)
+        return result
 
     def _sources(self, facts: list[ResolvedFactRecord]) -> list[FieldAttribution]:
         deduped: dict[tuple[str, str], set[UUID]] = {}
@@ -198,3 +220,28 @@ class UniversityCardProjectionService:
                 continue
             ratings.append(RatingItem.model_validate(fact.value))
         return ratings
+
+    @staticmethod
+    def _programs(facts: list[ResolvedFactRecord]) -> list[dict[str, object]]:
+        programs: list[dict[str, object]] = []
+        for fact in sorted(facts, key=lambda item: item.field_name):
+            if not fact.field_name.startswith(PROGRAM_FIELD_PREFIX):
+                continue
+            if not isinstance(fact.value, dict):
+                continue
+            programs.append(
+                {
+                    "faculty": fact.value.get("faculty"),
+                    "code": fact.value.get("code"),
+                    "name": fact.value.get("name"),
+                    "budget_places": fact.value.get("budget_places"),
+                    "passing_score": fact.value.get("passing_score"),
+                    "year": fact.value.get("year"),
+                    "confidence": fact.fact_score,
+                    "sources": [
+                        source.model_dump(mode="python")
+                        for source in UniversityCardProjectionService._field_sources(fact)
+                    ],
+                }
+            )
+        return programs

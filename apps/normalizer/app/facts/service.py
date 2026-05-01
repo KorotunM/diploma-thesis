@@ -22,12 +22,25 @@ CANONICAL_FACT_FIELDS = (
     "location.city",
     "location.country_code",
 )
+SUPPORTING_FACT_FIELDS = (
+    "contacts.emails",
+    "contacts.phones",
+)
 RATING_FIELD_PREFIX = "ratings."
+PROGRAM_FIELD_PREFIX = "programs."
 RATING_COMPONENT_FIELDS = (
     "ratings.provider",
     "ratings.year",
     "ratings.metric",
     "ratings.value",
+)
+PROGRAM_COMPONENT_FIELDS = (
+    "programs.faculty",
+    "programs.code",
+    "programs.name",
+    "programs.budget_places",
+    "programs.passing_score",
+    "programs.year",
 )
 
 
@@ -78,7 +91,7 @@ class ResolvedFactGenerationService:
                     evidence=evidence_by_claim_id.get(claim.claim_id, []),
                     source_trust_tier=source_tiers[claim.source_key],
                 )
-                for field_name in self._canonical_fields
+                for field_name in [*self._canonical_fields, *SUPPORTING_FACT_FIELDS]
                 if (claim := claims_by_field.get(field_name)) is not None
             ]
             rating_candidates = self._rating_candidates(
@@ -87,6 +100,13 @@ class ResolvedFactGenerationService:
                 source_tiers=source_tiers,
             )
             candidates.extend(rating_candidates)
+            candidates.extend(
+                self._program_candidates(
+                    bootstrap_result=bootstrap_result,
+                    evidence_by_claim_id=evidence_by_claim_id,
+                    source_tiers=source_tiers,
+                )
+            )
             facts = self._repository.upsert_resolved_facts(candidates)
             self._repository.commit()
             self._metrics.record_normalize_run(
@@ -147,7 +167,7 @@ class ResolvedFactGenerationService:
         source_tiers: dict[str, SourceTrustTier],
     ) -> dict[str, ClaimRecord]:
         result: dict[str, ClaimRecord] = {}
-        for field_name in self._canonical_fields:
+        for field_name in [*self._canonical_fields, *SUPPORTING_FACT_FIELDS]:
             selected = self._policy_matrix.select_best_claim(
                 field_name=field_name,
                 claims=(claim for claim in claims if claim.field_name == field_name),
@@ -249,6 +269,37 @@ class ResolvedFactGenerationService:
             )
         return candidates
 
+    def _program_candidates(
+        self,
+        *,
+        bootstrap_result: UniversityBootstrapResult,
+        evidence_by_claim_id: dict[UUID, list[ClaimEvidenceRecord]],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> list[ResolvedFactCandidate]:
+        claims_by_item_key = self._program_claims_by_item_key(bootstrap_result.claims_used)
+        candidates: list[ResolvedFactCandidate] = []
+        for program_item_key, program_claims in sorted(claims_by_item_key.items()):
+            selected_claims = self._select_program_claims(
+                claims=program_claims,
+                source_tiers=source_tiers,
+            )
+            if selected_claims is None:
+                continue
+            evidence = self._selected_program_evidence(
+                selected_claims=selected_claims,
+                evidence_by_claim_id=evidence_by_claim_id,
+            )
+            candidates.append(
+                self._program_candidate(
+                    bootstrap_result=bootstrap_result,
+                    program_item_key=program_item_key,
+                    selected_claims=selected_claims,
+                    evidence=evidence,
+                    source_tiers=source_tiers,
+                )
+            )
+        return candidates
+
     @staticmethod
     def _rating_claims_by_item_key(
         claims: list[ClaimRecord],
@@ -289,6 +340,51 @@ class ResolvedFactGenerationService:
     ) -> list[ClaimEvidenceRecord]:
         evidence: dict[UUID, ClaimEvidenceRecord] = {}
         for field_name in RATING_COMPONENT_FIELDS:
+            claim = selected_claims[field_name]
+            for record in evidence_by_claim_id.get(claim.claim_id, []):
+                evidence.setdefault(record.evidence_id, record)
+        return list(evidence.values())
+
+    @staticmethod
+    def _program_claims_by_item_key(
+        claims: list[ClaimRecord],
+    ) -> dict[str, list[ClaimRecord]]:
+        grouped: dict[str, list[ClaimRecord]] = {}
+        for claim in claims:
+            if claim.field_name not in PROGRAM_COMPONENT_FIELDS:
+                continue
+            program_item_key = ResolvedFactGenerationService._program_item_key(claim)
+            if program_item_key is None:
+                continue
+            grouped.setdefault(program_item_key, []).append(claim)
+        return grouped
+
+    def _select_program_claims(
+        self,
+        *,
+        claims: list[ClaimRecord],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> dict[str, ClaimRecord] | None:
+        selected: dict[str, ClaimRecord] = {}
+        for field_name in PROGRAM_COMPONENT_FIELDS:
+            claim = self._policy_matrix.select_best_claim(
+                field_name=field_name,
+                claims=(item for item in claims if item.field_name == field_name),
+                source_tiers=source_tiers,
+            )
+            if claim is None:
+                return None
+            selected[field_name] = claim
+        return selected
+
+    @staticmethod
+    def _selected_program_evidence(
+        *,
+        selected_claims: dict[str, ClaimRecord],
+        evidence_by_claim_id: dict[UUID, list[ClaimEvidenceRecord]],
+    ) -> list[ClaimEvidenceRecord]:
+        evidence: dict[UUID, ClaimEvidenceRecord] = {}
+        for field_name in PROGRAM_COMPONENT_FIELDS:
             claim = selected_claims[field_name]
             for record in evidence_by_claim_id.get(claim.claim_id, []):
                 evidence.setdefault(record.evidence_id, record)
@@ -365,6 +461,81 @@ class ResolvedFactGenerationService:
             },
         )
 
+    def _program_candidate(
+        self,
+        *,
+        bootstrap_result: UniversityBootstrapResult,
+        program_item_key: str,
+        selected_claims: dict[str, ClaimRecord],
+        evidence: list[ClaimEvidenceRecord],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> ResolvedFactCandidate:
+        faculty_claim = selected_claims["programs.faculty"]
+        code_claim = selected_claims["programs.code"]
+        name_claim = selected_claims["programs.name"]
+        budget_places_claim = selected_claims["programs.budget_places"]
+        passing_score_claim = selected_claims["programs.passing_score"]
+        year_claim = selected_claims["programs.year"]
+        selected_program_claims = [
+            selected_claims[field_name] for field_name in PROGRAM_COMPONENT_FIELDS
+        ]
+        source_key = name_claim.source_key
+        policy = self._policy_matrix.policy_for("programs.name")
+        program_field_name = f"{PROGRAM_FIELD_PREFIX}{program_item_key}"
+        return ResolvedFactCandidate(
+            resolved_fact_id=deterministic_resolved_fact_id(
+                university_id=bootstrap_result.university.university_id,
+                field_name=program_field_name,
+                card_version=self._card_version,
+            ),
+            university_id=bootstrap_result.university.university_id,
+            field_name=program_field_name,
+            value={
+                "faculty": faculty_claim.value,
+                "code": code_claim.value,
+                "name": name_claim.value,
+                "budget_places": budget_places_claim.value,
+                "passing_score": passing_score_claim.value,
+                "year": year_claim.value,
+            },
+            value_type="program_item",
+            fact_score=min(claim.parser_confidence for claim in selected_program_claims),
+            resolution_policy=policy.policy_name,
+            card_version=self._card_version,
+            selected_claim_ids=[claim.claim_id for claim in selected_program_claims],
+            selected_evidence_ids=[record.evidence_id for record in evidence],
+            metadata={
+                "source_key": source_key,
+                "source_trust_tier": source_tiers[source_key].value,
+                "source_keys": sorted(
+                    {
+                        claim.source_key
+                        for claim in bootstrap_result.claims_used
+                        if self._program_item_key(claim) == program_item_key
+                    }
+                ),
+                "parser_version": name_claim.parser_version,
+                "normalizer_version": name_claim.normalizer_version,
+                "entity_hint": name_claim.entity_hint,
+                "bootstrap_policy": bootstrap_result.university.metadata.get(
+                    "bootstrap_policy"
+                ),
+                "field_resolution_policy": policy.policy_name,
+                "allowed_trust_tiers": [tier.value for tier in policy.allowed_tiers],
+                "preferred_trust_tiers": [tier.value for tier in policy.preferred_tiers],
+                "resolution_strategy": policy.strategy.value,
+                "source_urls": sorted({record.source_url for record in evidence}),
+                "program_item_key": program_item_key,
+                "faculty": self._metadata_string(faculty_claim, "faculty")
+                or self._string_value(faculty_claim),
+                "program_code": self._metadata_string(code_claim, "program_code")
+                or self._string_value(code_claim),
+                "program_year": self._metadata_int(year_claim, "program_year")
+                or self._int_value(year_claim),
+                "program_components": list(PROGRAM_COMPONENT_FIELDS),
+            },
+        )
+
     @staticmethod
     def _metadata_string(claim: ClaimRecord, key: str) -> str | None:
         fragment_metadata = claim.metadata.get("fragment_metadata")
@@ -382,7 +553,29 @@ class ResolvedFactGenerationService:
         return ResolvedFactGenerationService._metadata_string(claim, "rating_item_key")
 
     @staticmethod
+    def _program_item_key(claim: ClaimRecord) -> str | None:
+        return ResolvedFactGenerationService._metadata_string(claim, "record_group_key")
+
+    @staticmethod
     def _string_value(claim: ClaimRecord) -> str | None:
         if isinstance(claim.value, str) and claim.value.strip():
             return claim.value.strip()
+        return None
+
+    @staticmethod
+    def _int_value(claim: ClaimRecord) -> int | None:
+        if isinstance(claim.value, int):
+            return claim.value
+        return None
+
+    @staticmethod
+    def _metadata_int(claim: ClaimRecord, key: str) -> int | None:
+        fragment_metadata = claim.metadata.get("fragment_metadata")
+        if isinstance(fragment_metadata, dict):
+            value = fragment_metadata.get(key)
+            if isinstance(value, int):
+                return value
+        value = claim.metadata.get(key)
+        if isinstance(value, int):
+            return value
         return None

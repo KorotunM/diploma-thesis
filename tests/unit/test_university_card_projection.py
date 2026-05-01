@@ -9,6 +9,7 @@ from apps.normalizer.app.cards import (
     UniversityCardProjectionService,
 )
 from apps.normalizer.app.facts import (
+    PROGRAM_FIELD_PREFIX,
     RATING_FIELD_PREFIX,
     ResolvedFactBuildResult,
     ResolvedFactRecord,
@@ -143,6 +144,20 @@ def build_fact_result() -> ResolvedFactBuildResult:
             ),
             fact(
                 university_id=university_id,
+                field_name="contacts.emails",
+                value=["admissions@example.edu"],
+                score=0.89,
+                value_type="list",
+            ),
+            fact(
+                university_id=university_id,
+                field_name="contacts.phones",
+                value=["+7 495 000-00-00"],
+                score=0.88,
+                value_type="list",
+            ),
+            fact(
+                university_id=university_id,
                 field_name="location.city",
                 value="Moscow",
                 score=0.88,
@@ -170,6 +185,24 @@ def build_fact_result() -> ResolvedFactBuildResult:
                     "source_urls": [
                         "https://rankings.example.com/universities/example-university"
                     ],
+                },
+            ),
+            fact(
+                university_id=university_id,
+                field_name=f"{PROGRAM_FIELD_PREFIX}science-faculty:05.03.01:0",
+                value={
+                    "faculty": "Faculty of Science",
+                    "code": "05.03.01",
+                    "name": "Geology",
+                    "budget_places": 25,
+                    "passing_score": 182,
+                    "year": 2025,
+                },
+                value_type="program_item",
+                score=0.97,
+                metadata={
+                    "source_key": "msu-official",
+                    "source_urls": ["https://example.edu/programs"],
                 },
             ),
         ],
@@ -206,8 +239,17 @@ def test_university_card_projection_persists_card_version_and_delivery_card() ->
     assert card.canonical_name.value == "Example University"
     assert card.canonical_name.confidence == 0.98
     assert card.contacts.website == "https://example.edu"
+    assert card.contacts.emails == ["admissions@example.edu"]
+    assert card.contacts.phones == ["+7 495 000-00-00"]
     assert card.location.city == "Moscow"
     assert card.location.country == "RU"
+    assert card.programs[0]["faculty"] == "Faculty of Science"
+    assert card.programs[0]["code"] == "05.03.01"
+    assert card.programs[0]["name"] == "Geology"
+    assert card.programs[0]["budget_places"] == 25
+    assert card.programs[0]["passing_score"] == 182
+    assert card.programs[0]["year"] == 2025
+    assert card.programs[0]["confidence"] == 0.97
     assert card.ratings[0].provider == "QS World University Rankings"
     assert card.ratings[0].year == 2026
     assert card.ratings[0].metric == "world_overall"
@@ -216,7 +258,12 @@ def test_university_card_projection_persists_card_version_and_delivery_card() ->
     assert card.version.generated_at == session.generated_at
     assert card.sources[0].source_key == "msu-official"
     assert card.sources[0].source_url == "https://example.edu/admissions"
-    assert len(card.sources[0].evidence_ids) == 4
+    assert len(card.sources[0].evidence_ids) == 6
+    assert {source.source_url for source in card.sources} == {
+        "https://example.edu/admissions",
+        "https://example.edu/programs",
+        "https://rankings.example.com/universities/example-university",
+    }
     assert result.search_doc.university_id == fact_result.university.university_id
     assert result.search_doc.card_version == 1
     assert result.search_doc.canonical_name == "Example University"
@@ -231,6 +278,7 @@ def test_university_card_projection_persists_card_version_and_delivery_card() ->
         session.projections[(fact_result.university.university_id, 1)]["card_json"]
     )
     assert stored_card["canonical_name"]["value"] == "Example University"
+    assert stored_card["programs"][0]["name"] == "Geology"
     stored_search_doc = json_from_db(
         session.search_docs[(fact_result.university.university_id, 1)]["search_document"]
     )

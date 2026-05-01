@@ -33,6 +33,7 @@ from .models import (
 from .repository import UniversityBootstrapRepository, deterministic_university_id
 
 AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY = "authoritative_anchor_exact_match_merge"
+AUTHORITATIVE_SOURCE_DOCUMENT_MERGE_POLICY = "authoritative_source_document_merge"
 
 
 class UniversityBootstrapError(ValueError):
@@ -82,6 +83,15 @@ class UniversityBootstrapService:
             raise UniversityBootstrapError(f"Source {source_key} was not found.")
         self._validate_authoritative_source(source)
 
+        university_id = deterministic_university_id(source.source_key)
+        existing_university = self._repository.find_university_by_id(university_id)
+        if existing_university is not None:
+            return self._merge_authoritative_source_document(
+                source=source,
+                university=existing_university,
+                claim_result=claim_result,
+            )
+
         candidate = self._build_candidate(
             source=source,
             claim_result=claim_result,
@@ -94,6 +104,58 @@ class UniversityBootstrapService:
             university=university,
             claims_used=self._sort_claims(claim_result.claims),
             evidence_used=self._sort_evidence(claim_result.evidence),
+        )
+
+    def _merge_authoritative_source_document(
+        self,
+        *,
+        source: SourceAuthorityRecord,
+        university: UniversityRecord,
+        claim_result: ClaimBuildResult,
+    ) -> UniversityBootstrapResult:
+        existing_claims = self._repository.list_claims_for_university(
+            university.university_id
+        )
+        existing_evidence = self._repository.list_evidence_for_university(
+            university.university_id
+        )
+        combined_claims = self._merge_claims(
+            existing_claims,
+            claim_result.claims,
+        )
+        combined_evidence = self._merge_evidence(
+            existing_evidence,
+            claim_result.evidence,
+        )
+        claims_by_field = self._claims_by_field(
+            claims=combined_claims,
+            source=source,
+        )
+        candidate = UniversityBootstrapCandidate(
+            university_id=university.university_id,
+            canonical_name=university.canonical_name
+            or self._canonical_name(claims_by_field),
+            canonical_domain=university.canonical_domain
+            or self._canonical_domain(claims_by_field),
+            country_code=university.country_code
+            or self._string_claim_value(claims_by_field, "location.country_code"),
+            city_name=university.city_name
+            or self._string_claim_value(claims_by_field, "location.city"),
+            metadata=self._same_source_merge_metadata(
+                source=source,
+                combined_claims=combined_claims,
+                combined_evidence=combined_evidence,
+                claim_result=claim_result,
+            ),
+        )
+        persisted = self._repository.upsert_university(candidate)
+        self._repository.commit()
+        return UniversityBootstrapResult(
+            source=source,
+            sources_used=[source],
+            university=persisted,
+            claims_used=combined_claims,
+            evidence_used=combined_evidence,
         )
 
     def _merge_secondary_source(
@@ -389,6 +451,45 @@ class UniversityBootstrapService:
             ),
         }
 
+    def _same_source_merge_metadata(
+        self,
+        *,
+        source: SourceAuthorityRecord,
+        combined_claims: list[ClaimRecord],
+        combined_evidence: list[ClaimEvidenceRecord],
+        claim_result: ClaimBuildResult,
+    ) -> dict[str, Any]:
+        claim_ids = [str(claim.claim_id) for claim in combined_claims]
+        evidence_ids = [str(record.evidence_id) for record in combined_evidence]
+        field_names = sorted({claim.field_name for claim in combined_claims})
+        source_urls = sorted(self._source_urls(combined_evidence))
+        return {
+            "bootstrap_policy": SINGLE_SOURCE_AUTHORITATIVE_POLICY,
+            "merge_strategy": AUTHORITATIVE_SOURCE_DOCUMENT_MERGE_POLICY,
+            "source_id": str(source.source_id),
+            "source_key": source.source_key,
+            "source_type": source.source_type,
+            "trust_tier": source.trust_tier.value,
+            "parsed_document_id": str(claim_result.parsed_document.parsed_document_id),
+            "parser_version": claim_result.parsed_document.parser_version,
+            "claim_ids": claim_ids,
+            "evidence_ids": evidence_ids,
+            "field_names": field_names,
+            "source_urls": source_urls,
+            "source_keys": [source.source_key],
+            "source_snapshots": [
+                self._source_snapshot(
+                    source=source,
+                    parsed_document_id=str(claim_result.parsed_document.parsed_document_id),
+                    parser_version=claim_result.parsed_document.parser_version,
+                    claim_ids=claim_ids,
+                    evidence_ids=evidence_ids,
+                    field_names=field_names,
+                    source_urls=source_urls,
+                )
+            ],
+        }
+
     def _emit_review_required(
         self,
         *,
@@ -488,6 +589,28 @@ class UniversityBootstrapService:
                 str(record.evidence_id),
             ),
         )
+
+    def _merge_claims(
+        self,
+        existing_claims: list[ClaimRecord],
+        new_claims: list[ClaimRecord],
+    ) -> list[ClaimRecord]:
+        merged = {
+            claim.claim_id: claim
+            for claim in [*existing_claims, *new_claims]
+        }
+        return self._sort_claims(list(merged.values()))
+
+    def _merge_evidence(
+        self,
+        existing_evidence: list[ClaimEvidenceRecord],
+        new_evidence: list[ClaimEvidenceRecord],
+    ) -> list[ClaimEvidenceRecord]:
+        merged = {
+            record.evidence_id: record
+            for record in [*existing_evidence, *new_evidence]
+        }
+        return self._sort_evidence(list(merged.values()))
 
     @staticmethod
     def _source_urls(evidence: Iterable[ClaimEvidenceRecord]) -> set[str]:

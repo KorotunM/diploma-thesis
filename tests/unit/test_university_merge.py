@@ -101,6 +101,12 @@ class FakeUniversityMergeSession:
         sql = " ".join(statement.split()).lower()
         if "from ingestion.source" in sql:
             return MappingResult(row=self.sources.get(params["source_key"]))
+        if "from normalize.claim_evidence" in sql and "from core.university" in sql:
+            return MappingResult(rows=self._evidence_for_university(params["university_id"]))
+        if "from normalize.claim" in sql and "from core.university" in sql:
+            return MappingResult(rows=self._claims_for_university(params["university_id"]))
+        if "from core.university" in sql and "where university_id = :university_id" in sql:
+            return MappingResult(row=self.universities.get(params["university_id"]))
         if "from core.university" in sql and "where canonical_domain = :canonical_domain" in sql:
             return MappingResult(row=self._find_university(params["canonical_domain"]))
         if "from core.university" in sql and "where canonical_name = :canonical_name" in sql:
@@ -113,10 +119,6 @@ class FakeUniversityMergeSession:
                     limit=params["limit"],
                 )
             )
-        if "from normalize.claim_evidence" in sql and "from core.university" in sql:
-            return MappingResult(rows=self._evidence_for_university(params["university_id"]))
-        if "from normalize.claim" in sql and "from core.university" in sql:
-            return MappingResult(rows=self._claims_for_university(params["university_id"]))
         if "insert into core.university" in sql:
             return MappingResult(row=self._upsert_university(params))
         raise AssertionError(f"Unexpected SQL statement: {statement}")

@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from apps.normalizer.app.claims import ClaimEvidenceRecord, ClaimRecord
 from apps.normalizer.app.facts import (
     CANONICAL_FACT_FIELDS,
+    PROGRAM_FIELD_PREFIX,
     RATING_FIELD_PREFIX,
     ResolvedFactGenerationService,
     ResolvedFactRepository,
@@ -141,6 +142,11 @@ def build_bootstrap_result() -> UniversityBootstrapResult:
         value=["admissions@example.edu"],
         confidence=0.9,
     )
+    phone = claim(
+        field_name="contacts.phones",
+        value=["+7 495 000-00-00"],
+        confidence=0.89,
+    )
     null_field = claim(field_name="location.country_code", value=None, confidence=0.99)
     claims = [
         selected_name,
@@ -149,6 +155,7 @@ def build_bootstrap_result() -> UniversityBootstrapResult:
         city,
         country,
         email,
+        phone,
         null_field,
     ]
     return UniversityBootstrapResult(
@@ -187,13 +194,19 @@ def test_resolved_fact_generation_persists_canonical_fields() -> None:
     result = service.generate_for_bootstrap(bootstrap_result)
 
     assert result.university == bootstrap_result.university
-    assert {fact.field_name for fact in result.facts} == set(CANONICAL_FACT_FIELDS)
+    assert {fact.field_name for fact in result.facts} == {
+        *CANONICAL_FACT_FIELDS,
+        "contacts.emails",
+        "contacts.phones",
+    }
     by_field = {fact.field_name: fact for fact in result.facts}
     assert by_field["canonical_name"].value == "Example University"
     assert by_field["canonical_name"].fact_score == 0.98
     assert by_field["contacts.website"].value == "https://example.edu"
     assert by_field["location.city"].value == "Moscow"
     assert by_field["location.country_code"].value == "RU"
+    assert by_field["contacts.emails"].value == ["admissions@example.edu"]
+    assert by_field["contacts.phones"].value == ["+7 495 000-00-00"]
     assert by_field["contacts.website"].resolution_policy == CANONICAL_FIELD_POLICY
     assert by_field["canonical_name"].selected_claim_ids == [
         bootstrap_result.claims_used[0].claim_id
@@ -212,7 +225,7 @@ def test_resolved_fact_generation_persists_canonical_fields() -> None:
     assert by_field["canonical_name"].metadata["source_urls"] == [
         "https://example.edu/admissions"
     ]
-    assert len(session.facts) == 4
+    assert len(session.facts) == 6
     assert session.commit_count == 1
 
 
@@ -227,7 +240,7 @@ def test_resolved_fact_generation_is_idempotent_by_university_field_and_card_ver
     assert [fact.resolved_fact_id for fact in second.facts] == [
         fact.resolved_fact_id for fact in first.facts
     ]
-    assert len(session.facts) == 4
+    assert len(session.facts) == 6
     assert session.commit_count == 2
     assert set(session.facts) == {
         deterministic_resolved_fact_id(
@@ -235,7 +248,11 @@ def test_resolved_fact_generation_is_idempotent_by_university_field_and_card_ver
             field_name=field_name,
             card_version=1,
         )
-        for field_name in CANONICAL_FACT_FIELDS
+        for field_name in (
+            *CANONICAL_FACT_FIELDS,
+            "contacts.emails",
+            "contacts.phones",
+        )
     }
 
 
@@ -406,3 +423,152 @@ def test_resolved_fact_generation_builds_structured_rating_fact() -> None:
     assert rating_fact.metadata["source_trust_tier"] == SourceTrustTier.TRUSTED.value
     assert len(rating_fact.selected_claim_ids) == 4
     assert len(rating_fact.selected_evidence_ids) == 4
+
+
+def test_resolved_fact_generation_builds_structured_program_fact() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    program_item_key = "science-faculty:05.03.01:0"
+    program_claims = [
+        claim(
+            field_name="programs.faculty",
+            value="Faculty of Science",
+            confidence=0.99,
+        ).model_copy(
+            update={
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_year": 2025,
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="programs.code",
+            value="05.03.01",
+            confidence=0.99,
+        ).model_copy(
+            update={
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_year": 2025,
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="programs.name",
+            value="Geology",
+            confidence=0.98,
+        ).model_copy(
+            update={
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_year": 2025,
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="programs.budget_places",
+            value=25,
+            confidence=0.99,
+        ).model_copy(
+            update={
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_year": 2025,
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="programs.passing_score",
+            value=182,
+            confidence=0.99,
+        ).model_copy(
+            update={
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_year": 2025,
+                    },
+                },
+            }
+        ),
+        claim(
+            field_name="programs.year",
+            value=2025,
+            confidence=0.99,
+        ).model_copy(
+            update={
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_year": 2025,
+                    },
+                },
+            }
+        ),
+    ]
+    enriched_bootstrap = bootstrap_result.model_copy(
+        update={
+            "claims_used": [*bootstrap_result.claims_used, *program_claims],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                *[
+                    evidence_for(claim_record).model_copy(
+                        update={"source_url": "https://example.edu/programs"}
+                    )
+                    for claim_record in program_claims
+                ],
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(enriched_bootstrap)
+    by_field = {fact.field_name: fact for fact in result.facts}
+    program_field_name = f"{PROGRAM_FIELD_PREFIX}{program_item_key}"
+
+    assert program_field_name in by_field
+    program_fact = by_field[program_field_name]
+    assert program_fact.value == {
+        "faculty": "Faculty of Science",
+        "code": "05.03.01",
+        "name": "Geology",
+        "budget_places": 25,
+        "passing_score": 182,
+        "year": 2025,
+    }
+    assert program_fact.value_type == "program_item"
+    assert program_fact.metadata["program_item_key"] == program_item_key
+    assert program_fact.metadata["faculty"] == "Faculty of Science"
+    assert program_fact.metadata["program_code"] == "05.03.01"
+    assert program_fact.metadata["program_year"] == 2025
+    assert program_fact.metadata["source_key"] == "msu-official"
+    assert program_fact.metadata["source_urls"] == ["https://example.edu/programs"]
+    assert len(program_fact.selected_claim_ids) == 6
+    assert len(program_fact.selected_evidence_ids) == 6

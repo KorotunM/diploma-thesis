@@ -219,6 +219,8 @@ class InMemoryHappyPathSession:
             return MappingResult(rows=self._list_evidence_for_university(params["university_id"]))
         if "from normalize.claim" in sql and "from core.university" in sql:
             return MappingResult(rows=self._list_claims_for_university(params["university_id"]))
+        if "from core.university" in sql and "where university_id = :university_id" in sql:
+            return MappingResult(row=self.universities.get(params["university_id"]))
         if "insert into core.university" in sql:
             return MappingResult(row=self._upsert_university(params))
         if "insert into core.resolved_fact" in sql:
