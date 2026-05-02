@@ -5,10 +5,10 @@ import { ViewState } from "../shared/ui/view-state";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const SOURCE_TYPE_OPTIONS = [
-  { value: "", label: "All sources" },
-  { value: "official_site", label: "Official sites" },
-  { value: "aggregator", label: "Aggregators" },
-  { value: "ranking", label: "Rankings" },
+  { value: "", label: "Все источники" },
+  { value: "official_site", label: "Официальные сайты" },
+  { value: "aggregator", label: "Агрегаторы" },
+  { value: "ranking", label: "Рейтинги" },
 ];
 
 export function SearchPage() {
@@ -40,66 +40,67 @@ export function SearchPage() {
   const hasResults = (snapshot?.items.length ?? 0) > 0;
 
   return (
-    <section className="panel search-panel">
-      <div className="search-heading">
+    <section className="panel panel--search search-panel">
+      <div className="panel__header">
         <div>
-          <p className="section-kicker">Discovery</p>
-          <h2>Search universities via backend query endpoint</h2>
-          <p className="section-copy">
-            Search page talks to backend `GET /api/v1/search`, keeps query state in the URL and
-            renders live matches from the delivery search projection.
+          <p className="panel__kicker">Поиск</p>
+          <h2 className="panel__title">Главная рабочая зона для поиска вузов</h2>
+          <p className="panel__copy">
+            Здесь живет только поиск: фильтры, выдача и выбор карточки. Мониторинг и provenance
+            вынесены в отдельные представления, чтобы первая страница оставалась рабочей, а не
+            декоративной.
           </p>
         </div>
-        <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
+        <span className={`panel__badge ${refreshing ? "panel__badge--refreshing" : ""}`}>
           {loading && !snapshot
-            ? "Searching"
+            ? "Ищем"
             : snapshot
-              ? `${snapshot.total} indexed hits`
+              ? `${snapshot.total} результатов в индексе`
               : error
-                ? "Search unavailable"
-                : "Ready to browse"}
+                ? "Поиск недоступен"
+                : "Готово к просмотру"}
         </span>
       </div>
 
-      <div className="search-shell">
-        <aside className="search-filter-panel">
-          <div className="search-filter-panel-header">
+      <div className="search-panel__layout">
+        <aside className="search-panel__filters">
+          <div className="search-panel__filters-header">
             <div>
-              <p className="section-kicker">Filters</p>
-              <h3>URL-synced browse state</h3>
+              <p className="panel__kicker">Фильтры</p>
+              <h3 className="search-panel__subtitle">Состояние поиска синхронизировано с URL</h3>
             </div>
-            <button className="filter-reset-button" type="button" onClick={resetFilters}>
-              Reset filters
+            <button className="button button--ghost" type="button" onClick={resetFilters}>
+              Сбросить
             </button>
           </div>
 
-          <label className="search-control">
-            <span>Name, alias or domain</span>
+          <label className="field">
+            <span className="field__label">Название, алиас или домен</span>
             <input
-              className="search-input"
+              className="field__control"
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="example.edu or Example State University"
+              placeholder="kubsu.ru или КубГУ"
             />
           </label>
 
-          <div className="search-filter-grid">
-            <label className="search-control">
-              <span>City</span>
+          <div className="search-panel__filter-grid">
+            <label className="field">
+              <span className="field__label">Город</span>
               <input
-                className="search-input"
+                className="field__control"
                 type="search"
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
-                placeholder="Moscow"
+                placeholder="Краснодар"
               />
             </label>
 
-            <label className="search-control">
-              <span>Country</span>
+            <label className="field">
+              <span className="field__label">Страна</span>
               <input
-                className="search-input"
+                className="field__control"
                 type="search"
                 value={country}
                 onChange={(event) => setCountry(event.target.value)}
@@ -108,11 +109,11 @@ export function SearchPage() {
             </label>
           </div>
 
-          <div className="search-filter-grid">
-            <label className="search-control">
-              <span>Source Type</span>
+          <div className="search-panel__filter-grid">
+            <label className="field">
+              <span className="field__label">Тип источника</span>
               <select
-                className="search-input search-select"
+                className="field__control field__control--select"
                 value={sourceType}
                 onChange={(event) => setSourceType(event.target.value)}
               >
@@ -124,39 +125,40 @@ export function SearchPage() {
               </select>
             </label>
 
-            <label className="search-control">
-              <span>Page Size</span>
+            <label className="field">
+              <span className="field__label">Размер страницы</span>
               <select
-                className="search-input search-select"
+                className="field__control field__control--select"
                 value={String(pageSize)}
                 onChange={(event) => setPageSize(Number(event.target.value))}
               >
                 {PAGE_SIZE_OPTIONS.map((value) => (
                   <option key={value} value={value}>
-                    {value} per page
+                    {value} на странице
                   </option>
                 ))}
               </select>
             </label>
           </div>
 
-          <div className="search-url-state">
-            <small>query: {query.trim() || "browse mode"}</small>
-            <small>city: {city.trim() || "any city"}</small>
-            <small>country: {country.trim().toUpperCase() || "any country"}</small>
-            <small>source: {sourceType || "all sources"}</small>
+          <div className="search-panel__state">
+            <small>Запрос: {query.trim() || "режим просмотра"}</small>
+            <small>Город: {city.trim() || "любой"}</small>
+            <small>Страна: {country.trim().toUpperCase() || "любая"}</small>
+            <small>Источник: {sourceType || "все источники"}</small>
           </div>
         </aside>
 
-        <div className="search-results-panel">
+        <div className="search-panel__results">
           {error && snapshot ? <p className="panel-alert">{error}</p> : null}
 
-          <div className="search-toolbar">
+          <div className="search-panel__toolbar">
             <small>
-              backend query: <strong>{snapshot?.requestedQuery || query.trim() || "browse mode"}</strong>
+              Backend-запрос:{" "}
+              <strong>{snapshot?.requestedQuery || query.trim() || "режим просмотра"}</strong>
             </small>
             <small>
-              filters:{" "}
+              Фильтры:{" "}
               <strong>
                 {formatSearchFilters({
                   city: snapshot?.filters.city ?? city,
@@ -165,86 +167,87 @@ export function SearchPage() {
                 })}
               </strong>
             </small>
-            <small>{snapshot ? formatTimestamp(snapshot.receivedAt) : "waiting for response"}</small>
+            <small>{snapshot ? formatTimestamp(snapshot.receivedAt) : "ожидание ответа"}</small>
           </div>
 
-          <div className="search-toolbar search-toolbar-secondary">
+          <div className="search-panel__toolbar search-panel__toolbar--secondary">
             <small>
-              page <strong>{snapshot?.page ?? page}</strong> / size{" "}
+              Страница <strong>{snapshot?.page ?? page}</strong> / размер{" "}
               <strong>{snapshot?.pageSize ?? pageSize}</strong>
             </small>
             <small>
-              total <strong>{snapshot?.total ?? 0}</strong>
+              Всего <strong>{snapshot?.total ?? 0}</strong>
             </small>
             <small>
-              next page: <strong>{snapshot?.hasMore ? "available" : "end reached"}</strong>
+              Следующая страница:{" "}
+              <strong>{snapshot?.hasMore ? "доступна" : "конец выдачи"}</strong>
             </small>
           </div>
 
-          <div className="search-results">
+          <div className="search-panel__cards">
             {loading && !snapshot ? (
               <ViewState
                 kind="loading"
-                title="Loading search results"
-                message="The frontend is waiting for the first response from the backend search service."
-                detail="Query and filter state are already synced to the current URL."
+                title="Загружаем результаты поиска"
+                message="Интерфейс ожидает первый ответ от backend search service."
+                detail="Запрос и фильтры уже синхронизированы с текущим URL."
               />
             ) : null}
             {!loading && !snapshot && error ? (
               <ViewState
                 kind="error"
-                title="Search results are unavailable"
+                title="Результаты поиска недоступны"
                 message={error}
-                detail="Retry after backend search and delivery services become reachable."
+                detail="Повтори запрос после того, как backend search и delivery снова станут доступны."
               />
             ) : null}
             {hasResults
               ? snapshot?.items.map((item) => (
                   <article
                     key={item.university_id}
-                    className={`search-result-card ${
+                    className={`search-panel__card ${
                       item.university_id === activeUniversityId
-                        ? "search-result-card-active"
+                        ? "search-panel__card--active"
                         : ""
                     }`}
                   >
-                    <div className="search-result-header">
+                    <div className="search-panel__card-header">
                       <div>
                         <strong>{item.canonical_name}</strong>
                         <p>{item.university_id}</p>
                       </div>
-                      <div className="search-result-badges">
-                        <span className="chip">{item.city ?? "city unknown"}</span>
-                        <span className="chip">{item.country_code ?? "country unknown"}</span>
+                      <div className="search-panel__chips">
+                        <span className="chip">{item.city ?? "город неизвестен"}</span>
+                        <span className="chip">{item.country_code ?? "страна неизвестна"}</span>
                       </div>
                     </div>
-                    <dl className="search-result-meta">
+                    <dl className="search-panel__meta">
                       <div>
-                        <dt>Website</dt>
-                        <dd>{item.website ?? "not provided"}</dd>
+                        <dt>Сайт</dt>
+                        <dd>{item.website ?? "не указан"}</dd>
                       </div>
                       <div>
-                        <dt>Aliases</dt>
-                        <dd>{item.aliases.length > 0 ? item.aliases.join(", ") : "none"}</dd>
+                        <dt>Алиасы</dt>
+                        <dd>{item.aliases.length > 0 ? item.aliases.join(", ") : "нет"}</dd>
                       </div>
                       <div>
-                        <dt>Score</dt>
+                        <dt>Оценка</dt>
                         <dd>{item.score.toFixed(3)}</dd>
                       </div>
                       <div>
-                        <dt>Match signals</dt>
-                        <dd>{item.match_signals.join(", ") || "none"}</dd>
+                        <dt>Сигналы совпадения</dt>
+                        <dd>{item.match_signals.join(", ") || "нет"}</dd>
                       </div>
                     </dl>
-                    <div className="search-result-actions">
+                    <div className="search-panel__actions">
                       <button
-                        className="card-action-primary"
+                        className="button button--primary"
                         type="button"
                         onClick={() => openUniversityCard(item.university_id, setActiveUniversityId)}
                       >
                         {item.university_id === activeUniversityId
-                          ? "Card selected"
-                          : "Open card"}
+                          ? "Карточка выбрана"
+                          : "Открыть карточку"}
                       </button>
                     </div>
                   </article>
@@ -253,42 +256,42 @@ export function SearchPage() {
             {!loading && snapshot && !hasResults && !hasQueryState ? (
               <ViewState
                 kind="empty"
-                title="Search is ready"
-                message="No query or filters are active yet, so the page is waiting for a browse request."
-                detail="Start with a university name, domain, city, country or source type."
+                title="Поиск готов"
+                message="Пока нет активного запроса или фильтров."
+                detail="Начни с названия вуза, домена, города, страны или типа источника."
               />
             ) : null}
             {!loading && snapshot && !hasResults && hasQueryState ? (
               <ViewState
                 kind="empty"
-                title="No universities matched"
-                message="The current query and filter set returned zero search documents."
-                detail="Adjust the URL-synced inputs above to broaden the match window."
+                title="Совпадения не найдены"
+                message="Текущий запрос и фильтры не вернули ни одного документа."
+                detail="Расшири условия поиска через поля и фильтры выше."
               />
             ) : null}
           </div>
 
           {snapshot ? (
-            <div className="search-pagination">
+            <div className="search-panel__pagination">
               <button
-                className="card-action-secondary"
+                className="button button--secondary"
                 type="button"
                 disabled={loading || page <= 1}
                 onClick={() => setPage(page - 1)}
               >
-                Previous page
+                Назад
               </button>
-              <div className="search-pagination-status">
-                <strong>Page {snapshot.page}</strong>
-                <small>{snapshot.total} total matches</small>
+              <div className="search-panel__pagination-status">
+                <strong>Страница {snapshot.page}</strong>
+                <small>{snapshot.total} совпадений всего</small>
               </div>
               <button
-                className="card-action-secondary"
+                className="button button--secondary"
                 type="button"
                 disabled={loading || !snapshot.hasMore}
                 onClick={() => setPage(page + 1)}
               >
-                Next page
+                Далее
               </button>
             </div>
           ) : null}
@@ -314,7 +317,7 @@ function formatTimestamp(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

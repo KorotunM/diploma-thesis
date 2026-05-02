@@ -12,111 +12,112 @@ export function HomePage() {
   const hasRegisteredSources = (freshness?.sources.length ?? 0) > 0;
 
   return (
-    <section className="panel home-panel">
-      <div className="home-heading">
+    <section className="panel panel--overview overview-panel">
+      <div className="panel__header">
         <div>
-          <p className="section-kicker">Control Tower</p>
-          <h2>Live pipeline and source freshness summary</h2>
-          <p className="section-copy">
-            Home page reads service health and source registry state directly from the running
-            platform and keeps the current crawl posture visible in one place.
+          <p className="panel__kicker">Мониторинг</p>
+          <h2 className="panel__title">Состояние пайплайна и актуальность источников</h2>
+          <p className="panel__copy">
+            Отдельное представление для runtime-наблюдения: health сервисов, деградации,
+            свежесть источников и текущая нагрузка на контур обхода.
           </p>
         </div>
-        <div className="live-status-cluster">
-          <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
+        <div className="overview-panel__status">
+          <span className={`panel__badge ${refreshing ? "panel__badge--refreshing" : ""}`}>
             {loading && !snapshot
-              ? "Bootstrapping"
+              ? "Инициализация"
               : pipeline
-                ? `${pipeline.liveServices}/${pipeline.totalServices} live`
+                ? `${pipeline.liveServices}/${pipeline.totalServices} в строю`
                 : error
-                  ? "Unavailable"
-                  : "Awaiting snapshot"}
+                  ? "Недоступно"
+                  : "Ожидание снимка"}
           </span>
-          <small>
-            refresh {Math.round(config.overviewRefreshIntervalMs / 1000)}s
-          </small>
+          <small>Обновление каждые {Math.round(config.overviewRefreshIntervalMs / 1000)}с</small>
         </div>
       </div>
 
       {error ? <p className="panel-alert">{error}</p> : null}
       {freshness?.error ? <p className="panel-alert">{freshness.error}</p> : null}
 
-      <div className="summary-grid">
-        <article className="summary-tile">
-          <span>environment</span>
+      <div className="overview-panel__summary">
+        <article className="summary-card">
+          <span>Среда</span>
           <strong>{config.appEnvironment}</strong>
           <small>{config.backendBaseUrl}</small>
         </article>
-        <article className="summary-tile">
-          <span>pipeline</span>
-          <strong>{pipeline ? `${pipeline.liveServices}/${pipeline.totalServices}` : "Waiting"}</strong>
-          <small>{pipeline ? `${pipeline.degradedServices} degraded` : "first probe pending"}</small>
+        <article className="summary-card">
+          <span>Пайплайн</span>
+          <strong>{pipeline ? `${pipeline.liveServices}/${pipeline.totalServices}` : "Ожидание"}</strong>
+          <small>{pipeline ? `${pipeline.degradedServices} с деградацией` : "первый опрос еще не завершен"}</small>
         </article>
-        <article className="summary-tile">
-          <span>sources</span>
-          <strong>{freshness ? freshness.activeSources : "Waiting"}</strong>
-          <small>{freshness ? `${freshness.scheduledSources} scheduled` : "registry sync pending"}</small>
+        <article className="summary-card">
+          <span>Источники</span>
+          <strong>{freshness ? freshness.activeSources : "Ожидание"}</strong>
+          <small>{freshness ? `${freshness.scheduledSources} по расписанию` : "ожидается синхронизация реестра"}</small>
         </article>
-        <article className="summary-tile">
-          <span>freshness</span>
-          <strong>{freshness ? freshness.freshSources : "Waiting"}</strong>
-          <small>{freshness ? `${freshness.staleSources} stale` : "no source signal yet"}</small>
+        <article className="summary-card">
+          <span>Актуальность</span>
+          <strong>{freshness ? freshness.freshSources : "Ожидание"}</strong>
+          <small>{freshness ? `${freshness.staleSources} устарели` : "пока нет сигналов от источников"}</small>
         </article>
       </div>
 
-      <div className="home-columns">
-        <section className="home-subpanel">
-          <div className="subpanel-heading">
-            <h3>Pipeline health</h3>
+      <div className="overview-panel__columns">
+        <section className="overview-panel__section">
+          <div className="overview-panel__section-header">
+            <h3>Состояние пайплайна</h3>
             <small>
               {snapshot
                 ? formatTimestamp(snapshot.capturedAt)
                 : loading
-                  ? "collecting first snapshot"
-                  : "snapshot unavailable"}
+                  ? "собираем первый снимок"
+                  : "снимок недоступен"}
             </small>
           </div>
           {loading && !hasPipelineServices ? (
             <ViewState
               kind="loading"
-              title="Checking pipeline services"
-              message="Polling scheduler, parser, normalizer and backend health endpoints."
-              detail="The first snapshot appears as soon as the platform answers."
+              title="Проверяем сервисы пайплайна"
+              message="Опрашиваем health endpoint'ы scheduler, parser, normalizer и backend."
+              detail="Первый снимок появится, как только сервисы ответят."
             />
           ) : null}
           {!loading && !hasPipelineServices && error ? (
             <ViewState
               kind="error"
-              title="Pipeline snapshot unavailable"
+              title="Снимок пайплайна недоступен"
               message={error}
-              detail="Service health cards return automatically on the next successful refresh."
+              detail="Карточки сервисов вернутся автоматически после следующего успешного обновления."
             />
           ) : null}
           {!loading && !error && !hasPipelineServices ? (
             <ViewState
               kind="empty"
-              title="No pipeline services reported yet"
-              message="The page is reachable, but no service health entries were returned."
-              detail="Check runtime URLs and service startup order if this persists."
+              title="Сервисы пока не отчитались"
+              message="Страница доступна, но список сервисов еще не вернулся."
+              detail="Если это не исчезнет, проверь runtime URL и порядок запуска сервисов."
             />
           ) : null}
           {hasPipelineServices ? (
-            <div className="service-grid">
+            <div className="overview-panel__service-grid">
               {pipeline?.services.map((service) => (
-                <article key={service.key} className={`service-card service-${service.state}`}>
-                  <div className="service-card-header">
+                <article
+                  key={service.key}
+                  className={`overview-panel__service-card overview-panel__service-card--${service.state}`}
+                >
+                  <div className="overview-panel__service-header">
                     <strong>{service.label}</strong>
-                    <span className={`service-state service-state-${service.state}`}>
-                      {service.state}
+                    <span className={`status-pill status-pill--${service.state}`}>
+                      {service.state === "live" ? "в строю" : "с деградацией"}
                     </span>
                   </div>
                   <p>{service.description}</p>
                   <code>{service.baseUrl}</code>
-                  <div className="service-meta">
-                    <span>{service.environment ?? "env unknown"}</span>
-                    <span>{service.version ?? "version unknown"}</span>
+                  <div className="overview-panel__service-meta">
+                    <span>{service.environment ?? "среда неизвестна"}</span>
+                    <span>{service.version ?? "версия неизвестна"}</span>
                   </div>
-                  <div className="service-dependencies">
+                  <div className="overview-panel__service-dependencies">
                     {Object.entries(service.dependencies).map(([name, status]) => (
                       <span key={name} className="dependency-chip">
                         {name}: {status}
@@ -130,59 +131,59 @@ export function HomePage() {
           ) : null}
         </section>
 
-        <section className="home-subpanel">
-          <div className="subpanel-heading">
-            <h3>Source freshness</h3>
+        <section className="overview-panel__section">
+          <div className="overview-panel__section-header">
+            <h3>Актуальность источников</h3>
             <small>
               {freshness
-                ? `${freshness.policyOnlySources} policy-only, ${freshness.inactiveSources} inactive`
+                ? `${freshness.policyOnlySources} без факта обхода, ${freshness.inactiveSources} неактивны`
                 : loading
-                  ? "reading scheduler registry"
-                  : "registry unavailable"}
+                  ? "читаем реестр scheduler"
+                  : "реестр недоступен"}
             </small>
           </div>
           {loading && !hasRegisteredSources ? (
             <ViewState
               kind="loading"
-              title="Scanning source registry"
-              message="Collecting freshness counters and the latest observed crawl timestamps."
+              title="Сканируем реестр источников"
+              message="Собираем счетчики актуальности и последние отметки наблюдавшихся обходов."
             />
           ) : null}
           {!loading && !hasRegisteredSources && freshness?.error ? (
             <ViewState
               kind="error"
-              title="Freshness registry unavailable"
+              title="Реестр актуальности недоступен"
               message={freshness.error}
-              detail="This affects freshness counters only. Other panels continue to refresh independently."
+              detail="Это влияет только на счетчики актуальности. Остальные панели продолжают обновляться независимо."
             />
           ) : null}
           {!loading && !freshness?.error && !hasRegisteredSources ? (
             <ViewState
               kind="empty"
-              title="No sources registered yet"
-              message="Once source records and endpoints are created, this panel will show freshness pressure automatically."
+              title="Источники еще не зарегистрированы"
+              message="Как только появятся source records и endpoint'ы, панель начнет показывать их состояние автоматически."
             />
           ) : null}
           {hasRegisteredSources ? (
-            <div className="freshness-list">
+            <div className="overview-panel__freshness-list">
               {freshness?.sources.map((source) => (
-                <article key={source.sourceKey} className="freshness-row">
-                  <div className="freshness-main">
-                    <div className="freshness-title-row">
+                <article key={source.sourceKey} className="overview-panel__freshness-card">
+                  <div className="overview-panel__freshness-main">
+                    <div className="overview-panel__freshness-header">
                       <strong>{source.sourceKey}</strong>
-                      <span className={`freshness-pill freshness-${source.freshnessState}`}>
+                      <span className={`status-pill status-pill--${source.freshnessState}`}>
                         {formatFreshnessState(source.freshnessState)}
                       </span>
                     </div>
                     <p>{source.freshnessReason}</p>
                   </div>
-                  <div className="freshness-metrics">
+                  <div className="overview-panel__freshness-metrics">
                     <span>{source.trustTier}</span>
                     <span>{source.sourceType}</span>
-                    <span>{source.endpointCount} endpoints</span>
-                    <span>{source.scheduledEndpointCount} scheduled</span>
+                    <span>{source.endpointCount} endpoint'ов</span>
+                    <span>{source.scheduledEndpointCount} по расписанию</span>
                     <span>
-                      {source.lastObservedAt ? formatTimestamp(source.lastObservedAt) : "no observed crawl"}
+                      {source.lastObservedAt ? formatTimestamp(source.lastObservedAt) : "обход еще не наблюдался"}
                     </span>
                   </div>
                 </article>
@@ -198,19 +199,19 @@ export function HomePage() {
 function formatFreshnessState(state: FreshnessState): string {
   switch (state) {
     case "fresh":
-      return "Fresh";
+      return "Актуально";
     case "aging":
-      return "Aging";
+      return "Стареет";
     case "stale":
-      return "Stale";
+      return "Устарело";
     case "scheduled":
-      return "Scheduled";
+      return "По расписанию";
     case "manual":
-      return "Manual";
+      return "Только вручную";
     case "inactive":
-      return "Inactive";
+      return "Неактивно";
     default:
-      return "Unknown";
+      return "Неизвестно";
   }
 }
 
@@ -219,7 +220,7 @@ function formatTimestamp(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

@@ -45,28 +45,28 @@ async function loadPipelineOverview(
       {
         key: "scheduler",
         label: "Scheduler",
-        description: "Plans crawl runs and owns source registry state.",
+        description: "Планирует обходы и хранит реестр источников.",
         baseUrl: options.runtime.config.schedulerBaseUrl,
         request: () => options.runtime.schedulerApi.getHealth({ signal: options.signal }),
       },
       {
         key: "parser",
         label: "Parser",
-        description: "Fetches raw artifacts and emits parsed payloads.",
+        description: "Забирает raw artifacts и публикует parsed payloads.",
         baseUrl: options.runtime.config.parserBaseUrl,
         request: () => options.runtime.parserApi.getHealth({ signal: options.signal }),
       },
       {
         key: "normalizer",
         label: "Normalizer",
-        description: "Resolves claims into canonical delivery projections.",
+        description: "Разрешает claims в канонические delivery projection.",
         baseUrl: options.runtime.config.normalizerBaseUrl,
         request: () => options.runtime.normalizerApi.getHealth({ signal: options.signal }),
       },
       {
         key: "backend",
         label: "Backend",
-        description: "Serves delivery cards and stitched provenance to the UI.",
+        description: "Отдает UI delivery-карточки и собранный provenance.",
         baseUrl: options.runtime.config.backendBaseUrl,
         request: () => options.runtime.backendApi.getHealth({ signal: options.signal }),
       },
@@ -149,10 +149,7 @@ async function loadFreshnessOverview(
     );
     const summaries = sources.items
       .map((source) =>
-        summarizeSourceFreshness(
-          source,
-          endpointsBySource.get(source.source_key) ?? [],
-        ),
+        summarizeSourceFreshness(source, endpointsBySource.get(source.source_key) ?? []),
       )
       .sort(compareSourceFreshness);
 
@@ -259,31 +256,29 @@ function describeFreshnessReason(
 ): string {
   if (state === "fresh" || state === "aging" || state === "stale") {
     if (lastObservedAt === null) {
-      return "Observed timestamp missing.";
+      return "Отсутствует observed timestamp.";
     }
     const intervalLabel =
       refreshIntervalSeconds === null
-        ? "default 24h budget"
+        ? "базовое окно 24ч"
         : `policy ${formatIntervalSeconds(refreshIntervalSeconds)}`;
-    return `Observed ${formatAge(lastObservedAt)} against ${intervalLabel}.`;
+    return `Последний наблюдавшийся обход был ${formatAge(lastObservedAt)} при окне ${intervalLabel}.`;
   }
   if (state === "scheduled") {
     return refreshIntervalSeconds === null
-      ? "Schedule exists but no observed crawl timestamp yet."
-      : `Scheduled every ${formatIntervalSeconds(refreshIntervalSeconds)} but no observed crawl timestamp yet.`;
+      ? "Расписание есть, но observed crawl timestamp еще не появился."
+      : `Расписание: каждые ${formatIntervalSeconds(refreshIntervalSeconds)}, но observed crawl timestamp еще не появился.`;
   }
   if (state === "manual") {
-    return "Manual-only source with no scheduled freshness budget.";
+    return "Источник работает только вручную и не имеет окна актуальности по расписанию.";
   }
   if (state === "inactive") {
-    return "Source is disabled and excluded from freshness checks.";
+    return "Источник отключен и исключен из проверок актуальности.";
   }
-  return "No endpoints or observed timestamps available yet.";
+  return "Пока нет endpoint'ов или observed timestamp.";
 }
 
-function minIntervalSeconds(
-  endpoints: SourceEndpointResponseDto[],
-): number | null {
+function minIntervalSeconds(endpoints: SourceEndpointResponseDto[]): number | null {
   const values = endpoints
     .map((endpoint) => endpoint.crawl_policy.interval_seconds)
     .filter((value): value is number => typeof value === "number" && value > 0);
@@ -333,26 +328,26 @@ function compareSourceFreshness(
 function formatAge(value: string): string {
   const ageMs = Date.now() - Date.parse(value);
   if (!Number.isFinite(ageMs)) {
-    return "at unknown time";
+    return "в неизвестный момент";
   }
   const totalMinutes = Math.max(1, Math.round(ageMs / 60_000));
   if (totalMinutes < 60) {
-    return `${totalMinutes}m ago`;
+    return `${totalMinutes} мин назад`;
   }
   const totalHours = Math.round(totalMinutes / 60);
   if (totalHours < 48) {
-    return `${totalHours}h ago`;
+    return `${totalHours} ч назад`;
   }
   const totalDays = Math.round(totalHours / 24);
-  return `${totalDays}d ago`;
+  return `${totalDays} дн назад`;
 }
 
 function formatIntervalSeconds(value: number): string {
   if (value < 3600) {
-    return `${Math.round(value / 60)}m`;
+    return `${Math.round(value / 60)} мин`;
   }
   if (value < 86_400) {
-    return `${Math.round(value / 3600)}h`;
+    return `${Math.round(value / 3600)} ч`;
   }
-  return `${Math.round(value / 86_400)}d`;
+  return `${Math.round(value / 86_400)} дн`;
 }

@@ -36,6 +36,7 @@ from .settings import (
     ServiceSettings,
     get_platform_settings,
 )
+from .worker import is_transient_dependency_error, run_resilient_worker_loop
 
 __all__ = [
     "BucketReadinessStatus",
@@ -66,4 +67,6 @@ __all__ = [
     "get_rabbitmq_connection",
     "probe_minio_bucket_readiness",
     "probe_postgres_connectivity",
+    "is_transient_dependency_error",
+    "run_resilient_worker_loop",
 ]

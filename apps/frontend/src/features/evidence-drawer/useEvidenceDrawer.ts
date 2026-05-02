@@ -59,14 +59,14 @@ export function useEvidenceDrawer() {
         }
         setSnapshot(null);
         if (nextError instanceof HttpRequestError && nextError.status === 404) {
-          setError(`University provenance ${activeUniversityId} was not found.`);
+          setError(`Provenance для вуза ${activeUniversityId} не найден.`);
           return;
         }
         if (nextError instanceof Error) {
           setError(nextError.message);
           return;
         }
-        setError("Evidence drawer lookup failed.");
+        setError("Не удалось загрузить панель доказательств.");
       })
       .finally(() => {
         if (disposed) {

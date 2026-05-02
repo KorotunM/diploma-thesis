@@ -71,14 +71,14 @@ export function useUniversityCardLookup() {
         }
         setSnapshot(null);
         if (nextError instanceof HttpRequestError && nextError.status === 404) {
-          setError(`University card ${activeUniversityId} was not found in delivery projection.`);
+          setError(`Карточка вуза ${activeUniversityId} не найдена в delivery projection.`);
           return;
         }
         if (nextError instanceof Error) {
           setError(nextError.message);
           return;
         }
-        setError("University card lookup failed.");
+        setError("Не удалось загрузить карточку вуза.");
       })
       .finally(() => {
         if (disposed) {
@@ -116,19 +116,17 @@ export function useUniversityCardLookup() {
         return;
       }
       setValidationError(
-        UUID_PATTERN.test(value.trim())
-          ? null
-          : "University id must be a valid UUID.",
+        UUID_PATTERN.test(value.trim()) ? null : "University ID должен быть корректным UUID.",
       );
     },
     submit: () => {
       const nextUniversityId = draftUniversityId.trim();
       if (!nextUniversityId) {
-        setValidationError("University id is required to fetch a live card.");
+        setValidationError("Для загрузки живой карточки нужен University ID.");
         return;
       }
       if (!UUID_PATTERN.test(nextUniversityId)) {
-        setValidationError("University id must be a valid UUID.");
+        setValidationError("University ID должен быть корректным UUID.");
         return;
       }
       setValidationError(null);

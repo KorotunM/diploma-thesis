@@ -10,7 +10,7 @@ export function formatSearchFilters(options: {
   ].filter((value): value is string => value !== null);
 
   if (parts.length === 0) {
-    return "none";
+    return "нет";
   }
   return parts.join(" | ");
 }

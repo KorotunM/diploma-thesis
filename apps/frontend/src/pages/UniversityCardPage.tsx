@@ -18,60 +18,59 @@ export function UniversityCardPage() {
   const card = snapshot?.card ?? null;
 
   return (
-    <section className="panel feature-panel card-panel" id="university-card">
-      <div className="card-heading">
+    <section className="panel panel--card card-panel" id="university-card">
+      <div className="panel__header">
         <div>
-          <p className="section-kicker">Delivery Card</p>
-          <h2>University card page on live delivery payload</h2>
-          <p className="section-copy">
-            Card page resolves the selected search result into a live
-            `delivery.university_card` projection and keeps attribution metadata visible next to
-            the canonical fields.
+          <p className="panel__kicker">Карточка вуза</p>
+          <h2 className="panel__title">Живая delivery projection по выбранному вузу</h2>
+          <p className="panel__copy">
+            Карточка читает `delivery.university_card`, показывает ключевые поля и не разъезжается
+            по ширине, когда рядом появляется длинный список результатов.
           </p>
         </div>
-        <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
+        <span className={`panel__badge ${refreshing ? "panel__badge--refreshing" : ""}`}>
           {loading
-            ? "Loading card"
+            ? "Загружаем карточку"
             : card
               ? `v${card.version.card_version}`
               : error
-                ? "Card unavailable"
+                ? "Карточка недоступна"
                 : activeUniversityId
-                  ? "No card"
-                  : "Awaiting selection"}
+                  ? "Не найдена"
+                  : "Ожидание выбора"}
         </span>
       </div>
 
       {activeUniversityId ? (
-        <div className="card-selection-banner">
-          <strong>Selected university</strong>
+        <div className="card-panel__selection">
+          <strong>Выбранный вуз</strong>
           <code>{activeUniversityId}</code>
         </div>
       ) : null}
 
       <form
-        className="card-lookup-form"
+        className="card-panel__form"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
         }}
       >
-        <label className="search-control card-lookup-control">
-          <span>University id</span>
+        <label className="field">
+          <span className="field__label">University ID</span>
           <input
-            className="search-input"
+            className="field__control"
             type="text"
             value={draftUniversityId}
             onChange={(event) => setDraftUniversityId(event.target.value)}
-            placeholder="Search results fill this automatically, or paste a UUID manually"
+            placeholder="ID подставляется из поиска автоматически или вводится вручную"
           />
         </label>
-        <div className="card-actions">
-          <button className="card-action-primary" type="submit" disabled={!canSubmit}>
-            Load card
+        <div className="card-panel__actions">
+          <button className="button button--primary" type="submit" disabled={!canSubmit}>
+            Загрузить карточку
           </button>
-          <button className="card-action-secondary" type="button" onClick={clear}>
-            Clear
+          <button className="button button--secondary" type="button" onClick={clear}>
+            Очистить
           </button>
         </div>
       </form>
@@ -80,77 +79,77 @@ export function UniversityCardPage() {
       {error ? <p className="panel-alert">{error}</p> : null}
 
       {card ? (
-        <div className="card-layout">
-          <article className="card-hero">
+        <div className="card-panel__layout">
+          <article className="card-panel__hero">
             <div>
-              <p className="card-hero-label">Canonical name</p>
-              <h3>{stringValue(card.canonical_name.value) ?? "Unnamed university"}</h3>
+              <p className="card-panel__hero-label">Каноническое название</p>
+              <h3>{stringValue(card.canonical_name.value) ?? "Вуз без названия"}</h3>
             </div>
-            <div className="card-confidence-block">
-              <span>confidence</span>
+            <div className="card-panel__confidence">
+              <span>Уверенность</span>
               <strong>{card.canonical_name.confidence.toFixed(2)}</strong>
             </div>
           </article>
 
-          <div className="card-fact-grid">
-            <article className="card-fact">
-              <span>website</span>
-              <strong>{card.contacts.website ?? "not provided"}</strong>
+          <div className="card-panel__facts">
+            <article className="card-panel__fact">
+              <span>Сайт</span>
+              <strong>{card.contacts.website ?? "не указан"}</strong>
             </article>
-            <article className="card-fact">
-              <span>location</span>
+            <article className="card-panel__fact">
+              <span>Локация</span>
               <strong>{formatLocation(card.location.city, card.location.country)}</strong>
             </article>
-            <article className="card-fact">
-              <span>institution type</span>
-              <strong>{card.institutional.type ?? "not resolved"}</strong>
+            <article className="card-panel__fact">
+              <span>Тип учреждения</span>
+              <strong>{card.institutional.type ?? "не определен"}</strong>
             </article>
-            <article className="card-fact">
-              <span>founded</span>
+            <article className="card-panel__fact">
+              <span>Год основания</span>
               <strong>
                 {card.institutional.founded_year !== null
                   ? String(card.institutional.founded_year)
-                  : "not resolved"}
+                  : "не определен"}
               </strong>
             </article>
           </div>
 
-          <div className="card-metadata-grid">
-            <article className="card-metadata-block">
-              <h3>Projection metadata</h3>
-              <div className="stat-row">
+          <div className="card-panel__meta-grid">
+            <article className="card-panel__meta">
+              <h3>Метаданные проекции</h3>
+              <div className="key-value">
                 <span>university_id</span>
                 <strong>{card.university_id}</strong>
               </div>
-              <div className="stat-row">
-                <span>card_version</span>
+              <div className="key-value">
+                <span>Версия карточки</span>
                 <strong>{card.version.card_version}</strong>
               </div>
-              <div className="stat-row">
-                <span>generated_at</span>
+              <div className="key-value">
+                <span>Сгенерировано</span>
                 <strong>{formatTimestamp(card.version.generated_at)}</strong>
               </div>
-              <div className="stat-row">
-                <span>received_at</span>
-                <strong>{snapshot ? formatTimestamp(snapshot.receivedAt) : "not loaded"}</strong>
+              <div className="key-value">
+                <span>Получено</span>
+                <strong>{snapshot ? formatTimestamp(snapshot.receivedAt) : "не загружено"}</strong>
               </div>
             </article>
 
-            <article className="card-metadata-block">
-              <h3>Attribution sources</h3>
-              <div className="source-list">
+            <article className="card-panel__meta">
+              <h3>Источники атрибуции</h3>
+              <div className="card-panel__source-list">
                 {card.sources.map((source) => (
-                  <article key={`${source.source_key}:${source.source_url}`} className="source-item">
+                  <article key={`${source.source_key}:${source.source_url}`} className="card-panel__source">
                     <span className="chip">{source.source_key}</span>
                     <strong>{source.source_url}</strong>
-                    <small>{source.evidence_ids.length} evidence ids</small>
+                    <small>{source.evidence_ids.length} evidence ID</small>
                   </article>
                 ))}
                 {card.sources.length === 0 ? (
                   <ViewState
                     kind="empty"
-                    title="No source attribution attached"
-                    message="This projection does not yet reference provenance sources."
+                    title="Атрибуция источников отсутствует"
+                    message="Эта карточка пока не ссылается на provenance-источники."
                     compact
                   />
                 ) : null}
@@ -159,29 +158,29 @@ export function UniversityCardPage() {
           </div>
         </div>
       ) : (
-        <div className="card-empty-state">
+        <div className="card-panel__empty">
           {loading ? (
             <ViewState
               kind="loading"
-              title="Loading university card"
-              message="Fetching the latest delivery projection for the selected university."
+              title="Загружаем карточку вуза"
+              message="Получаем последнюю delivery projection для выбранного вуза."
               detail={activeUniversityId ? `university_id: ${activeUniversityId}` : undefined}
             />
           ) : null}
           {!loading && error ? (
             <ViewState
               kind="error"
-              title="University card unavailable"
+              title="Карточка вуза недоступна"
               message={error}
-              detail="Pick a university from search results or load another UUID manually."
+              detail="Выбери вуз из результатов поиска или загрузи другой UUID вручную."
             />
           ) : null}
           {!loading && !error ? (
             <ViewState
               kind="empty"
-              title="No university selected yet"
-              message="Open a card directly from live search results or paste a UUID manually."
-              detail="The same selection also drives the evidence drawer."
+              title="Вуз еще не выбран"
+              message="Открой карточку из результатов поиска или вставь UUID вручную."
+              detail="Этот же выбор будет использован и в панели доказательств."
             />
           ) : null}
         </div>
@@ -203,7 +202,7 @@ function stringValue(value: string | number | null): string | null {
 function formatLocation(city: string | null, country: string | null): string {
   const parts = [city, country].filter((value): value is string => Boolean(value));
   if (parts.length === 0) {
-    return "not resolved";
+    return "не определено";
   }
   return parts.join(", ");
 }
@@ -213,7 +212,7 @@ function formatTimestamp(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

@@ -1,0 +1,31 @@
+@use "../variables" as *;
+
+.workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.workspace--search {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.8fr);
+  align-items: start;
+}
+
+.workspace__main,
+.workspace__side {
+  min-width: 0;
+}
+
+.workspace__side {
+  position: sticky;
+  top: 20px;
+}
+
+@media (max-width: 1180px) {
+  .workspace--search {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace__side {
+    position: static;
+  }
+}

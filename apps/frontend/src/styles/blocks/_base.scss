@@ -1,0 +1,36 @@
+@use "../variables" as *;
+
+:root {
+  color-scheme: light;
+  font-family: "Manrope", "Avenir Next", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(218, 236, 255, 0.9), transparent 32%),
+    linear-gradient(180deg, $color-page-start 0%, $color-page-end 100%);
+  color: $color-text;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+code {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}

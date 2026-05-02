@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import cache
 from typing import Any
 
 from libs.storage.settings import RabbitMQSettings, get_platform_settings
@@ -240,7 +239,6 @@ class RabbitMQConsumer:
         )
 
 
-@cache
 def get_rabbitmq_connection(
     service_name: str | None = None,
     app_env: str | None = None,

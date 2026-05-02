@@ -4,7 +4,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { FrontendRuntimeProvider, createFrontendRuntime } from "./shared/runtime";
 import { SelectedUniversityProvider } from "./shared/selected-university";
-import "./styles.css";
+import "./styles/main.scss";
 
 const runtime = createFrontendRuntime();
 

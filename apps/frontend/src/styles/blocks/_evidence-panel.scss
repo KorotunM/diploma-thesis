@@ -1,0 +1,120 @@
+@use "../variables" as *;
+
+.evidence-panel__layout {
+  display: grid;
+  gap: 18px;
+}
+
+.evidence-panel__summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.evidence-panel__columns {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 18px;
+}
+
+.evidence-panel__section {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: $color-surface-glass;
+}
+
+.evidence-panel__section-header,
+.evidence-panel__attribution-header,
+.evidence-panel__chain-header,
+.evidence-panel__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.evidence-panel__section-header {
+  align-items: baseline;
+}
+
+.evidence-panel__section-header h3 {
+  margin: 0;
+}
+
+.evidence-panel__attributions,
+.evidence-panel__chain {
+  display: grid;
+  gap: 12px;
+}
+
+.evidence-panel__attribution-card,
+.evidence-panel__chain-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: rgba(250, 252, 254, 0.92);
+}
+
+.evidence-panel__attribution-card p,
+.evidence-panel__attribution-card small {
+  margin: 0;
+  color: $color-text-muted;
+}
+
+.evidence-panel__links {
+  display: grid;
+  gap: 8px;
+}
+
+.evidence-panel__links code,
+.evidence-panel__chain-card code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: $radius-xs;
+  background: $color-surface-code;
+  color: $color-hero-text;
+  overflow-wrap: anywhere;
+}
+
+.evidence-panel__chip-list,
+.evidence-panel__meta {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.evidence-panel__meta {
+  color: $color-text-muted;
+  font-size: 0.82rem;
+}
+
+.evidence-panel__chain-card small {
+  color: $color-text-muted;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1140px) {
+  .evidence-panel__summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .evidence-panel__columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: $breakpoint-small) {
+  .evidence-panel__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-panel__section-header,
+  .evidence-panel__attribution-header,
+  .evidence-panel__chain-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

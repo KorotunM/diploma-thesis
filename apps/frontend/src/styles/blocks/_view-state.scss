@@ -1,0 +1,60 @@
+@use "../variables" as *;
+
+.view-state {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed $color-border-dashed;
+  border-radius: $radius-md;
+  background: $color-surface-muted;
+}
+
+.view-state strong,
+.view-state p,
+.view-state small {
+  margin: 0;
+}
+
+.view-state p,
+.view-state small {
+  color: $color-text-muted;
+  line-height: 1.55;
+}
+
+.view-state-compact {
+  padding: 14px;
+}
+
+.view-state-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e7edf3;
+  color: #39516b;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.view-state-loading .view-state-badge {
+  background: #e1edf8;
+  color: #25507a;
+}
+
+.view-state-error .view-state-badge {
+  background: #ffe2d4;
+  color: #9b4520;
+}
+
+.view-state-empty .view-state-badge {
+  background: #edf3e7;
+  color: #47623c;
+}
+
+.view-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

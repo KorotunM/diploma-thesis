@@ -62,8 +62,8 @@ def create_crawl_request_processing_service(session) -> CrawlRequestProcessingSe
     )
 
 
-def create_parser_rabbitmq_consumer() -> RabbitMQConsumer:
+def create_parser_rabbitmq_consumer(connection=None) -> RabbitMQConsumer:
     settings = get_platform_settings(service_name="parser")
-    connection = get_rabbitmq_connection(service_name="parser")
-    declare_rabbitmq_topology(connection)
-    return RabbitMQConsumer(connection, settings.rabbitmq)
+    resolved_connection = connection or get_rabbitmq_connection(service_name="parser")
+    declare_rabbitmq_topology(resolved_connection)
+    return RabbitMQConsumer(resolved_connection, settings.rabbitmq)

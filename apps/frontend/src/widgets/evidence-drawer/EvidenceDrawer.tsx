@@ -6,24 +6,24 @@ export function EvidenceDrawer() {
   const hasFieldAttributions = (snapshot?.fieldAttributions.length ?? 0) > 0;
 
   return (
-    <section className="panel accent-panel evidence-panel">
-      <div className="evidence-heading">
+    <section className="panel panel--evidence evidence-panel">
+      <div className="panel__header">
         <div>
-          <p className="section-kicker">Evidence Drawer</p>
-          <h2>Provenance-backed evidence and field attribution</h2>
-          <p className="section-copy">
-            Drawer now resolves live backend provenance and shows how delivery fields map back to
-            resolved facts, evidence ids and raw artifacts.
+          <p className="panel__kicker">Доказательства</p>
+          <h2 className="panel__title">Provenance, атрибуция полей и цепочка доказательств</h2>
+          <p className="panel__copy">
+            Отдельный экран для разбора происхождения данных. Здесь видно, из каких raw artifacts,
+            claims и evidence ID собирается текущая карточка.
           </p>
         </div>
-        <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
+        <span className={`panel__badge ${refreshing ? "panel__badge--refreshing" : ""}`}>
           {loading
-            ? "Loading trace"
+            ? "Загружаем трассировку"
             : snapshot
-              ? `${snapshot.provenance.chain.length} stages`
+              ? `${snapshot.provenance.chain.length} этапов`
               : activeUniversityId
-                ? "Trace unavailable"
-                : "Awaiting selection"}
+                ? "Трассировка недоступна"
+                : "Ожидание выбора"}
         </span>
       </div>
 
@@ -32,16 +32,16 @@ export function EvidenceDrawer() {
       {!activeUniversityId ? (
         <ViewState
           kind="empty"
-          title="No university selected yet"
-          message="Select a university card first. The drawer follows the same university_id and expands it into provenance details."
+          title="Вуз еще не выбран"
+          message="Сначала выбери карточку вуза. Этот экран использует тот же university_id и раскрывает provenance-детали."
         />
       ) : null}
 
       {activeUniversityId && loading && !snapshot ? (
         <ViewState
           kind="loading"
-          title="Loading provenance trace"
-          message="Resolving raw artifacts, parsed documents, claims, evidence and resolved facts."
+          title="Загружаем provenance-трассировку"
+          message="Разрешаем raw artifacts, parsed documents, claims, evidence и resolved facts."
           detail={`university_id: ${activeUniversityId}`}
         />
       ) : null}
@@ -49,106 +49,106 @@ export function EvidenceDrawer() {
       {activeUniversityId && !loading && !snapshot && error ? (
         <ViewState
           kind="error"
-          title="Provenance trace unavailable"
+          title="Provenance-трассировка недоступна"
           message={error}
-          detail="The card selection is preserved, so the trace will appear on the next successful lookup."
+          detail="Выбранная карточка сохранена, поэтому трассировка появится после следующего успешного запроса."
         />
       ) : null}
 
       {snapshot ? (
-        <div className="evidence-layout">
-          <div className="summary-grid evidence-summary-grid">
-            <article className="summary-tile">
+        <div className="evidence-panel__layout">
+          <div className="evidence-panel__summary">
+            <article className="summary-card">
               <span>university_id</span>
               <strong>{snapshot.universityId}</strong>
               <small>{formatTimestamp(snapshot.receivedAt)}</small>
             </article>
-            <article className="summary-tile">
-              <span>evidence ids</span>
+            <article className="summary-card">
+              <span>evidence ID</span>
               <strong>{snapshot.provenance.claim_evidence.length}</strong>
               <small>{snapshot.provenance.raw_artifacts.length} raw artifacts</small>
             </article>
-            <article className="summary-tile">
+            <article className="summary-card">
               <span>claims</span>
               <strong>{snapshot.provenance.claims.length}</strong>
               <small>{snapshot.provenance.parsed_documents.length} parsed documents</small>
             </article>
-            <article className="summary-tile">
+            <article className="summary-card">
               <span>resolved facts</span>
               <strong>{snapshot.provenance.resolved_facts.length}</strong>
-              <small>card v{snapshot.provenance.delivery_projection.card_version}</small>
+              <small>карточка v{snapshot.provenance.delivery_projection.card_version}</small>
             </article>
           </div>
 
-          <div className="evidence-columns">
-            <section className="evidence-subpanel">
-              <div className="subpanel-heading">
-                <h3>Field attribution</h3>
+          <div className="evidence-panel__columns">
+            <section className="evidence-panel__section">
+              <div className="evidence-panel__section-header">
+                <h3>Атрибуция полей</h3>
                 <small>
-                  {snapshot.fieldAttributions.length} resolved fields with source pointers
+                  {snapshot.fieldAttributions.length} resolved fields с указателями на источник
                 </small>
               </div>
-              <div className="attribution-list">
+              <div className="evidence-panel__attributions">
                 {hasFieldAttributions
                   ? snapshot.fieldAttributions.map((item) => (
-                      <article key={item.fieldName} className="attribution-card">
-                        <div className="attribution-header">
+                      <article key={item.fieldName} className="evidence-panel__attribution-card">
+                        <div className="evidence-panel__attribution-header">
                           <strong>{item.fieldName}</strong>
                           <span className="chip">{item.confidence.toFixed(2)}</span>
                         </div>
-                        <p>{item.sourceKey ?? "source key unavailable"}</p>
-                        <div className="attribution-links">
+                        <p>{item.sourceKey ?? "source key недоступен"}</p>
+                        <div className="evidence-panel__links">
                           {item.sourceUrls.map((sourceUrl) => (
                             <code key={sourceUrl}>{sourceUrl}</code>
                           ))}
                         </div>
-                        <small>{item.evidenceIds.length} evidence ids linked</small>
+                        <small>{item.evidenceIds.length} evidence ID привязано</small>
                       </article>
                     ))
                   : null}
                 {!hasFieldAttributions ? (
                   <ViewState
                     kind="empty"
-                    title="No field attribution rows"
-                    message="The provenance response did not include per-field source pointers for this card."
+                    title="Нет строк атрибуции полей"
+                    message="Ответ provenance не содержит указателей на источники по полям для этой карточки."
                     compact
                   />
                 ) : null}
               </div>
             </section>
 
-            <section className="evidence-subpanel">
-              <div className="subpanel-heading">
-                <h3>Evidence chain</h3>
+            <section className="evidence-panel__section">
+              <div className="evidence-panel__section-header">
+                <h3>Цепочка доказательств</h3>
                 <small>{snapshot.provenance.chain.join(" -> ")}</small>
               </div>
-              <div className="evidence-chain-list">
+              <div className="evidence-panel__chain">
                 {snapshot.evidenceChain.map((entry) => (
-                  <article key={entry.evidenceId} className="evidence-card">
-                    <div className="evidence-card-header">
+                  <article key={entry.evidenceId} className="evidence-panel__chain-card">
+                    <div className="evidence-panel__chain-header">
                       <span className="chip">{entry.sourceKey}</span>
                       <small>{formatTimestamp(entry.capturedAt)}</small>
                     </div>
                     <code>{entry.sourceUrl}</code>
-                    <div className="evidence-chip-list">
+                    <div className="evidence-panel__chip-list">
                       {entry.fieldNames.map((fieldName) => (
                         <span key={fieldName} className="dependency-chip">
                           {fieldName}
                         </span>
                       ))}
                     </div>
-                    <div className="evidence-meta-grid">
+                    <div className="evidence-panel__meta">
                       <span>http {entry.httpStatus ?? "?"}</span>
-                      <span>{entry.parserVersions.join(", ") || "parser unknown"}</span>
+                      <span>{entry.parserVersions.join(", ") || "parser неизвестен"}</span>
                     </div>
-                    <small>{entry.storageObjectKey ?? "storage object not linked"}</small>
+                    <small>{entry.storageObjectKey ?? "storage object не привязан"}</small>
                   </article>
                 ))}
                 {snapshot.evidenceChain.length === 0 ? (
                   <ViewState
                     kind="empty"
-                    title="No evidence rows attached"
-                    message="The provenance response exists, but this card has no linked claim_evidence rows yet."
+                    title="Нет связанных доказательств"
+                    message="Ответ provenance существует, но для этой карточки пока нет связанных claim_evidence строк."
                     compact
                   />
                 ) : null}
@@ -166,7 +166,7 @@ function formatTimestamp(value: string): string {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

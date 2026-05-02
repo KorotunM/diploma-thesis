@@ -1,0 +1,162 @@
+@use "../variables" as *;
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field__label {
+  font-size: 0.79rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: $color-text-accent;
+}
+
+.field__control {
+  width: 100%;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid $color-border-strong;
+  border-radius: 16px;
+  background: $color-surface-strong;
+  color: $color-text;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.field__control:focus {
+  outline: 2px solid rgba(43, 126, 104, 0.22);
+  border-color: rgba(43, 126, 104, 0.45);
+}
+
+.field__control--select {
+  appearance: none;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button--primary {
+  background: #16344f;
+  color: $color-hero-text;
+  box-shadow: 0 16px 28px rgba(22, 52, 79, 0.18);
+}
+
+.button--secondary,
+.button--ghost {
+  border-color: $color-border-strong;
+  background: $color-surface-strong;
+  color: $color-text;
+}
+
+.chip,
+.dependency-chip,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.chip {
+  background: $color-info-bg;
+  color: $color-info-text;
+}
+
+.dependency-chip {
+  background: #edf3f8;
+  color: $color-text;
+}
+
+.status-pill--live,
+.status-pill--fresh {
+  background: $color-status-live-bg;
+  color: $color-status-live-text;
+}
+
+.status-pill--degraded,
+.status-pill--stale {
+  background: $color-status-degraded-bg;
+  color: $color-status-degraded-text;
+}
+
+.status-pill--aging {
+  background: $color-status-aging-bg;
+  color: $color-status-aging-text;
+}
+
+.status-pill--scheduled {
+  background: $color-status-scheduled-bg;
+  color: $color-status-scheduled-text;
+}
+
+.status-pill--manual,
+.status-pill--unknown {
+  background: $color-status-manual-bg;
+  color: $color-status-manual-text;
+}
+
+.status-pill--inactive {
+  background: $color-status-inactive-bg;
+  color: $color-status-inactive-text;
+}
+
+.summary-card {
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.summary-card span,
+.summary-card small {
+  color: $color-text-muted;
+}
+
+.summary-card strong {
+  font-size: 1.72rem;
+}
+
+.key-value {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid $color-border;
+}
+
+.key-value span {
+  color: $color-text-accent;
+}
+
+.key-value strong {
+  overflow-wrap: anywhere;
+  text-align: right;
+}

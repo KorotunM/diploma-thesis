@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 export type ViewStateKind = "loading" | "error" | "empty";
 
 const LABELS: Record<ViewStateKind, string> = {
-  loading: "Loading",
-  error: "Attention",
-  empty: "Empty",
+  loading: "Загрузка",
+  error: "Внимание",
+  empty: "Пусто",
 };
 
 export interface ViewStateProps {
