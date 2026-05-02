@@ -70,6 +70,18 @@ services:
     ports:
       - "8002:8002"
 
+  parser-worker:
+    build:
+      context: ../..
+      dockerfile: apps/parser/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - postgres
+      - rabbitmq
+      - minio
+    command: python -m apps.parser.app.worker
+
   normalizer:
     build:
       context: ../..
@@ -82,6 +94,18 @@ services:
       - minio
     ports:
       - "8003:8003"
+
+  normalizer-worker:
+    build:
+      context: ../..
+      dockerfile: apps/normalizer/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      - postgres
+      - rabbitmq
+      - minio
+    command: python -m apps.normalizer.app.worker
 
   backend:
     build:

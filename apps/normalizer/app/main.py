@@ -2,6 +2,8 @@ from uuid import uuid4
 
 from fastapi import status
 
+from .parse_completed import build_normalize_request_event
+
 from libs.contracts.events import (
     CardUpdatedEvent,
     CardUpdatedPayload,
@@ -24,6 +26,7 @@ def normalizer_overview() -> dict[str, object]:
         "service": "normalizer",
         "stages": ["field normalization", "blocking", "matching", "clustering", "resolution"],
         "delivery_targets": ["delivery.university_card", "delivery.university_search_doc"],
+        "worker_queues": ["normalize.high", "normalize.bulk"],
     }
 
 
@@ -34,20 +37,9 @@ def normalizer_overview() -> dict[str, object]:
     tags=["normalizer"],
 )
 def prepare_normalization(event: ParseCompletedEvent) -> NormalizeRequestEvent:
-    payload = NormalizeRequestPayload(
-        crawl_run_id=event.payload.crawl_run_id,
-        source_key=event.payload.source_key,
-        parsed_document_id=event.payload.parsed_document_id,
-        parser_version=event.payload.parser_version,
-        normalizer_version="normalizer.stub.0.1.0",
-        metadata={"note": "stub normalize request"},
-    )
-    return NormalizeRequestEvent(
-        header=EventHeader(
-            producer="normalizer",
-            trace_id=event.header.trace_id or event.header.event_id,
-        ),
-        payload=payload,
+    return build_normalize_request_event(
+        event,
+        normalizer_version="normalizer.0.1.0",
     )
 
 

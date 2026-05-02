@@ -9,10 +9,20 @@ services:
       - ../../:/workspace
     command: uvicorn apps.parser.app.main:app --host 0.0.0.0 --port 8002 --reload
 
+  parser-worker:
+    volumes:
+      - ../../:/workspace
+    command: python -m apps.parser.app.worker
+
   normalizer:
     volumes:
       - ../../:/workspace
     command: uvicorn apps.normalizer.app.main:app --host 0.0.0.0 --port 8003 --reload
+
+  normalizer-worker:
+    volumes:
+      - ../../:/workspace
+    command: python -m apps.normalizer.app.worker
 
   backend:
     volumes:

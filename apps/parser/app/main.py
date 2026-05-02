@@ -20,6 +20,7 @@ def parser_overview() -> dict[str, object]:
         "service": "parser",
         "adapter_families": ["official_sites", "aggregators", "rankings"],
         "pipeline_steps": ["fetch", "store_raw", "extract", "map_to_intermediate"],
+        "worker_queues": ["parser.high", "parser.bulk"],
     }
 
 

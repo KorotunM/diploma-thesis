@@ -4,7 +4,9 @@ from apps.parser.adapters.rankings import RankingAdapter
 from libs.source_sdk.fetchers import HttpFetcher
 from libs.source_sdk.stores import MinIORawArtifactStore
 from libs.storage import (
+    RabbitMQConsumer,
     RabbitMQPublisher,
+    declare_rabbitmq_topology,
     get_minio_storage,
     get_platform_settings,
     get_postgres_session_factory,
@@ -58,3 +60,10 @@ def create_crawl_request_processing_service(session) -> CrawlRequestProcessingSe
         ),
         parse_completed_emitter=parse_completed_emitter,
     )
+
+
+def create_parser_rabbitmq_consumer() -> RabbitMQConsumer:
+    settings = get_platform_settings(service_name="parser")
+    connection = get_rabbitmq_connection(service_name="parser")
+    declare_rabbitmq_topology(connection)
+    return RabbitMQConsumer(connection, settings.rabbitmq)
