@@ -75,9 +75,33 @@ class FakeUniversityCardReadService:
 
 
 def build_card(university_id: UUID | None = None) -> UniversityCard:
-    return UniversityCard.sample().model_copy(
-        update={
+    return UniversityCard.model_validate(
+        {
+            **UniversityCard.sample().model_dump(mode="python"),
             "university_id": university_id or uuid4(),
+            "contacts": {
+                "website": "https://example.edu",
+                "emails": ["admissions@example.edu"],
+                "phones": ["+7 495 000-00-00"],
+            },
+            "programs": [
+                {
+                    "faculty": "Faculty of Science",
+                    "code": "05.03.01",
+                    "name": "Geology",
+                    "budget_places": 25,
+                    "passing_score": 182,
+                    "year": 2025,
+                    "confidence": 0.96,
+                    "sources": [
+                        {
+                            "source_key": "msu-official",
+                            "source_url": "https://example.edu/programs",
+                            "evidence_ids": [str(uuid4())],
+                        }
+                    ],
+                }
+            ],
         }
     )
 
@@ -131,6 +155,60 @@ def build_fact_rows() -> list[dict[str, Any]]:
                 sort_keys=True,
             ),
         },
+        {
+            "field_name": "contacts.emails",
+            "resolution_policy": CANONICAL_FIELD_POLICY,
+            "fact_score": 0.96,
+            "metadata": json.dumps(
+                {
+                    "source_key": "msu-official",
+                    "source_trust_tier": "authoritative",
+                    "source_urls": ["https://example.edu/admissions"],
+                    "selected_claim_ids": [str(uuid4())],
+                    "selected_evidence_ids": [str(uuid4())],
+                    "resolution_strategy": "prefer_higher_trust_tier",
+                    "preferred_trust_tiers": ["authoritative", "trusted"],
+                    "source_keys": ["msu-official"],
+                },
+                sort_keys=True,
+            ),
+        },
+        {
+            "field_name": "contacts.phones",
+            "resolution_policy": CANONICAL_FIELD_POLICY,
+            "fact_score": 0.95,
+            "metadata": json.dumps(
+                {
+                    "source_key": "msu-official",
+                    "source_trust_tier": "authoritative",
+                    "source_urls": ["https://example.edu/admissions"],
+                    "selected_claim_ids": [str(uuid4())],
+                    "selected_evidence_ids": [str(uuid4())],
+                    "resolution_strategy": "prefer_higher_trust_tier",
+                    "preferred_trust_tiers": ["authoritative", "trusted"],
+                    "source_keys": ["msu-official"],
+                },
+                sort_keys=True,
+            ),
+        },
+        {
+            "field_name": "programs.science:05.03.01:0",
+            "resolution_policy": CANONICAL_FIELD_POLICY,
+            "fact_score": 0.94,
+            "metadata": json.dumps(
+                {
+                    "source_key": "msu-official",
+                    "source_trust_tier": "authoritative",
+                    "source_urls": ["https://example.edu/programs"],
+                    "selected_claim_ids": [str(uuid4())],
+                    "selected_evidence_ids": [str(uuid4())],
+                    "resolution_strategy": "prefer_higher_trust_tier",
+                    "preferred_trust_tiers": ["authoritative", "trusted"],
+                    "source_keys": ["msu-official"],
+                },
+                sort_keys=True,
+            ),
+        },
     ]
 
 
@@ -154,6 +232,50 @@ def build_response(card: UniversityCard) -> UniversityCardResponse:
                         "winner=msu-official; tier=authoritative"
                     ),
                 }
+            },
+            "admission": {
+                "contacts": {
+                    "website": "https://example.edu",
+                    "emails": ["admissions@example.edu"],
+                    "phones": ["+7 495 000-00-00"],
+                    "field_attribution": {
+                        "contacts.emails": {
+                            "field_name": "contacts.emails",
+                            "source_key": "msu-official",
+                            "source_trust_tier": "authoritative",
+                            "source_urls": ["https://example.edu/admissions"],
+                            "selected_claim_ids": [uuid4()],
+                            "selected_evidence_ids": [uuid4()],
+                            "resolution_policy": CANONICAL_FIELD_POLICY,
+                            "resolution_strategy": "prefer_higher_trust_tier",
+                            "rationale": "tiered_authority_highest_confidence",
+                        }
+                    },
+                },
+                "programs": [
+                    {
+                        "field_name": "programs.science:05.03.01:0",
+                        "faculty": "Faculty of Science",
+                        "code": "05.03.01",
+                        "name": "Geology",
+                        "budget_places": 25,
+                        "passing_score": 182,
+                        "year": 2025,
+                        "confidence": 0.94,
+                        "sources": [],
+                        "field_attribution": {
+                            "field_name": "programs.science:05.03.01:0",
+                            "source_key": "msu-official",
+                            "source_trust_tier": "authoritative",
+                            "source_urls": ["https://example.edu/programs"],
+                            "selected_claim_ids": [uuid4()],
+                            "selected_evidence_ids": [uuid4()],
+                            "resolution_policy": CANONICAL_FIELD_POLICY,
+                            "resolution_strategy": "prefer_higher_trust_tier",
+                            "rationale": "tiered_authority_highest_confidence",
+                        },
+                    }
+                ],
             },
             "source_rationale": [
                 {
@@ -217,10 +339,23 @@ def test_university_card_read_service_adds_field_attribution_and_source_rational
         "authoritative"
     )
     assert "winner=msu-official" in response.field_attribution["canonical_name"].rationale
+    assert response.admission.contacts.emails == ["admissions@example.edu"]
+    assert response.admission.contacts.field_attribution["contacts.emails"].source_key == (
+        "msu-official"
+    )
+    assert response.admission.programs[0].field_name == "programs.science:05.03.01:0"
+    assert response.admission.programs[0].name == "Geology"
+    assert response.admission.programs[0].field_attribution is not None
+    assert response.admission.programs[0].field_attribution.source_urls == [
+        "https://example.edu/programs"
+    ]
     assert response.source_rationale[0].source_key == "msu-official"
     assert response.source_rationale[0].selected_fields == [
         "canonical_name",
+        "contacts.emails",
+        "contacts.phones",
         "contacts.website",
+        "programs.science:05.03.01:0",
     ]
 
 
@@ -237,6 +372,8 @@ def test_university_card_endpoint_serves_delivery_projection() -> None:
     body = response.json()
     assert body["university_id"] == str(card.university_id)
     assert body["canonical_name"]["value"] == card.canonical_name.value
+    assert body["admission"]["contacts"]["emails"] == ["admissions@example.edu"]
+    assert body["admission"]["programs"][0]["name"] == "Geology"
     assert body["field_attribution"]["canonical_name"]["source_key"] == "msu-official"
     assert body["source_rationale"][0]["source_key"] == "msu-official"
     assert service.calls == [card.university_id]

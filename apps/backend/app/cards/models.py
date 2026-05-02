@@ -43,6 +43,39 @@ class UniversityCardFieldAttribution(BaseModel):
     rationale: str
 
 
+class AdmissionContactsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    website: str | None = None
+    emails: list[str] = Field(default_factory=list)
+    phones: list[str] = Field(default_factory=list)
+    field_attribution: dict[str, UniversityCardFieldAttribution] = Field(
+        default_factory=dict
+    )
+
+
+class AdmissionProgramResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field_name: str
+    faculty: str | None = None
+    code: str | None = None
+    name: str | None = None
+    budget_places: int | None = None
+    passing_score: int | None = None
+    year: int | None = None
+    confidence: float | None = None
+    sources: list[dict[str, Any]] = Field(default_factory=list)
+    field_attribution: UniversityCardFieldAttribution | None = None
+
+
+class AdmissionSectionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contacts: AdmissionContactsResponse = Field(default_factory=AdmissionContactsResponse)
+    programs: list[AdmissionProgramResponse] = Field(default_factory=list)
+
+
 class UniversityCardSourceRationale(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -54,6 +87,7 @@ class UniversityCardSourceRationale(BaseModel):
 
 
 class UniversityCardResponse(UniversityCard):
+    admission: AdmissionSectionResponse = Field(default_factory=AdmissionSectionResponse)
     field_attribution: dict[str, UniversityCardFieldAttribution] = Field(
         default_factory=dict
     )

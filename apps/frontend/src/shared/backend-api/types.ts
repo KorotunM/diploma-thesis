@@ -70,6 +70,49 @@ export interface UniversityCardDto {
     card_version: number;
     generated_at: string;
   };
+  admission: {
+    contacts: {
+      website: string | null;
+      emails: string[];
+      phones: string[];
+      field_attribution: Record<
+        string,
+        {
+          field_name: string;
+          source_key: string | null;
+          source_trust_tier: string | null;
+          source_urls: string[];
+          selected_claim_ids: string[];
+          selected_evidence_ids: string[];
+          resolution_policy: string;
+          resolution_strategy: string | null;
+          rationale: string;
+        }
+      >;
+    };
+    programs: Array<{
+      field_name: string;
+      faculty: string | null;
+      code: string | null;
+      name: string | null;
+      budget_places: number | null;
+      passing_score: number | null;
+      year: number | null;
+      confidence: number | null;
+      sources: Array<Record<string, unknown>>;
+      field_attribution: {
+        field_name: string;
+        source_key: string | null;
+        source_trust_tier: string | null;
+        source_urls: string[];
+        selected_claim_ids: string[];
+        selected_evidence_ids: string[];
+        resolution_policy: string;
+        resolution_strategy: string | null;
+        rationale: string;
+      } | null;
+    }>;
+  };
 }
 
 export interface DeliveryProjectionTraceDto {

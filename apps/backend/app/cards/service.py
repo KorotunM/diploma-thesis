@@ -4,6 +4,9 @@ from collections import defaultdict
 from uuid import UUID
 
 from .models import (
+    AdmissionContactsResponse,
+    AdmissionProgramResponse,
+    AdmissionSectionResponse,
     UniversityCardFieldAttribution,
     UniversityCardResponse,
     UniversityCardSourceRationale,
@@ -33,12 +36,17 @@ class UniversityCardReadService:
             fact.field_name: self._field_attribution(fact)
             for fact in facts
         }
+        admission = self._admission_section(
+            card=record.card,
+            field_attribution=field_attribution,
+        )
         source_rationale = self._source_rationale(
             attributions=list(field_attribution.values())
         )
         return UniversityCardResponse.model_validate(
             {
                 **record.card.model_dump(mode="python"),
+                "admission": admission.model_dump(mode="python"),
                 "field_attribution": field_attribution,
                 "source_rationale": source_rationale,
             }
@@ -153,3 +161,86 @@ class UniversityCardReadService:
         if trust_tier is None:
             return f"{source_key} selected for fields {fields}"
         return f"{source_key} ({trust_tier}) selected for fields {fields}"
+
+    def _admission_section(
+        self,
+        *,
+        card,
+        field_attribution: dict[str, UniversityCardFieldAttribution],
+    ) -> AdmissionSectionResponse:
+        return AdmissionSectionResponse(
+            contacts=AdmissionContactsResponse(
+                website=card.contacts.website,
+                emails=list(card.contacts.emails),
+                phones=list(card.contacts.phones),
+                field_attribution={
+                    field_name: attribution
+                    for field_name, attribution in (
+                        ("contacts.website", field_attribution.get("contacts.website")),
+                        ("contacts.emails", field_attribution.get("contacts.emails")),
+                        ("contacts.phones", field_attribution.get("contacts.phones")),
+                    )
+                    if attribution is not None
+                },
+            ),
+            programs=self._program_responses(
+                card=card,
+                field_attribution=field_attribution,
+            ),
+        )
+
+    def _program_responses(
+        self,
+        *,
+        card,
+        field_attribution: dict[str, UniversityCardFieldAttribution],
+    ) -> list[AdmissionProgramResponse]:
+        responses: list[AdmissionProgramResponse] = []
+        program_fields = sorted(
+            field_name
+            for field_name in field_attribution
+            if field_name.startswith("programs.")
+        )
+        for index, field_name in enumerate(program_fields):
+            program = card.programs[index] if index < len(card.programs) else {}
+            if not isinstance(program, dict):
+                program = {}
+            responses.append(
+                AdmissionProgramResponse(
+                    field_name=field_name,
+                    faculty=self._string_value(program.get("faculty")),
+                    code=self._string_value(program.get("code")),
+                    name=self._string_value(program.get("name")),
+                    budget_places=self._int_value(program.get("budget_places")),
+                    passing_score=self._int_value(program.get("passing_score")),
+                    year=self._int_value(program.get("year")),
+                    confidence=self._float_value(program.get("confidence")),
+                    sources=self._list_of_dicts(program.get("sources")),
+                    field_attribution=field_attribution[field_name],
+                )
+            )
+        return responses
+
+    @staticmethod
+    def _string_value(value: object) -> str | None:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return None
+
+    @staticmethod
+    def _int_value(value: object) -> int | None:
+        if isinstance(value, int):
+            return value
+        return None
+
+    @staticmethod
+    def _float_value(value: object) -> float | None:
+        if isinstance(value, (int, float)):
+            return float(value)
+        return None
+
+    @staticmethod
+    def _list_of_dicts(value: object) -> list[dict]:
+        if not isinstance(value, list):
+            return []
+        return [item for item in value if isinstance(item, dict)]

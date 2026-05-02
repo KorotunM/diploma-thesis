@@ -193,6 +193,156 @@ def build_repository_datasets(university_id: UUID) -> dict[str, list[dict[str, A
     }
 
 
+def build_admissions_repository_datasets(university_id: UUID) -> dict[str, list[dict[str, Any]]]:
+    datasets = build_repository_datasets(university_id)
+    now = datetime(2026, 4, 23, 15, 5, tzinfo=UTC)
+    program_fact_id = uuid4()
+    program_claim_id = uuid4()
+    contact_claim_id = uuid4()
+    program_evidence_id = uuid4()
+    contact_evidence_id = uuid4()
+    program_document_id = uuid4()
+    program_artifact_id = uuid4()
+
+    datasets["facts"].extend(
+        [
+            {
+                "resolved_fact_id": program_fact_id,
+                "university_id": university_id,
+                "field_name": "programs.science:05.03.01:0",
+                "value_json": json.dumps(
+                    {
+                        "value": {
+                            "faculty": "Faculty of Science",
+                            "code": "05.03.01",
+                            "name": "Geology",
+                            "budget_places": 25,
+                            "passing_score": 182,
+                            "year": 2025,
+                        },
+                        "value_type": "program_item",
+                    },
+                    sort_keys=True,
+                ),
+                "fact_score": 0.96,
+                "resolution_policy": CANONICAL_FIELD_POLICY,
+                "card_version": 1,
+                "resolved_at": now,
+                "metadata": json.dumps(
+                    {
+                        "source_key": "official-site",
+                        "source_urls": ["https://example.edu/programs"],
+                        "selected_claim_ids": [str(program_claim_id), str(contact_claim_id)],
+                        "selected_evidence_ids": [
+                            str(program_evidence_id),
+                            str(contact_evidence_id),
+                        ],
+                    },
+                    sort_keys=True,
+                ),
+            }
+        ]
+    )
+    datasets["claims"].extend(
+        [
+            {
+                "claim_id": program_claim_id,
+                "parsed_document_id": program_document_id,
+                "source_key": "official-site",
+                "field_name": "programs.name",
+                "value_json": json.dumps(
+                    {"value": "Geology", "value_type": "string"},
+                    sort_keys=True,
+                ),
+                "entity_hint": "Geology",
+                "parser_version": "official-site.0.2.0",
+                "normalizer_version": "normalizer.0.1.0",
+                "parser_confidence": 0.98,
+                "created_at": now,
+                "metadata": json.dumps(
+                    {"fragment_metadata": {"record_group_key": "science:05.03.01:0"}},
+                    sort_keys=True,
+                ),
+            },
+            {
+                "claim_id": contact_claim_id,
+                "parsed_document_id": program_document_id,
+                "source_key": "official-site",
+                "field_name": "contacts.emails",
+                "value_json": json.dumps(
+                    {"value": ["admissions@example.edu"], "value_type": "list"},
+                    sort_keys=True,
+                ),
+                "entity_hint": "Example State University",
+                "parser_version": "official-site.0.2.0",
+                "normalizer_version": "normalizer.0.1.0",
+                "parser_confidence": 0.95,
+                "created_at": now,
+                "metadata": json.dumps({"fragment_id": str(uuid4())}, sort_keys=True),
+            },
+        ]
+    )
+    datasets["evidence"].extend(
+        [
+            {
+                "evidence_id": program_evidence_id,
+                "claim_id": program_claim_id,
+                "raw_artifact_id": program_artifact_id,
+                "fragment_id": uuid4(),
+                "source_key": "official-site",
+                "source_url": "https://example.edu/programs",
+                "captured_at": now,
+                "metadata": json.dumps({"locator": "table.programs"}, sort_keys=True),
+            },
+            {
+                "evidence_id": contact_evidence_id,
+                "claim_id": contact_claim_id,
+                "raw_artifact_id": program_artifact_id,
+                "fragment_id": uuid4(),
+                "source_key": "official-site",
+                "source_url": "https://example.edu/programs",
+                "captured_at": now,
+                "metadata": json.dumps({"locator": ".admission-email"}, sort_keys=True),
+            },
+        ]
+    )
+    datasets["parsed_documents"].append(
+        {
+            "parsed_document_id": program_document_id,
+            "crawl_run_id": uuid4(),
+            "raw_artifact_id": program_artifact_id,
+            "source_key": "official-site",
+            "parser_profile": "official_site.kubsu.programs_html",
+            "parser_version": "official-site.0.2.0",
+            "entity_type": "admission_program",
+            "entity_hint": "Geology",
+            "extracted_fragment_count": 8,
+            "parsed_at": now,
+            "metadata": json.dumps({"adapter": "official-site"}, sort_keys=True),
+        }
+    )
+    datasets["raw_artifacts"].append(
+        {
+            "raw_artifact_id": program_artifact_id,
+            "crawl_run_id": uuid4(),
+            "source_key": "official-site",
+            "source_url": "https://example.edu/programs",
+            "final_url": "https://example.edu/programs",
+            "http_status": 200,
+            "content_type": "text/html",
+            "content_length": 8192,
+            "sha256": "def456",
+            "storage_bucket": "raw-artifacts",
+            "storage_object_key": "sha256/de/f456.html",
+            "etag": "\"etag-2\"",
+            "last_modified": "Thu, 23 Apr 2026 12:05:00 GMT",
+            "fetched_at": now,
+            "metadata": json.dumps({"headers": {"cache-control": "max-age=60"}}, sort_keys=True),
+        }
+    )
+    return datasets
+
+
 def test_university_provenance_repository_reads_stitched_trace_layers() -> None:
     university_id = uuid4()
     session = FakeProvenanceSession(build_repository_datasets(university_id))
@@ -287,3 +437,28 @@ def test_university_provenance_endpoint_returns_404_when_trace_missing() -> None
 
     assert response.status_code == 404
     assert response.json()["detail"] == f"University provenance {university_id} was not found."
+
+
+def test_university_provenance_repository_reads_admissions_program_rows() -> None:
+    university_id = uuid4()
+    session = FakeProvenanceSession(build_admissions_repository_datasets(university_id))
+    repository = UniversityProvenanceRepository(session=session, sql_text=lambda value: value)
+
+    facts = repository.list_resolved_facts(university_id=university_id, card_version=1)
+    claims = repository.list_claims_for_card(university_id=university_id, card_version=1)
+    evidence = repository.list_claim_evidence_for_card(university_id=university_id, card_version=1)
+    parsed_documents = repository.list_parsed_documents_for_card(
+        university_id=university_id,
+        card_version=1,
+    )
+    raw_artifacts = repository.list_raw_artifacts_for_card(
+        university_id=university_id,
+        card_version=1,
+    )
+
+    program_fact = next(fact for fact in facts if fact.field_name.startswith("programs."))
+    assert program_fact.value["name"] == "Geology"
+    assert any(claim.field_name == "contacts.emails" for claim in claims)
+    assert any(document.entity_type == "admission_program" for document in parsed_documents)
+    assert any(record.source_url == "https://example.edu/programs" for record in evidence)
+    assert any(artifact.source_url == "https://example.edu/programs" for artifact in raw_artifacts)
