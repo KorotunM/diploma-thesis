@@ -189,7 +189,7 @@ def build_fact_result() -> ResolvedFactBuildResult:
             ),
             fact(
                 university_id=university_id,
-                field_name=f"{PROGRAM_FIELD_PREFIX}science-faculty:05.03.01:0",
+                field_name=f"{PROGRAM_FIELD_PREFIX}05.03.01:2025:geology",
                 value={
                     "faculty": "Faculty of Science",
                     "code": "05.03.01",

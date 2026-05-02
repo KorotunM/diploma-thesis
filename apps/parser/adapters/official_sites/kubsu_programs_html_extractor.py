@@ -245,11 +245,14 @@ class KubSUProgramsHtmlExtractor(OfficialSiteFragmentExtractor):
         row: ProgramRow,
         source_field: str,
     ) -> dict[str, Any]:
+        program_merge_key = f"{row.code}:{row.year}:{slugify(row.name)}"
         return {
             "record_group_key": row.row_key,
+            "program_merge_key": program_merge_key,
             "entity_type": "admission_program",
             "faculty": row.faculty,
             "program_code": row.code,
+            "program_name": row.name,
             "program_year": row.year,
             "source_field": source_field,
         }

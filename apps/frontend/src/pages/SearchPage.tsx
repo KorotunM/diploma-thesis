@@ -1,5 +1,6 @@
 import { formatSearchFilters } from "../features/search/formatSearchFilters";
 import { useUniversitySearch } from "../features/search";
+import { useSelectedUniversity } from "../shared/selected-university";
 import { ViewState } from "../shared/ui/view-state";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -11,6 +12,7 @@ const SOURCE_TYPE_OPTIONS = [
 ];
 
 export function SearchPage() {
+  const { activeUniversityId, setActiveUniversityId } = useSelectedUniversity();
   const {
     query,
     setQuery,
@@ -198,7 +200,14 @@ export function SearchPage() {
             ) : null}
             {hasResults
               ? snapshot?.items.map((item) => (
-                  <article key={item.university_id} className="search-result-card">
+                  <article
+                    key={item.university_id}
+                    className={`search-result-card ${
+                      item.university_id === activeUniversityId
+                        ? "search-result-card-active"
+                        : ""
+                    }`}
+                  >
                     <div className="search-result-header">
                       <div>
                         <strong>{item.canonical_name}</strong>
@@ -227,6 +236,17 @@ export function SearchPage() {
                         <dd>{item.match_signals.join(", ") || "none"}</dd>
                       </div>
                     </dl>
+                    <div className="search-result-actions">
+                      <button
+                        className="card-action-primary"
+                        type="button"
+                        onClick={() => openUniversityCard(item.university_id, setActiveUniversityId)}
+                      >
+                        {item.university_id === activeUniversityId
+                          ? "Card selected"
+                          : "Open card"}
+                      </button>
+                    </div>
                   </article>
                 ))
               : null}
@@ -276,6 +296,17 @@ export function SearchPage() {
       </div>
     </section>
   );
+}
+
+function openUniversityCard(
+  universityId: string,
+  setActiveUniversityId: (universityId: string) => void,
+): void {
+  setActiveUniversityId(universityId);
+  document.getElementById("university-card")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
 }
 
 function formatTimestamp(value: string): string {

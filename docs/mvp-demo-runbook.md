@@ -1,38 +1,40 @@
-# MVP Demo Runbook
+# Live MVP Runbook
 
-Этот runbook фиксирует воспроизводимый локальный demo-сценарий для текущего MVP:
-поднять стек, засеять данные из fixture bundle, проверить API/UI и быстро локализовать
-типовые проблемы.
+Этот runbook фиксирует текущий рабочий локальный сценарий для live MVP после завершения commit 20.
 
-## Что покрывает demo
+Главный путь теперь такой:
 
-Demo bundle уже лежит в репозитории:
+`source bootstrap -> discovery -> manual crawl -> parser worker -> normalize worker -> backend search/card/provenance`
 
-- `tests/fixtures/mvp_bundle/manifest.json`
+`backfill` и `replay` остаются вспомогательными инструментами для регрессии и отладки, но не считаются основным demo-путём.
 
-Он содержит три MVP source family:
+## Что входит в live MVP
 
-- `msu-official` — authoritative source для canonical fields;
-- `study-aggregator` — secondary source для aliases и supporting fields;
-- `qs-world-ranking` — ranking source для structured rating facts.
+- `tabiturient-aggregator`
+  - discovery source: `aggregator.tabiturient.sitemap_xml`
+  - entity source: `aggregator.tabiturient.university_html`
+- `tabiturient-globalrating`
+  - ranking source: `ranking.tabiturient.globalrating_html`
+- `kubsu-official`
+  - landing page: `official_site.kubsu.abiturient_html`
+  - programs page: `official_site.kubsu.programs_html`
 
-После seeded backfill ожидается такой поток данных:
+Что сознательно не входит в live MVP:
 
-`fixture bundle -> source registry -> raw_artifact -> parsed_document/extracted_fragment -> claim/claim_evidence -> core.university/resolved_fact/card_version -> delivery.university_card + delivery.university_search_doc -> backend API -> frontend`
+- `official_site.kubsu.places_pdf`
+- любой runtime-flow, завязанный на PDF merge
 
 ## Предварительные условия
 
 - `Docker` и `docker compose`
 - `Python 3.12`
-- `Node.js 22+`
-
-Для локального запуска host-side scripts нужен установленный проект с extras:
+- локально установлен проект с extras:
 
 ```powershell
 py -3 -m pip install -e .[dev,worker,parser]
 ```
 
-## 1. Поднять локальный стек
+## 1. Поднять стек
 
 Из корня репозитория:
 
@@ -40,27 +42,17 @@ py -3 -m pip install -e .[dev,worker,parser]
 docker compose -f infra/docker-compose/docker-compose.yml up --build
 ```
 
-Полезные URL после старта:
+После старта должны быть живы:
 
-- frontend: `http://localhost:5173`
-- backend: `http://localhost:8004`
-- scheduler: `http://localhost:8001`
-- parser: `http://localhost:8002`
-- normalizer: `http://localhost:8003`
-- RabbitMQ UI: `http://localhost:15672`
-- MinIO console: `http://localhost:9001`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000`
+- `scheduler` на `http://localhost:8001`
+- `parser` на `http://localhost:8002`
+- `normalizer` на `http://localhost:8003`
+- `backend` на `http://localhost:8004`
+- `frontend` на `http://localhost:5173`
+- `parser-worker`
+- `normalizer-worker`
 
-Локальные credentials из `infra/env/local/app.env`:
-
-- RabbitMQ: `aggregator / aggregator`
-- MinIO: `aggregator / aggregator-secret`
-- Grafana: `admin / admin`
-
-## 2. Проверить, что сервисы живы
-
-Минимальная проверка:
+Быстрая проверка:
 
 ```powershell
 Invoke-RestMethod http://localhost:8001/healthz
@@ -69,88 +61,138 @@ Invoke-RestMethod http://localhost:8003/healthz
 Invoke-RestMethod http://localhost:8004/healthz
 ```
 
-Ожидается `ok`-состояние либо структура health-зависимостей без transport errors.
-
-## 3. Засеять MVP bundle в локальную базу
-
-Важно: Python scripts по умолчанию читают `infra/env/local/app.env`, где стоят
-container hostnames (`postgres`, `minio`). При запуске с хоста их нужно переопределить
-на `localhost`.
-
-Рекомендуемый способ для PowerShell:
+## 2. Засеять source registry
 
 ```powershell
-$env:APP_ENV = "local"
-$env:POSTGRES_DSN = "postgresql+psycopg://aggregator:aggregator@localhost:5432/aggregator"
-$env:MINIO_ENDPOINT = "http://localhost:9000"
-py -3 -m scripts.backfill tests/fixtures/mvp_bundle/manifest.json
+py -3 -m scripts.source_bootstrap
 ```
 
-Что делает backfill:
+Ожидаемый результат:
 
-1. Синхронизирует `ingestion.source` и `ingestion.source_endpoint` для трёх MVP sources.
-2. Импортирует fixture payloads в MinIO и `ingestion.raw_artifact`.
-3. Запускает parser replay для каждого imported raw artifact.
-4. Запускает normalizer replay и пересобирает:
-   - `normalize.claim`
-   - `normalize.claim_evidence`
-   - `core.university`
-   - `core.resolved_fact`
-   - `core.card_version`
-   - `delivery.university_card`
-   - `delivery.university_search_doc`
+- в `ingestion.source` есть `kubsu-official`, `tabiturient-aggregator`, `tabiturient-globalrating`
+- в `ingestion.source_endpoint` есть стартовые endpoint'ы для KubSU и Tabiturient sitemap/globalrating
 
-Скрипт печатает JSON-результат. Сохрани из него:
+Проверить можно так:
 
-- `items[*].university_id`
-- `items[*].parsed_document_id`
-- `items[*].raw_artifact_id`
+```powershell
+Invoke-RestMethod "http://localhost:8001/admin/v1/sources?limit=20&offset=0" | ConvertTo-Json -Depth 8
+```
 
-Для demo важнее всего `university_id`: его можно вставить в card lookup на frontend
-или использовать в backend API.
+## 3. Выполнить discovery для Tabiturient
 
-## 4. Проверить seeded API path
+```powershell
+$body = @{
+  source_key = "tabiturient-aggregator"
+  dry_run = $false
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8001/admin/v1/discovery/materialize-jobs" `
+  -ContentType "application/json" `
+  -Body $body | ConvertTo-Json -Depth 8
+```
+
+Ожидаемый результат:
+
+- scheduler читает `https://tabiturient.ru/map/sitemap.php`
+- materialize'ит только root-страницы формата `/vuzu/<slug>`
+- не создает `about`, `proxodnoi`, query-string и дубликаты
+
+Проверка materialized endpoint'ов:
+
+```powershell
+Invoke-RestMethod "http://localhost:8001/admin/v1/sources/tabiturient-aggregator/endpoints?limit=200&offset=0" | ConvertTo-Json -Depth 8
+```
+
+## 4. Выбрать endpoint для crawl
+
+Для KubSU authoritative flow:
+
+```powershell
+Invoke-RestMethod "http://localhost:8001/admin/v1/sources/kubsu-official/endpoints?limit=20&offset=0" | ConvertTo-Json -Depth 8
+```
+
+Для discovered Tabiturient pages:
+
+```powershell
+Invoke-RestMethod "http://localhost:8001/admin/v1/sources/tabiturient-aggregator/endpoints?limit=200&offset=0" | ConvertTo-Json -Depth 8
+```
+
+Из ответа нужен `endpoint_id`.
+
+## 5. Создать manual crawl job
+
+Пример для KubSU abiturient page:
+
+```powershell
+$crawlRunId = [guid]::NewGuid().ToString()
+$endpointId = "<endpoint_id>"
+
+$body = @{
+  crawl_run_id = $crawlRunId
+  source_key = "kubsu-official"
+  endpoint_id = $endpointId
+  priority = "high"
+  metadata = @{
+    requested_by = "demo-runbook"
+  }
+} | ConvertTo-Json -Depth 6
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8001/admin/v1/crawl-jobs" `
+  -ContentType "application/json" `
+  -Body $body | ConvertTo-Json -Depth 8
+```
+
+Ожидаемый результат:
+
+- scheduler публикует `crawl.request.v1` в `parser.high`
+- `parser-worker` сохраняет `raw_artifact`, строит `parsed_document` и `extracted_fragment`
+- `parser-worker` публикует `parse.completed.v1`
+- `normalizer-worker` строит `claim`, `claim_evidence`, `core.university`, `resolved_fact`, `card_version`
+- backend начинает видеть обновленный `delivery.university_card` и `delivery.university_search_doc`
+
+## 6. Проверить backend flow
 
 ### Search
 
-```powershell
-Invoke-RestMethod "http://localhost:8004/api/v1/search?query=Example%20University" | ConvertTo-Json -Depth 6
-```
-
-Альтернативный запрос:
+KubSU:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8004/api/v1/search?query=example.edu" | ConvertTo-Json -Depth 6
+Invoke-RestMethod "http://localhost:8004/api/v1/search?query=%D0%9A%D1%83%D0%B1%D0%B0%D0%BD%D1%81%D0%BA%D0%B8%D0%B9&page=1&page_size=10" | ConvertTo-Json -Depth 8
 ```
 
-Ожидается как минимум один hit с:
+Tabiturient discovered page:
 
-- `canonical_name`
-- `university_id`
-- `match_signals`
+```powershell
+Invoke-RestMethod "http://localhost:8004/api/v1/search?query=%D0%90%D0%BB%D1%82%D0%B0%D0%B9%D1%81%D0%BA%D0%B8%D0%B9&page=1&page_size=10" | ConvertTo-Json -Depth 8
+```
 
 ### Card
 
-Подставь `university_id` из результата search или из вывода backfill:
+Подставь `university_id` из search:
 
 ```powershell
-Invoke-RestMethod "http://localhost:8004/api/v1/universities/<university_id>" | ConvertTo-Json -Depth 8
+Invoke-RestMethod "http://localhost:8004/api/v1/universities/<university_id>" | ConvertTo-Json -Depth 12
 ```
 
-Ожидается:
+Для KubSU в текущем MVP ожидается:
 
-- каноническое имя;
-- location и website;
-- `field_attribution`;
-- `source_rationale`.
+- canonical name
+- `contacts.website`
+- `contacts.emails`
+- `contacts.phones`
+- при прогоне programs page дополнительно `admission.programs`
 
 ### Provenance
 
 ```powershell
-Invoke-RestMethod "http://localhost:8004/api/v1/universities/<university_id>/provenance" | ConvertTo-Json -Depth 10
+Invoke-RestMethod "http://localhost:8004/api/v1/universities/<university_id>/provenance" | ConvertTo-Json -Depth 12
 ```
 
-Ожидается полная цепочка:
+Ожидается цепочка:
 
 - `raw_artifacts`
 - `parsed_documents`
@@ -159,160 +201,42 @@ Invoke-RestMethod "http://localhost:8004/api/v1/universities/<university_id>/pro
 - `resolved_facts`
 - `delivery_projection`
 
-### Freshness overview
-
-```powershell
-Invoke-RestMethod "http://localhost:8001/admin/v1/freshness" | ConvertTo-Json -Depth 6
-```
-
-После seeded backfill registry уже должен содержать три активных source entries.
-
-## 5. Проверить frontend demo path
+## 7. Проверить frontend
 
 Открой `http://localhost:5173`.
 
-Рекомендуемый happy path:
+Минимальный путь:
 
-1. В блоке `Home` убедись, что pipeline показывает живые сервисы.
-2. В блоке `Search` выполни запрос `Example University` или `example.edu`.
-3. Скопируй `university_id` из search result card.
-4. Вставь его в `University card`.
-5. Убедись, что `Evidence Drawer` автоматически построил provenance trace для того же `university_id`.
+1. На `Home` убедиться, что сервисы живы.
+2. На `Search` выполнить запрос по KubSU или discovered Tabiturient вузу.
+3. Использовать найденный `university_id` для страницы карточки.
+4. Открыть evidence/provenance drawer.
 
-Что должно быть видно в UI:
+## 8. Когда использовать backfill и replay
 
-- `Home`: live pipeline summary и source freshness;
-- `Search`: реальные search hits из `delivery.university_search_doc`;
-- `University card`: payload из `delivery.university_card`;
-- `Evidence Drawer`: связка `raw -> parsed -> claim -> evidence -> fact -> card`.
+Они остаются полезными, но не являются live MVP sign-off path.
 
-## 6. Replay и пересборка после изменений логики
+Использовать:
 
-Если менялась parser или normalizer logic, не нужно заново делать весь backfill.
+- `scripts.backfill` для seeded regression/demo bundle
+- `scripts.replay parse <raw_artifact_id>` после изменения parser logic
+- `scripts.replay normalize <parsed_document_id>` после изменения normalizer logic
+- `scripts.replay full <raw_artifact_id>` если нужно пересобрать обе стадии
 
-Для replay с хоста снова нужны те же env overrides:
+## 9. Известные ограничения текущего release
 
-```powershell
-$env:APP_ENV = "local"
-$env:POSTGRES_DSN = "postgresql+psycopg://aggregator:aggregator@localhost:5432/aggregator"
-$env:MINIO_ENDPOINT = "http://localhost:9000"
-```
+- PDF extraction выключен из MVP и не участвует в merge
+- scheduler пока не запускает автономный periodic loop, используется manual crawl path
+- frontend-путь все еще опирается на явный `university_id` для открытия карточки
+- discovery применяется только к `tabiturient-aggregator`
 
-Полезные команды:
+## 10. Release sign-off
 
-```powershell
-py -3 -m scripts.replay parse <raw_artifact_id>
-py -3 -m scripts.replay normalize <parsed_document_id> --normalizer-version normalizer.0.1.0
-py -3 -m scripts.replay full <raw_artifact_id> --normalizer-version normalizer.0.1.0
-```
+Текущий live MVP считаем воспроизводимым, если одновременно выполняется все ниже:
 
-Когда использовать:
-
-- `parse` — изменилась adapter/extraction logic;
-- `normalize` — изменилась matching/resolution/projection logic;
-- `full` — нужно пересобрать обе стадии от raw artifact.
-
-## 7. Observability во время demo
-
-Prometheus и Grafana уже wired в compose stack.
-
-Проверки:
-
-- метрики сервисов: `http://localhost:8001/metrics`, `:8002/metrics`, `:8003/metrics`, `:8004/metrics`
-- Prometheus targets: `http://localhost:9090/targets`
-- Grafana dashboard: `Pipeline Health / Pipeline Health Overview`
-
-Если dashboard пустой, сначала создай немного трафика:
-
-- открой frontend home;
-- сделай search-запрос;
-- запроси card и provenance;
-- при необходимости выполни manual backfill/replay.
-
-## 8. Troubleshooting
-
-### `could not translate host name "postgres"` или connect timeout к PostgreSQL
-
-Причина:
-
-- host-side script взял контейнерное имя из `infra/env/local/app.env`.
-
-Что делать:
-
-```powershell
-$env:POSTGRES_DSN = "postgresql+psycopg://aggregator:aggregator@localhost:5432/aggregator"
-```
-
-### `Connection refused` к `minio:9000` или ошибки MinIO client
-
-Причина:
-
-- скрипт запущен с хоста без override для MinIO endpoint.
-
-Что делать:
-
-```powershell
-$env:MINIO_ENDPOINT = "http://localhost:9000"
-```
-
-### Search возвращает `0` результатов после `backfill`
-
-Проверь последовательно:
-
-1. `py -3 -m scripts.backfill ...` завершился без exception.
-2. `GET /api/v1/search?query=Example%20University` действительно обращается к `localhost:8004`.
-3. `GET /api/v1/universities/<university_id>` работает по `university_id` из search output, а не по `raw_artifact_id`.
-
-### Карточка или provenance дают `404`
-
-Обычно это одно из двух:
-
-- используется не `university_id`, а другой ID слоя;
-- backfill/replay прервался до стадии `delivery.university_card`.
-
-Что делать:
-
-1. Возьми `university_id` из backfill JSON или из backend search response.
-2. При необходимости перезапусти:
-
-```powershell
-py -3 -m scripts.replay full <raw_artifact_id> --normalizer-version normalizer.0.1.0
-```
-
-### Home page показывает degraded services
-
-Проверь:
-
-```powershell
-docker compose -f infra/docker-compose/docker-compose.yml ps
-docker compose -f infra/docker-compose/docker-compose.yml logs scheduler
-docker compose -f infra/docker-compose/docker-compose.yml logs parser
-docker compose -f infra/docker-compose/docker-compose.yml logs normalizer
-docker compose -f infra/docker-compose/docker-compose.yml logs backend
-```
-
-Отдельно полезно открыть:
-
-- `http://localhost:8001/healthz`
-- `http://localhost:8002/healthz`
-- `http://localhost:8003/healthz`
-- `http://localhost:8004/healthz`
-
-### Grafana dashboard пустой
-
-Проверь:
-
-1. `http://localhost:9090/targets` — targets должны быть `UP`.
-2. `http://localhost:8001/metrics` и остальные `/metrics` реально отдают payload.
-3. После старта demo был создан traffic: search/card/provenance/backfill/replay.
-
-## 9. Полный reset demo-данных
-
-Если нужен чистый прогон с нуля:
-
-```powershell
-docker compose -f infra/docker-compose/docker-compose.yml down -v
-docker compose -f infra/docker-compose/docker-compose.yml up --build
-```
-
-После этого снова выполни шаг `Засеять MVP bundle в локальную базу`.
+- `docker compose up` поднимает API и worker-процессы
+- `py -3 -m scripts.source_bootstrap` засеивает source registry
+- `POST /admin/v1/discovery/materialize-jobs` materialize'ит Tabiturient primary pages
+- `POST /admin/v1/crawl-jobs` запускает реальный async path без replay
+- backend search/card/provenance показывают результат после worker processing
+- e2e тест `tests/e2e/test_live_mvp_bootstrap_to_provenance_flow.py` проходит

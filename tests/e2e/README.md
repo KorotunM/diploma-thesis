@@ -1,15 +1,38 @@
 # E2E Tests
 
-Здесь лежат пользовательские сценарии для поиска, карточки вуза и просмотра provenance.
+Здесь лежат пользовательские сценарии для финальной проверки MVP.
 
-Локальный compose-up smoke script:
+## Что покрыто
+
+- `test_search_to_card_to_evidence_happy_path.py`
+  - in-memory read path `normalize -> backend -> provenance`
+- `test_compose_demo_smoke.py`
+  - compose-up smoke для frontend shell и backend API
+- `test_live_mvp_bootstrap_to_provenance_flow.py`
+  - live MVP path:
+    - source bootstrap
+    - Tabiturient discovery
+    - manual crawl publish
+    - parser consume
+    - normalize consume
+    - backend search/card/provenance
+
+## Запуск
+
+Точечный live-flow тест:
+
+```powershell
+py -3 -m pytest tests/e2e/test_live_mvp_bootstrap_to_provenance_flow.py -q
+```
+
+Локальный smoke runner:
 
 ```powershell
 py -3 -m tests.e2e.compose_demo_smoke
 ```
 
-Smoke script ожидает, что:
+## Замечание
 
-- локальный stack уже поднят через `docker compose`;
-- MVP bundle уже импортирован через `scripts.backfill`;
-- backend search возвращает хотя бы один seeded университет.
+`compose_demo_smoke` по-прежнему проверяет в первую очередь already-running stack и read surfaces.
+
+Новый commit 19 e2e тест нужен именно для того, чтобы отдельно зафиксировать live runtime chain от source bootstrap и discovery до provenance без ручного replay.

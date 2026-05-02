@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from apps.parser.adapters.official_sites import (
     KubSUAbiturientHtmlExtractor,
+    KubSUPlacesPdfExtractor,
     KubSUProgramsHtmlExtractor,
     OfficialSiteAdapter,
     OfficialSiteHtmlExtractor,
@@ -70,6 +71,15 @@ def build_kubsu_programs_context() -> FetchContext:
     )
 
 
+def build_kubsu_places_context() -> FetchContext:
+    return FetchContext(
+        crawl_run_id=uuid4(),
+        source_key="kubsu-official",
+        endpoint_url="https://www.kubsu.ru/sites/default/files/insert/page/2026_places_b_b.pdf",
+        parser_profile="official_site.kubsu.places_pdf",
+    )
+
+
 def build_artifact(payload: bytes | None = None) -> FetchedArtifact:
     content = payload or (FIXTURE_ROOT / "official_site_admissions.html").read_bytes()
     return FetchedArtifact(
@@ -119,6 +129,24 @@ def build_kubsu_programs_artifact(payload: bytes | None = None) -> FetchedArtifa
         content_length=len(content),
         sha256=hashlib.sha256(content).hexdigest(),
         fetched_at=datetime(2026, 5, 1, 11, 0, tzinfo=UTC),
+        render_mode="http",
+        content=content,
+    )
+
+
+def build_kubsu_places_artifact(payload: bytes | None = None) -> FetchedArtifact:
+    content = payload or (FIXTURE_ROOT / "kubsu_places.pdf").read_bytes()
+    return FetchedArtifact(
+        raw_artifact_id=uuid4(),
+        crawl_run_id=uuid4(),
+        source_key="kubsu-official",
+        source_url="https://www.kubsu.ru/sites/default/files/insert/page/2026_places_b_b.pdf",
+        final_url="https://www.kubsu.ru/sites/default/files/insert/page/2026_places_b_b.pdf",
+        http_status=200,
+        content_type="application/pdf",
+        content_length=len(content),
+        sha256=hashlib.sha256(content).hexdigest(),
+        fetched_at=datetime(2026, 5, 2, 10, 0, tzinfo=UTC),
         render_mode="http",
         content=content,
     )
@@ -227,6 +255,36 @@ def test_kubsu_programs_html_extractor_reads_structured_program_rows() -> None:
     assert math["programs.year"].locator == "table.programs.header.passing_year"
 
 
+def test_kubsu_places_pdf_extractor_reads_structured_budget_rows() -> None:
+    context = build_kubsu_places_context()
+    artifact = build_kubsu_places_artifact()
+
+    fragments = KubSUPlacesPdfExtractor().extract(
+        context=context,
+        artifact=artifact,
+    )
+
+    grouped: dict[str, dict[str, object]] = {}
+    for fragment in fragments:
+        group_key = fragment.metadata["program_merge_key"]
+        grouped.setdefault(group_key, {})[fragment.field_name] = fragment
+
+    assert len(grouped) == 3
+
+    geology = grouped["05.03.01:2026:geology"]
+    assert geology["programs.faculty"].value == "Faculty of Science"
+    assert geology["programs.code"].value == "05.03.01"
+    assert geology["programs.name"].value == "Geology"
+    assert geology["programs.budget_places"].value == 40
+    assert geology["programs.year"].value == 2026
+
+    hotel = grouped["43.03.03:2026:hotel-management"]
+    assert hotel["programs.faculty"].value == "Institute of Tourism"
+    assert hotel["programs.code"].value == "43.03.03"
+    assert hotel["programs.name"].value == "Hotel Management"
+    assert hotel["programs.budget_places"].value == 24
+
+
 def test_official_site_adapter_maps_fragments_to_intermediate_claims() -> None:
     context = build_context()
     artifact = build_artifact()
@@ -302,6 +360,33 @@ def test_official_site_adapter_groups_kubsu_program_rows_into_intermediate_recor
     assert geology_claims["programs.year"]["value"] == 2025
 
 
+def test_official_site_adapter_groups_kubsu_pdf_rows_into_intermediate_records() -> None:
+    context = build_kubsu_places_context()
+    artifact = build_kubsu_places_artifact()
+    adapter = OfficialSiteAdapter(fetcher=FakeFetcher(artifact))
+    fragments = asyncio.run(adapter.extract(context, artifact))
+
+    records = asyncio.run(adapter.map_to_intermediate(context, artifact, fragments))
+
+    assert adapter.can_handle(context) is True
+    assert len(records) == 3
+
+    records_by_group = {
+        record.metadata["record_group_key"]: record
+        for record in records
+    }
+
+    geology = records_by_group["pdf:05.03.01:2026:geology"]
+    assert geology.entity_type == "admission_program"
+    assert geology.entity_hint == "Geology"
+    geology_claims = {claim["field_name"]: claim for claim in geology.claims}
+    assert geology_claims["programs.faculty"]["value"] == "Faculty of Science"
+    assert geology_claims["programs.code"]["value"] == "05.03.01"
+    assert geology_claims["programs.name"]["value"] == "Geology"
+    assert geology_claims["programs.budget_places"]["value"] == 40
+    assert geology_claims["programs.year"]["value"] == 2026
+
+
 def test_official_site_adapter_executes_fetch_store_extract_and_map() -> None:
     context = build_context()
     artifact = build_artifact()
@@ -356,4 +441,23 @@ def test_official_site_adapter_executes_kubsu_programs_profile_pipeline() -> Non
     assert result.artifact is not None
     assert result.artifact.storage_bucket == "raw-html"
     assert result.extracted_fragments == 18
+    assert len(result.intermediate_records) == 3
+
+
+def test_official_site_adapter_executes_kubsu_pdf_profile_pipeline() -> None:
+    context = build_kubsu_places_context()
+    artifact = build_kubsu_places_artifact()
+    fetcher = FakeFetcher(artifact)
+    raw_store = FakeRawStore()
+    adapter = OfficialSiteAdapter(fetcher=fetcher, raw_store=raw_store)
+
+    result = asyncio.run(adapter.execute(context))
+
+    assert fetcher.calls == [context]
+    assert raw_store.calls == [(context, artifact)]
+    assert result.status == ParserExecutionStatus.SUCCEEDED
+    assert result.adapter_key == "official_sites:0.1.0"
+    assert result.artifact is not None
+    assert result.artifact.storage_bucket == "raw-html"
+    assert result.extracted_fragments == 15
     assert len(result.intermediate_records) == 3

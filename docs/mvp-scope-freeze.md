@@ -1,154 +1,246 @@
 # MVP Scope Freeze
 
-Этот документ фиксирует границы текущего MVP и запрещает незаметное расширение
-объёма до завершения локального demo-сценария.
+Этот документ фиксирует границы live MVP после завершения commit 20.
 
 Связанный runbook:
 
-- [MVP Demo Runbook](./mvp-demo-runbook.md)
+- [Live MVP Runbook](./mvp-demo-runbook.md)
 
 ## Цель текущего MVP
 
-Показать воспроизводимый `evidence-first` pipeline для карточки университета, где:
+Показать воспроизводимый `evidence-first` pipeline для карточки университета:
 
-- данные поднимаются локально через `docker compose`;
-- три MVP source family импортируются через fixture bundle;
-- pipeline строит `raw -> parsed -> claims -> resolved facts -> delivery projections`;
-- frontend показывает поиск, карточку и provenance trace без demo-заглушек.
+- `scheduler -> parser -> normalizer -> delivery -> backend -> frontend`
+- с живым queue-processing через worker entrypoints
+- с доказуемым provenance trail до уровня поля
+- без обязательного `backfill/replay` в критическом demo-пути
 
-## Замороженный пользовательский сценарий
+## Замороженный live source set
 
-MVP считается завершённым в рамках следующего сценария:
+### `tabiturient-aggregator`
 
-1. Поднять локальный стек.
-2. Выполнить `scripts.backfill` на `tests/fixtures/mvp_bundle/manifest.json`.
-3. Найти seeded университет через backend search или frontend search.
-4. Открыть карточку университета.
-5. Проверить provenance/evidence chain.
-6. При изменении parser/normalizer logic воспроизвести пересборку через `scripts.replay`.
+- discovery profile: `aggregator.tabiturient.sitemap_xml`
+- entity profile: `aggregator.tabiturient.university_html`
+- trust tier: `trusted`
+- роль: secondary source
 
-Если изменение не улучшает именно этот сценарий, оно не должно попадать в MVP.
+### `tabiturient-globalrating`
+
+- ranking profile: `ranking.tabiturient.globalrating_html`
+- trust tier: `trusted`
+- роль: ranking source
+
+### `kubsu-official`
+
+- landing profile: `official_site.kubsu.abiturient_html`
+- programs profile: `official_site.kubsu.programs_html`
+- trust tier: `authoritative`
+- роль: authoritative source
+
+### Исключено из MVP
+
+- `official_site.kubsu.places_pdf`
+- любой merge path, требующий PDF-derived claims
+
+## Freeze Extraction Rules
+
+### `aggregator.tabiturient.university_html`
+
+Источник:
+
+- только страницы, materialized из `https://tabiturient.ru/map/sitemap.php`
+- только root URL формата `/vuzu/<slug>`
+
+Исключаем:
+
+- `/about`
+- `/proxodnoi`
+- query-string variants
+- любые secondary subpages
+
+Поля, которые реально извлекаются в текущем MVP:
+
+- `canonical_name`
+- `aliases`
+- `contacts.website`
+
+Обязательная provenance metadata:
+
+- `provider_name = Tabiturient`
+- `source_field`
+- `external_id`
+- `adapter_family`
+- `parser_profile`
+
+### `ranking.tabiturient.globalrating_html`
+
+Источник:
+
+- `https://tabiturient.ru/globalrating/`
+
+Поля, которые реально извлекаются:
+
+- `canonical_name`
+- `aliases`
+- `ratings.provider`
+- `ratings.year`
+- `ratings.metric`
+- `ratings.rank`
+- `ratings.value`
+- `ratings.category`
+- `ratings.change.direction`
+- `ratings.change.delta`
+
+Обязательная metadata:
+
+- `provider_key`
+- `provider_name`
+- `rating_item_key`
+- `record_group_key`
+- `external_id`
+- `rank_display`
+- `scale`
+
+### `official_site.kubsu.abiturient_html`
+
+Источник:
+
+- `https://www.kubsu.ru/ru/abiturient`
+
+Поля, которые реально извлекаются:
+
+- `canonical_name`
+- `contacts.website`
+- `contacts.emails`
+- `contacts.phones`
+
+Правило:
+
+- profile-specific selectors обязательны
+- generic `official_site.default` не считается заменой для этого профиля
+
+### `official_site.kubsu.programs_html`
+
+Источник:
+
+- `https://www.kubsu.ru/ru/node/44875`
+
+Форма:
+
+- row-based extraction
+- каждая строка программы идет отдельным `record_group_key`
+- `faculty` берется из section row с `colspan`
+- `year` берется из header блока passing-score column
+
+Поля, которые реально извлекаются:
+
+- `programs.faculty`
+- `programs.code`
+- `programs.name`
+- `programs.budget_places`
+- `programs.passing_score`
+- `programs.year`
+
+Дополнительная metadata:
+
+- `record_group_key`
+- `entity_type = admission_program`
+- `faculty`
+- `program_code`
+- `program_year`
+- `source_field`
+
+### `official_site.kubsu.places_pdf`
+
+Состояние:
+
+- profile сохранен в registry
+- extraction и merge не входят в live MVP release
+
+Правило:
+
+- не использовать как обязательную часть demo flow
+- любые задачи по PDF автоматически уходят в post-MVP backlog
+
+## Freeze Merge Rules
+
+- authoritative KubSU fields выигрывают у secondary source claims
+- ranking claims не конкурируют за canonical fields и уходят в `ratings`
+- structured program facts строятся только из `official_site.kubsu.programs_html`
+- contacts/email/phone admission section строится только из authoritative HTML
+- provenance для delivery card должен оставаться field-level
 
 ## Что входит в MVP
 
-### Источники
+### Runtime
 
-- `official_site.default`
-- `aggregator.default`
-- `ranking.default`
+- source bootstrap через `scripts.source_bootstrap`
+- Tabiturient sitemap discovery через scheduler admin route
+- manual crawl publishing через scheduler
+- parser worker consume path
+- normalizer worker consume path
+- delivery card/search projections
 
-### Data pipeline
+### Product surface
 
-- source registry и endpoint registry;
-- manual/seeded ingest path;
-- raw artifact storage в MinIO;
-- parsed document и extracted fragments;
-- claim и claim evidence persistence;
-- authoritative bootstrap и dual-source merge;
-- resolved facts для canonical fields;
-- versioned `delivery.university_card`;
-- versioned `delivery.university_search_doc`.
+- backend `search`
+- backend `card`
+- backend `provenance`
+- frontend home/search/card/evidence flow
 
-### Delivery surfaces
+### Engineering minimum
 
-- backend search API;
-- backend university card API;
-- backend provenance API;
-- frontend home/search/card/evidence flow;
-- URL-synced search state и shared `university_id` selection.
-
-### Эксплуатационный минимум
-
-- replay workflow;
-- fixture capture/backfill workflow;
-- regression suite на captured MVP bundle;
-- retry/DLQ topology для parser/normalize/delivery lanes;
-- базовые domain metrics;
-- starter Prometheus/Grafana assets;
-- local demo runbook;
-- final compose-up smoke script.
+- regression suite
+- replay workflow
+- compose stack с worker processes
+- базовая observability
 
 ## Что сознательно не входит в MVP
 
-### По источникам и парсингу
+- PDF extraction
+- scheduled autonomous refresh loop
+- gray-zone review inbox и operator workflow
+- LLM-assisted extraction или merge
+- расширение карточки beyond current evidence contract
+- production deploy automation
 
-- новые source family сверх `official`, `aggregator`, `ranking`;
-- browser-rendered crawling как обязательный путь;
-- anti-bot обходы, rotating proxies, CAPTCHA handling;
-- массовый production crawl по реальным сайтам.
+## Unresolved Post-MVP Backlog
 
-### По нормализации
+### Priority 1
 
-- fuzzy gray-zone matching как обязательный merge path;
-- review queue как основной операционный процесс;
-- ручная moderation UI;
-- LLM-assisted extraction или resolution в критическом пути.
+- `official_site.kubsu.places_pdf` extraction
+- deterministic merge `programs_html + places_pdf`
+- scheduled crawl lifecycle поверх `crawl_policy`
 
-### По delivery и продукту
+### Priority 2
 
-- дополнительные entity types кроме университетской карточки;
-- полноценный кабинет оператора;
-- экспортные форматы, публичный каталог, auth/multi-tenant;
-- расширение карточки большим числом полей без нового evidence contract.
+- UI-path `search -> open card` без ручного ввода `university_id`
+- richer KubSU admission sections beyond current field set
+- расширение authoritative coverage на новые official sources
 
-### По эксплуатации
+### Priority 3
 
-- production deployment automation;
-- secrets management beyond local env;
-- SLO/SLA hardening;
-- disaster recovery и backup policy;
-- performance tuning под большие объёмы данных.
+- gray-zone matching workflow с review inbox
+- subscriber ecosystem вокруг `card.updated`
+- richer ranking source set beyond Tabiturient
+
+### Priority 4
+
+- browser-render fallback
+- production migrations history
+- alerting, retention, ops hardening
 
 ## Scope Guardrails
 
 До post-MVP backlog запрещено:
 
-- добавлять новый источник только потому, что он “похож на текущие”;
-- расширять canonical schema без нового доказуемого source path;
-- добавлять UI-страницы вне search/card/provenance;
-- подменять воспроизводимый seeded demo “ручными” данными в БД;
-- переводить команду на следующий этап, если текущий demo-сценарий ломается.
+- включать PDF обратно в sign-off path
+- добавлять новые source family без отдельного extraction contract
+- расширять schema карточки без доказуемого source path
+- подменять live queue flow ручным `replay` и считать это release-ready runtime
 
-Любая новая задача должна отвечать хотя бы одному из вопросов:
+Новая задача остается в MVP только если она:
 
-- делает ли она текущий demo надёжнее;
-- убирает ли она ambiguity в существующем pipeline;
-- закрывает ли она явный operational gap уже реализованного MVP.
-
-Если ответов нет, задача уходит в post-MVP backlog.
-
-## Immediate Post-MVP Backlog
-
-Приоритет 1:
-
-- `gray-zone` matching с trigram fallback и `review.required.v1`;
-- review inbox/read-model для спорных merge-решений;
-- отдельный normalizer consume path от parser events до card rebuild без ручного replay.
-
-Приоритет 2:
-
-- реальный scheduled crawl lifecycle с policy-driven refresh;
-- больше ranking и aggregator adapters;
-- richer field set для карточки: контакты, aliases, рейтинги, дополнительные institutional facts.
-
-Приоритет 3:
-
-- browser rendering fallback для JS-heavy sources;
-- observability hardening: alerting rules, retention, more domain dashboards;
-- production-safe deploy/run profiles и секреты.
-
-Приоритет 4:
-
-- операторский UI для review и source triage;
-- exports/API consumers beyond current frontend demo;
-- более сложные matching strategies и clustering.
-
-## MVP Sign-off Criteria
-
-MVP считаем зафиксированным, если одновременно выполняется всё ниже:
-
-- `docker compose up` поднимает рабочий локальный стек;
-- `scripts.backfill` воспроизводимо засевает demo-данные;
-- smoke script проходит путь frontend shell -> search -> card -> provenance;
-- документация соответствует фактическому локальному запуску;
-- новые задачи больше не меняют границы MVP, а идут только в post-MVP backlog.
+- усиливает текущий live path
+- убирает ambiguity в существующем merge/provenance
+- исправляет конкретный runtime gap уже зафиксированного release

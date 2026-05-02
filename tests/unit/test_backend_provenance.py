@@ -209,7 +209,7 @@ def build_admissions_repository_datasets(university_id: UUID) -> dict[str, list[
             {
                 "resolved_fact_id": program_fact_id,
                 "university_id": university_id,
-                "field_name": "programs.science:05.03.01:0",
+                "field_name": "programs.05.03.01:2025:geology",
                 "value_json": json.dumps(
                     {
                         "value": {

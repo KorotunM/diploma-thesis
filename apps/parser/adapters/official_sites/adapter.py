@@ -16,6 +16,7 @@ from libs.source_sdk import (
 from .base import OfficialSiteFragmentExtractor
 from .html_extractor import OfficialSiteHtmlExtractor
 from .kubsu_abiturient_html_extractor import KubSUAbiturientHtmlExtractor
+from .kubsu_places_pdf_extractor import KubSUPlacesPdfExtractor
 from .kubsu_programs_html_extractor import KubSUProgramsHtmlExtractor
 
 OFFICIAL_SITE_SOURCE_KEY = "official_sites"
@@ -29,6 +30,7 @@ class OfficialSiteAdapter(SourceAdapter):
         "official_site.default",
         "official_site.kubsu.abiturient_html",
         "official_site.kubsu.programs_html",
+        "official_site.kubsu.places_pdf",
     )
 
     def __init__(
@@ -202,6 +204,7 @@ class OfficialSiteAdapter(SourceAdapter):
             OfficialSiteHtmlExtractor(),
             KubSUAbiturientHtmlExtractor(),
             KubSUProgramsHtmlExtractor(),
+            KubSUPlacesPdfExtractor(),
         )
 
     def _resolve_extractor(

@@ -18,14 +18,15 @@ export function UniversityCardPage() {
   const card = snapshot?.card ?? null;
 
   return (
-    <section className="panel feature-panel card-panel">
+    <section className="panel feature-panel card-panel" id="university-card">
       <div className="card-heading">
         <div>
           <p className="section-kicker">Delivery Card</p>
           <h2>University card page on live delivery payload</h2>
           <p className="section-copy">
-            Card page resolves a real `delivery.university_card` projection through the backend
-            and keeps attribution metadata visible next to the canonical fields.
+            Card page resolves the selected search result into a live
+            `delivery.university_card` projection and keeps attribution metadata visible next to
+            the canonical fields.
           </p>
         </div>
         <span className={`live-pill ${refreshing ? "live-pill-refreshing" : ""}`}>
@@ -41,6 +42,13 @@ export function UniversityCardPage() {
         </span>
       </div>
 
+      {activeUniversityId ? (
+        <div className="card-selection-banner">
+          <strong>Selected university</strong>
+          <code>{activeUniversityId}</code>
+        </div>
+      ) : null}
+
       <form
         className="card-lookup-form"
         onSubmit={(event) => {
@@ -55,12 +63,12 @@ export function UniversityCardPage() {
             type="text"
             value={draftUniversityId}
             onChange={(event) => setDraftUniversityId(event.target.value)}
-            placeholder="Paste a university UUID from search results"
+            placeholder="Search results fill this automatically, or paste a UUID manually"
           />
         </label>
         <div className="card-actions">
           <button className="card-action-primary" type="submit" disabled={!canSubmit}>
-            Load live card
+            Load card
           </button>
           <button className="card-action-secondary" type="button" onClick={clear}>
             Clear
@@ -165,14 +173,14 @@ export function UniversityCardPage() {
               kind="error"
               title="University card unavailable"
               message={error}
-              detail="Pick a university from search results or try another UUID."
+              detail="Pick a university from search results or load another UUID manually."
             />
           ) : null}
           {!loading && !error ? (
             <ViewState
               kind="empty"
               title="No university selected yet"
-              message="Paste a university UUID or open a card from the live search results."
+              message="Open a card directly from live search results or paste a UUID manually."
               detail="The same selection also drives the evidence drawer."
             />
           ) : null}

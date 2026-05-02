@@ -192,7 +192,7 @@ def build_fact_rows() -> list[dict[str, Any]]:
             ),
         },
         {
-            "field_name": "programs.science:05.03.01:0",
+            "field_name": "programs.05.03.01:2025:geology",
             "resolution_policy": CANONICAL_FIELD_POLICY,
             "fact_score": 0.94,
             "metadata": json.dumps(
@@ -254,7 +254,7 @@ def build_response(card: UniversityCard) -> UniversityCardResponse:
                 },
                 "programs": [
                     {
-                        "field_name": "programs.science:05.03.01:0",
+                        "field_name": "programs.05.03.01:2025:geology",
                         "faculty": "Faculty of Science",
                         "code": "05.03.01",
                         "name": "Geology",
@@ -264,7 +264,7 @@ def build_response(card: UniversityCard) -> UniversityCardResponse:
                         "confidence": 0.94,
                         "sources": [],
                         "field_attribution": {
-                            "field_name": "programs.science:05.03.01:0",
+                            "field_name": "programs.05.03.01:2025:geology",
                             "source_key": "msu-official",
                             "source_trust_tier": "authoritative",
                             "source_urls": ["https://example.edu/programs"],
@@ -343,7 +343,7 @@ def test_university_card_read_service_adds_field_attribution_and_source_rational
     assert response.admission.contacts.field_attribution["contacts.emails"].source_key == (
         "msu-official"
     )
-    assert response.admission.programs[0].field_name == "programs.science:05.03.01:0"
+    assert response.admission.programs[0].field_name == "programs.05.03.01:2025:geology"
     assert response.admission.programs[0].name == "Geology"
     assert response.admission.programs[0].field_attribution is not None
     assert response.admission.programs[0].field_attribution.source_urls == [
@@ -355,7 +355,7 @@ def test_university_card_read_service_adds_field_attribution_and_source_rational
         "contacts.emails",
         "contacts.phones",
         "contacts.website",
-        "programs.science:05.03.01:0",
+        "programs.05.03.01:2025:geology",
     ]
 
 

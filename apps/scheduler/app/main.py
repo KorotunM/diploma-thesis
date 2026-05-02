@@ -23,6 +23,7 @@ def scheduler_overview() -> dict[str, object]:
             "crawl policy",
             "job planning",
             "manual trigger",
+            "scheduled trigger",
             "freshness tracking",
             "endpoint discovery",
         ],

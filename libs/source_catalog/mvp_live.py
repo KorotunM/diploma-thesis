@@ -124,7 +124,7 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                     parser_profile="official_site.kubsu.programs_html",
                     role="admissions_programs",
                     content_kind="html",
-                    implementation_status="planned",
+                    implementation_status="implemented",
                     target_fields=(
                         "programs.name",
                         "programs.faculty",
@@ -132,8 +132,8 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                         "programs.budget_places",
                     ),
                     notes=(
-                        "This page will be used for directions, faculties, passing scores and "
-                        "budget-place related admissions facts."
+                        "Structured HTML extraction is active for directions, faculties, "
+                        "passing scores and baseline budget-place facts."
                     ),
                 ),
                 EndpointBlueprint(
@@ -144,11 +144,11 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                     parser_profile="official_site.kubsu.places_pdf",
                     role="budget_places_pdf",
                     content_kind="pdf",
-                    implementation_status="planned",
+                    implementation_status="implemented",
                     target_fields=("programs.budget_places",),
                     notes=(
-                        "Binary PDF source reserved for structured admissions quota/budget-place "
-                        "extraction. PDF parsing is still pending."
+                        "Binary PDF source augments admissions rows with budget-place quotas and "
+                        "merges them into the authoritative program section."
                     ),
                 ),
             ),

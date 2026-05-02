@@ -429,7 +429,7 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
     session = FakeResolvedFactSession()
     service = build_service(session)
     bootstrap_result = build_bootstrap_result()
-    program_item_key = "science-faculty:05.03.01:0"
+    program_item_key = "05.03.01:2025:geology"
     program_claims = [
         claim(
             field_name="programs.faculty",
@@ -441,8 +441,10 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
                     "fragment_id": str(uuid4()),
                     "fragment_metadata": {
                         "record_group_key": program_item_key,
+                        "program_merge_key": program_item_key,
                         "faculty": "Faculty of Science",
                         "program_code": "05.03.01",
+                        "program_name": "Geology",
                         "program_year": 2025,
                     },
                 },
@@ -458,8 +460,10 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
                     "fragment_id": str(uuid4()),
                     "fragment_metadata": {
                         "record_group_key": program_item_key,
+                        "program_merge_key": program_item_key,
                         "faculty": "Faculty of Science",
                         "program_code": "05.03.01",
+                        "program_name": "Geology",
                         "program_year": 2025,
                     },
                 },
@@ -475,8 +479,10 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
                     "fragment_id": str(uuid4()),
                     "fragment_metadata": {
                         "record_group_key": program_item_key,
+                        "program_merge_key": program_item_key,
                         "faculty": "Faculty of Science",
                         "program_code": "05.03.01",
+                        "program_name": "Geology",
                         "program_year": 2025,
                     },
                 },
@@ -492,8 +498,10 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
                     "fragment_id": str(uuid4()),
                     "fragment_metadata": {
                         "record_group_key": program_item_key,
+                        "program_merge_key": program_item_key,
                         "faculty": "Faculty of Science",
                         "program_code": "05.03.01",
+                        "program_name": "Geology",
                         "program_year": 2025,
                     },
                 },
@@ -509,8 +517,10 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
                     "fragment_id": str(uuid4()),
                     "fragment_metadata": {
                         "record_group_key": program_item_key,
+                        "program_merge_key": program_item_key,
                         "faculty": "Faculty of Science",
                         "program_code": "05.03.01",
+                        "program_name": "Geology",
                         "program_year": 2025,
                     },
                 },
@@ -526,8 +536,10 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
                     "fragment_id": str(uuid4()),
                     "fragment_metadata": {
                         "record_group_key": program_item_key,
+                        "program_merge_key": program_item_key,
                         "faculty": "Faculty of Science",
                         "program_code": "05.03.01",
+                        "program_name": "Geology",
                         "program_year": 2025,
                     },
                 },
@@ -572,3 +584,81 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
     assert program_fact.metadata["source_urls"] == ["https://example.edu/programs"]
     assert len(program_fact.selected_claim_ids) == 6
     assert len(program_fact.selected_evidence_ids) == 6
+
+
+def test_resolved_fact_generation_merges_pdf_budget_places_into_html_program_group() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    program_item_key = "05.03.01:2026:geology"
+
+    def program_claim(field_name: str, value, confidence: float, source_key: str):
+        return claim(
+            field_name=field_name,
+            value=value,
+            confidence=confidence,
+        ).model_copy(
+            update={
+                "source_key": source_key,
+                "metadata": {
+                    "fragment_id": str(uuid4()),
+                    "fragment_metadata": {
+                        "record_group_key": f"{source_key}:{program_item_key}",
+                        "program_merge_key": program_item_key,
+                        "faculty": "Faculty of Science",
+                        "program_code": "05.03.01",
+                        "program_name": "Geology",
+                        "program_year": 2026,
+                    },
+                },
+            }
+        )
+
+    html_claims = [
+        program_claim("programs.faculty", "Faculty of Science", 0.99, "msu-official"),
+        program_claim("programs.code", "05.03.01", 0.99, "msu-official"),
+        program_claim("programs.name", "Geology", 0.98, "msu-official"),
+        program_claim("programs.budget_places", 25, 0.95, "msu-official"),
+        program_claim("programs.passing_score", 182, 0.99, "msu-official"),
+        program_claim("programs.year", 2026, 0.99, "msu-official"),
+    ]
+    pdf_budget_claim = program_claim(
+        "programs.budget_places",
+        40,
+        0.99,
+        "msu-official",
+    )
+    enriched_bootstrap = bootstrap_result.model_copy(
+        update={
+            "claims_used": [*bootstrap_result.claims_used, *html_claims, pdf_budget_claim],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                *[
+                    evidence_for(claim_record).model_copy(
+                        update={
+                            "source_url": (
+                                "https://example.edu/places.pdf"
+                                if claim_record is pdf_budget_claim
+                                else "https://example.edu/programs"
+                            )
+                        }
+                    )
+                    for claim_record in [*html_claims, pdf_budget_claim]
+                ],
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(enriched_bootstrap)
+    by_field = {fact.field_name: fact for fact in result.facts}
+    program_field_name = f"{PROGRAM_FIELD_PREFIX}{program_item_key}"
+
+    assert program_field_name in by_field
+    program_fact = by_field[program_field_name]
+    assert program_fact.value["budget_places"] == 40
+    assert program_fact.value["passing_score"] == 182
+    assert sorted(program_fact.metadata["source_urls"]) == [
+        "https://example.edu/places.pdf",
+        "https://example.edu/programs",
+    ]
+    assert len(program_fact.selected_claim_ids) == 6

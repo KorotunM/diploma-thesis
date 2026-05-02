@@ -587,6 +587,17 @@ body {
   background: rgba(250, 252, 254, 0.92);
 }
 
+.search-result-card-active {
+  border-color: rgba(18, 97, 152, 0.28);
+  box-shadow: 0 0 0 1px rgba(18, 97, 152, 0.12);
+}
+
+.search-result-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .attribution-card {
   padding: 14px;
   background: rgba(250, 252, 254, 0.92);
@@ -619,6 +630,32 @@ body {
 .card-layout {
   display: grid;
   gap: 16px;
+}
+
+.card-selection-banner {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(19, 34, 56, 0.08);
+  border-radius: 18px;
+  background: rgba(250, 252, 254, 0.92);
+}
+
+.card-selection-banner strong {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #567894;
+}
+
+.card-selection-banner code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #132238;
+  color: #f8fbff;
+  overflow-wrap: anywhere;
 }
 
 .card-hero,

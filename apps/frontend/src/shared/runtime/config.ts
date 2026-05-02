@@ -15,19 +15,19 @@ export function loadFrontendRuntimeConfig(): FrontendRuntimeConfig {
     backendBaseUrl:
       runtimeConfig.backendBaseUrl ??
       import.meta.env.VITE_BACKEND_BASE_URL ??
-      "http://localhost:8004",
+      "/backend",
     schedulerBaseUrl:
       runtimeConfig.schedulerBaseUrl ??
       import.meta.env.VITE_SCHEDULER_BASE_URL ??
-      "http://localhost:8001",
+      "/scheduler",
     parserBaseUrl:
       runtimeConfig.parserBaseUrl ??
       import.meta.env.VITE_PARSER_BASE_URL ??
-      "http://localhost:8002",
+      "/parser",
     normalizerBaseUrl:
       runtimeConfig.normalizerBaseUrl ??
       import.meta.env.VITE_NORMALIZER_BASE_URL ??
-      "http://localhost:8003",
+      "/normalizer",
     apiRequestTimeoutMs: readTimeoutValue(
       runtimeConfig.apiRequestTimeoutMs,
       import.meta.env.VITE_API_REQUEST_TIMEOUT_MS,

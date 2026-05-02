@@ -4,6 +4,11 @@ services:
       - ../../:/workspace
     command: uvicorn apps.scheduler.app.main:app --host 0.0.0.0 --port 8001 --reload
 
+  scheduler-worker:
+    volumes:
+      - ../../:/workspace
+    command: python -m apps.scheduler.app.worker
+
   parser:
     volumes:
       - ../../:/workspace

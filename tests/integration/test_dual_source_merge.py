@@ -598,6 +598,7 @@ def test_dual_source_merge_prefers_authoritative_claims_and_exposes_rationale() 
 
 def test_dual_source_merge_merges_authoritative_program_and_admission_claims_into_card() -> None:
     session = InMemoryDualSourceSession()
+    program_merge_key = "05.03.01:2025:geology"
     session.sources["qs-world-ranking"] = {
         "source_id": uuid4(),
         "source_key": "qs-world-ranking",
@@ -656,8 +657,10 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
             confidence=0.99,
             metadata={
                 "record_group_key": "science:05.03.01:0",
+                "program_merge_key": program_merge_key,
                 "faculty": "Faculty of Science",
                 "program_code": "05.03.01",
+                "program_name": "Geology",
                 "program_year": 2025,
             },
         ),
@@ -673,8 +676,10 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
             confidence=0.99,
             metadata={
                 "record_group_key": "science:05.03.01:0",
+                "program_merge_key": program_merge_key,
                 "faculty": "Faculty of Science",
                 "program_code": "05.03.01",
+                "program_name": "Geology",
                 "program_year": 2025,
             },
         ),
@@ -690,8 +695,10 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
             confidence=0.98,
             metadata={
                 "record_group_key": "science:05.03.01:0",
+                "program_merge_key": program_merge_key,
                 "faculty": "Faculty of Science",
                 "program_code": "05.03.01",
+                "program_name": "Geology",
                 "program_year": 2025,
             },
         ),
@@ -707,8 +714,10 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
             confidence=0.99,
             metadata={
                 "record_group_key": "science:05.03.01:0",
+                "program_merge_key": program_merge_key,
                 "faculty": "Faculty of Science",
                 "program_code": "05.03.01",
+                "program_name": "Geology",
                 "program_year": 2025,
             },
         ),
@@ -724,8 +733,10 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
             confidence=0.99,
             metadata={
                 "record_group_key": "science:05.03.01:0",
+                "program_merge_key": program_merge_key,
                 "faculty": "Faculty of Science",
                 "program_code": "05.03.01",
+                "program_name": "Geology",
                 "program_year": 2025,
             },
         ),
@@ -741,8 +752,46 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
             confidence=0.99,
             metadata={
                 "record_group_key": "science:05.03.01:0",
+                "program_merge_key": program_merge_key,
                 "faculty": "Faculty of Science",
                 "program_code": "05.03.01",
+                "program_name": "Geology",
+                "program_year": 2025,
+            },
+        ),
+    ]
+
+    pdf_document_id = uuid4()
+    pdf_raw_artifact_id = uuid4()
+    session.parsed_documents[pdf_document_id] = {
+        "parsed_document_id": pdf_document_id,
+        "crawl_run_id": uuid4(),
+        "raw_artifact_id": pdf_raw_artifact_id,
+        "source_key": "msu-official",
+        "parser_profile": "official_site.kubsu.places_pdf",
+        "parser_version": "official.0.3.0",
+        "entity_type": "admission_program",
+        "entity_hint": "Geology",
+        "parsed_at": datetime(2026, 4, 26, 13, 7, tzinfo=UTC),
+        "metadata": json_to_db({"adapter": "official_sites"}),
+    }
+    session.fragments_by_document[pdf_document_id] = [
+        session._fragment_row(
+            parsed_document_id=pdf_document_id,
+            raw_artifact_id=pdf_raw_artifact_id,
+            source_key="msu-official",
+            source_url="https://www.example.edu/places.pdf",
+            field_name="programs.budget_places",
+            value=40,
+            value_type="int",
+            locator='pdf.program row[key="05.03.01:2025:geology"].budget_places',
+            confidence=1.0,
+            metadata={
+                "record_group_key": "pdf:05.03.01:2025:geology",
+                "program_merge_key": program_merge_key,
+                "faculty": "Faculty of Science",
+                "program_code": "05.03.01",
+                "program_name": "Geology",
                 "program_year": 2025,
             },
         ),
@@ -875,6 +924,14 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
         )
     )
     merged_authoritative = bootstrap_service.consolidate_claims(programs_claims)
+    pdf_claims = claim_service.build_claims_from_extracted_fragments(
+        payload_for(
+            session,
+            source_key="msu-official",
+            parsed_document_id=pdf_document_id,
+        )
+    )
+    merged_pdf = bootstrap_service.consolidate_claims(pdf_claims)
     aggregator_claims = claim_service.build_claims_from_extracted_fragments(
         payload_for(session, source_key="msu-aggregator")
     )
@@ -897,6 +954,9 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
     assert merged_authoritative.university.metadata["merge_strategy"] == (
         "authoritative_source_document_merge"
     )
+    assert merged_pdf.university.metadata["merge_strategy"] == (
+        "authoritative_source_document_merge"
+    )
     assert merged_secondary.university.metadata["merge_strategy"] == (
         "authoritative_anchor_exact_match_merge"
     )
@@ -909,12 +969,12 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
     facts_by_field = {fact.field_name: fact for fact in fact_result.facts}
     assert facts_by_field["contacts.emails"].value == ["admissions@example.edu"]
     assert facts_by_field["contacts.phones"].value == ["+7 495 000-00-00"]
-    program_fact = facts_by_field["programs.science:05.03.01:0"]
+    program_fact = facts_by_field["programs.05.03.01:2025:geology"]
     assert program_fact.value == {
         "faculty": "Faculty of Science",
         "code": "05.03.01",
         "name": "Geology",
-        "budget_places": 25,
+        "budget_places": 40,
         "passing_score": 182,
         "year": 2025,
     }
@@ -928,17 +988,18 @@ def test_dual_source_merge_merges_authoritative_program_and_admission_claims_int
     assert card_response.programs[0]["faculty"] == "Faculty of Science"
     assert card_response.programs[0]["code"] == "05.03.01"
     assert card_response.programs[0]["name"] == "Geology"
-    assert card_response.programs[0]["budget_places"] == 25
+    assert card_response.programs[0]["budget_places"] == 40
     assert card_response.programs[0]["passing_score"] == 182
     assert card_response.programs[0]["year"] == 2025
     assert card_response.ratings[0].provider == "QS World University Rankings"
-    assert "programs.science:05.03.01:0" in card_response.field_attribution
+    assert "programs.05.03.01:2025:geology" in card_response.field_attribution
     assert card_response.field_attribution["contacts.emails"].source_key == "msu-official"
-    assert card_response.field_attribution["programs.science:05.03.01:0"].source_key == (
+    assert card_response.field_attribution["programs.05.03.01:2025:geology"].source_key == (
         "msu-official"
     )
     assert {source.source_url for source in card_response.sources} == {
         "https://www.example.edu/admissions",
+        "https://www.example.edu/places.pdf",
         "https://www.example.edu/programs",
         "https://rankings.example.com/universities/example-university",
     }

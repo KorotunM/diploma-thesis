@@ -554,6 +554,9 @@ class ResolvedFactGenerationService:
 
     @staticmethod
     def _program_item_key(claim: ClaimRecord) -> str | None:
+        merge_key = ResolvedFactGenerationService._metadata_string(claim, "program_merge_key")
+        if merge_key:
+            return merge_key
         return ResolvedFactGenerationService._metadata_string(claim, "record_group_key")
 
     @staticmethod

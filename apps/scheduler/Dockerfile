@@ -11,7 +11,7 @@ COPY libs ./libs
 COPY schemas ./schemas
 COPY docs ./docs
 
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .[worker]
 
 EXPOSE 8001
 CMD ["uvicorn", "apps.scheduler.app.main:app", "--host", "0.0.0.0", "--port", "8001"]
