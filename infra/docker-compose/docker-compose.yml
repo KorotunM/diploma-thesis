@@ -13,10 +13,7 @@ services:
       start_period: 5s
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../../schemas/sql/init/001_extensions.sql:/docker-entrypoint-initdb.d/001_extensions.sql:ro
-      - ../../schemas/sql/ddl/010_schemas.sql:/docker-entrypoint-initdb.d/010_schemas.sql:ro
-      - ../../schemas/sql/ddl/020_tables.sql:/docker-entrypoint-initdb.d/020_tables.sql:ro
-
+      
   rabbitmq:
     image: rabbitmq:3-management
     env_file:
