@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from libs.source_sdk.base_adapter import FetchContext, FetchedArtifact
+from libs.source_sdk.fetchers.rate_limiter import SourceRateLimiter
 
 
 def utc_now() -> datetime:
@@ -43,12 +44,16 @@ class HttpFetcher:
         client_factory: Callable[..., httpx.AsyncClient] = httpx.AsyncClient,
         follow_redirects: bool = True,
         user_agent: str = "diploma-parser/0.1",
+        rate_limiter: SourceRateLimiter | None = None,
     ) -> None:
         self._client_factory = client_factory
         self._follow_redirects = follow_redirects
         self._user_agent = user_agent
+        self._rate_limiter = rate_limiter
 
     async def fetch(self, context: FetchContext) -> FetchedArtifact:
+        if self._rate_limiter is not None:
+            await self._rate_limiter.acquire(context.source_key)
         request_headers = self._build_request_headers(context)
         async with self._client_factory(
             follow_redirects=self._follow_redirects,

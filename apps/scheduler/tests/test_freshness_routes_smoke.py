@@ -79,11 +79,13 @@ class FakeMonitoringService:
         )
 
 
-def test_freshness_routes_return_server_side_snapshot_and_monitoring_job_summary() -> None:
+def test_freshness_routes_return_server_side_snapshot_and_monitoring_job_summary(
+    admin_auth_headers: dict[str, str],
+) -> None:
     app.dependency_overrides[get_source_freshness_service] = lambda: FakeFreshnessService()
     app.dependency_overrides[get_stale_source_monitoring_service] = lambda: FakeMonitoringService()
     try:
-        client = TestClient(app)
+        client = TestClient(app, headers=admin_auth_headers)
         overview_response = client.get("/admin/v1/freshness")
         monitoring_response = client.post("/admin/v1/freshness/monitor-jobs", json={})
     finally:

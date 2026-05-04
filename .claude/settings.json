@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(docker compose *)",
+      "Bash(docker ps)",
+      "Bash(docker logs *)",
+      "Bash(pytest *)",
+      "Bash(npm run *)",
+      "Bash(npm ci)",
+      "Bash(npm install)",
+      "Bash(alembic upgrade *)",
+      "Bash(alembic downgrade *)",
+      "Bash(alembic current)",
+      "Bash(alembic history)",
+      "Bash(alembic revision *)",
+      "Bash(python -m scripts.*)",
+      "Bash(python -m apps.*)",
+      "Bash(ruff check *)",
+      "Bash(ruff format *)"
+    ]
+  }
+}

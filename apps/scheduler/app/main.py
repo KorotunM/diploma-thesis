@@ -3,11 +3,13 @@ from apps.scheduler.app.freshness.routes import router as freshness_router
 from apps.scheduler.app.runs.routes import router as pipeline_run_router
 from apps.scheduler.app.sources.routes import router as source_registry_router
 from libs.observability import create_service_app
+from libs.storage.auth import AdminApiKeyMiddleware
 
 app = create_service_app(
     service_name="scheduler",
     description="Plans crawl runs and publishes crawl.request events.",
 )
+app.add_middleware(AdminApiKeyMiddleware, protected_prefixes=("/admin",))
 app.include_router(source_registry_router)
 app.include_router(pipeline_run_router)
 app.include_router(freshness_router)

@@ -40,12 +40,14 @@ class FakeDiscoveryService:
         )
 
 
-def test_discovery_route_returns_materialization_summary() -> None:
+def test_discovery_route_returns_materialization_summary(
+    admin_auth_headers: dict[str, str],
+) -> None:
     app.dependency_overrides[get_source_endpoint_discovery_service] = (
         lambda: FakeDiscoveryService()
     )
     try:
-        with TestClient(app) as client:
+        with TestClient(app, headers=admin_auth_headers) as client:
             response = client.post(
                 "/admin/v1/discovery/materialize-jobs",
                 json={"source_key": "tabiturient-aggregator", "dry_run": False},

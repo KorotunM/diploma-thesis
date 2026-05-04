@@ -90,7 +90,9 @@ class FakePublisher:
         )
 
 
-def test_trigger_endpoint_publishes_crawl_request_event_contract() -> None:
+def test_trigger_endpoint_publishes_crawl_request_event_contract(
+    admin_auth_headers: dict[str, str],
+) -> None:
     endpoint_id = uuid4()
     crawl_run_id = uuid4()
     publisher = FakePublisher()
@@ -117,7 +119,7 @@ def test_trigger_endpoint_publishes_crawl_request_event_contract() -> None:
 
     app.dependency_overrides[get_manual_crawl_trigger_service] = override_service
     try:
-        response = TestClient(app).post(
+        response = TestClient(app, headers=admin_auth_headers).post(
             "/admin/v1/crawl-jobs",
             json={
                 "crawl_run_id": str(crawl_run_id),

@@ -1,7 +1,9 @@
+import os
+
 from apps.parser.adapters.aggregators import AggregatorAdapter
 from apps.parser.adapters.official_sites import OfficialSiteAdapter
 from apps.parser.adapters.rankings import RankingAdapter
-from libs.source_sdk.fetchers import HttpFetcher
+from libs.source_sdk.fetchers import HttpFetcher, SourceRateLimiter
 from libs.source_sdk.stores import MinIORawArtifactStore
 from libs.storage import (
     RabbitMQConsumer,
@@ -32,8 +34,15 @@ def get_parser_session():
         session.close()
 
 
+_RATE_LIMITER = SourceRateLimiter()
+
+
 def create_crawl_request_processing_service(session) -> CrawlRequestProcessingService:
-    fetcher = HttpFetcher()
+    user_agent = os.environ.get(
+        "PLATFORM_DEFAULT_FETCH_USER_AGENT",
+        "diploma-parser/0.1",
+    )
+    fetcher = HttpFetcher(rate_limiter=_RATE_LIMITER, user_agent=user_agent)
     raw_store = MinIORawArtifactStore(get_minio_storage(service_name="parser"))
     raw_artifact_repository = RawArtifactRepository(session)
     raw_artifact_service = RawArtifactPersistenceService(

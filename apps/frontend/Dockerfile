@@ -1,11 +1,21 @@
-FROM node:22-alpine
-
+FROM node:22-alpine AS build
 WORKDIR /app
 
-COPY apps/frontend/package.json ./
-RUN npm install
+COPY apps/frontend/package.json apps/frontend/package-lock.json* ./
+RUN npm ci || npm install
 
 COPY apps/frontend ./
+RUN npm run build
 
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+FROM nginx:1.27-alpine AS runtime
+
+RUN apk add --no-cache curl
+COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=6 \
+    CMD curl -fsS http://localhost/healthz || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
