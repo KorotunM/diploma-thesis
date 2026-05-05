@@ -143,6 +143,8 @@ class CrawlRequestProcessingService:
         intermediate_records = list(
             await adapter.map_to_intermediate(context, stored_artifact, fragments)
         )
+        if not intermediate_records:
+            return None, []
         execution_result = ParserExecutionResult(
             execution_id=plan.execution_id,
             crawl_run_id=context.crawl_run_id,

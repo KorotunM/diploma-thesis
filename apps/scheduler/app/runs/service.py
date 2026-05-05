@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from pydantic import BaseModel
+
 from apps.scheduler.app.sources.endpoint_repository import SourceEndpointRepository
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
 from libs.observability import DomainMetricsCollector, get_domain_metrics
@@ -52,6 +54,14 @@ def parser_queue_for_priority(priority: str) -> str:
     if priority == "high":
         return PARSER_HIGH_QUEUE
     return PARSER_BULK_QUEUE
+
+
+def _to_pipeline_run_response(run: PipelineRunResponse | BaseModel | dict[str, Any]) -> PipelineRunResponse:
+    if isinstance(run, BaseModel):
+        payload = run.model_dump(mode="python")
+    else:
+        payload = run
+    return PipelineRunResponse.model_validate(payload)
 
 
 class ManualCrawlTriggerService:
@@ -169,6 +179,6 @@ class ManualCrawlTriggerService:
         )
 
         return CrawlJobAcceptedResponse(
-            pipeline_run=PipelineRunResponse.model_validate(published_run),
+            pipeline_run=_to_pipeline_run_response(published_run),
             event=event,
         )

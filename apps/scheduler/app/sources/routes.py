@@ -2,6 +2,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
 from apps.scheduler.app.dependencies import get_scheduler_session
 
@@ -45,6 +46,22 @@ SourceEndpointRepositoryDependency = Annotated[
 ]
 
 
+def _to_source_response(source: Any) -> SourceResponse:
+    if isinstance(source, BaseModel):
+        payload = source.model_dump(mode="python")
+    else:
+        payload = source
+    return SourceResponse.model_validate(payload)
+
+
+def _to_source_endpoint_response(endpoint: Any) -> SourceEndpointResponse:
+    if isinstance(endpoint, BaseModel):
+        payload = endpoint.model_dump(mode="python")
+    else:
+        payload = endpoint
+    return SourceEndpointResponse.model_validate(payload)
+
+
 @router.post(
     "",
     response_model=SourceResponse,
@@ -56,7 +73,7 @@ def create_source(
     repository: SourceRepositoryDependency,
 ) -> SourceResponse:
     try:
-        return SourceResponse.model_validate(repository.create(request))
+        return _to_source_response(repository.create(request))
     except SourceAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -84,7 +101,7 @@ def list_sources(
         total=total,
         limit=limit,
         offset=offset,
-        items=[SourceResponse.model_validate(item) for item in items],
+        items=[_to_source_response(item) for item in items],
     )
 
 
@@ -103,7 +120,7 @@ def get_source(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Source with key '{source_key}' was not found.",
         )
-    return SourceResponse.model_validate(source)
+    return _to_source_response(source)
 
 
 @router.patch(
@@ -122,7 +139,7 @@ def update_source(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Source with key '{source_key}' was not found.",
         )
-    return SourceResponse.model_validate(source)
+    return _to_source_response(source)
 
 
 @router.post(
@@ -148,7 +165,7 @@ def create_source_endpoint(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Endpoint '{exc.endpoint_url}' already exists for source '{exc.source_key}'.",
         ) from exc
-    return SourceEndpointResponse.model_validate(endpoint)
+    return _to_source_endpoint_response(endpoint)
 
 
 @router.get(
@@ -173,7 +190,7 @@ def list_source_endpoints(
         total=total,
         limit=limit,
         offset=offset,
-        items=[SourceEndpointResponse.model_validate(item) for item in items],
+        items=[_to_source_endpoint_response(item) for item in items],
     )
 
 
@@ -193,7 +210,7 @@ def get_source_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Endpoint '{endpoint_id}' was not found for source '{source_key}'.",
         )
-    return SourceEndpointResponse.model_validate(endpoint)
+    return _to_source_endpoint_response(endpoint)
 
 
 @router.patch(
@@ -219,4 +236,4 @@ def update_source_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Endpoint '{endpoint_id}' was not found for source '{source_key}'.",
         )
-    return SourceEndpointResponse.model_validate(endpoint)
+    return _to_source_endpoint_response(endpoint)

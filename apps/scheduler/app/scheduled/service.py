@@ -221,4 +221,4 @@ class ScheduledCrawlService:
             priority=payload.priority,
             parser_profile=payload.parser_profile,
         )
-        return PipelineRunResponse.model_validate(published_run)
+        return PipelineRunResponse.model_validate(published_run.model_dump())

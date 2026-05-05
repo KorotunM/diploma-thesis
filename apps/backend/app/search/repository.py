@@ -30,38 +30,63 @@ class UniversitySearchRepository:
         offset: int,
     ) -> list[UniversitySearchHitRecord]:
         query_present = bool(query and normalized_query)
-        query_predicate = (
-            """
-            search_doc.search_text @@ plainto_tsquery('simple', :query)
-            OR search_doc.canonical_name % :query
-            OR search_doc.canonical_name_normalized % :normalized_query
-            OR search_doc.website_domain % :normalized_query
-            """
-            if query_present
-            else "TRUE"
-        )
-        text_rank_expression = (
-            """
-            CASE
-                WHEN search_doc.search_text @@ plainto_tsquery('simple', :query)
-                THEN ts_rank_cd(search_doc.search_text, plainto_tsquery('simple', :query))
-                ELSE 0.0
-            END
-            """
-            if query_present
-            else "0.0"
-        )
-        trigram_expression = (
-            """
-            GREATEST(
-                similarity(search_doc.canonical_name, :query),
-                similarity(search_doc.canonical_name_normalized, :normalized_query),
-                similarity(COALESCE(search_doc.website_domain, ''), :normalized_query)
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+
+        # --- text-search expressions (only when query is given) ---
+        if query_present:
+            params["query"] = query
+            params["normalized_query"] = normalized_query
+            query_predicate = (
+                "search_doc.search_text @@ plainto_tsquery('simple', :query)"
+                " OR search_doc.canonical_name % :query"
+                " OR search_doc.canonical_name_normalized % :normalized_query"
+                " OR search_doc.website_domain % :normalized_query"
             )
-            """
-            if query_present
-            else "0.0"
-        )
+            text_rank_expression = (
+                "CASE"
+                " WHEN search_doc.search_text @@ plainto_tsquery('simple', :query)"
+                " THEN ts_rank_cd(search_doc.search_text, plainto_tsquery('simple', :query))"
+                " ELSE 0.0 END"
+            )
+            trigram_expression = (
+                "GREATEST("
+                " similarity(search_doc.canonical_name, :query),"
+                " similarity(search_doc.canonical_name_normalized, :normalized_query),"
+                " similarity(COALESCE(search_doc.website_domain, ''), :normalized_query)"
+                ")"
+            )
+        else:
+            query_predicate = "TRUE"
+            text_rank_expression = "0.0"
+            trigram_expression = "0.0"
+
+        # --- optional filter clauses (only added when value is present) ---
+        extra_filters: list[str] = []
+
+        if city:
+            params["city"] = city
+            extra_filters.append("lower(search_doc.city_name) = lower(:city)")
+
+        if country_code:
+            params["country_code"] = country_code
+            extra_filters.append("upper(search_doc.country_code) = upper(:country_code)")
+
+        if source_type:
+            params["source_type"] = source_type
+            extra_filters.append(
+                "(lower(COALESCE(university.metadata ->> 'source_type', '')) = lower(:source_type)"
+                " OR EXISTS ("
+                "   SELECT 1 FROM jsonb_array_elements("
+                "     COALESCE(university.metadata -> 'source_snapshots', '[]'::jsonb)"
+                "   ) AS snapshot"
+                "   WHERE lower(COALESCE(snapshot ->> 'source_type', '')) = lower(:source_type)"
+                " ))"
+            )
+
+        where_clause = f"({query_predicate})"
+        for f in extra_filters:
+            where_clause += f" AND {f}"
+
         result = self._session.execute(
             self._sql_text(
                 f"""
@@ -82,27 +107,7 @@ class UniversitySearchRepository:
                     FROM delivery.university_search_doc AS search_doc
                     LEFT JOIN core.university AS university
                         ON university.university_id = search_doc.university_id
-                    WHERE ({query_predicate})
-                      AND (:city IS NULL OR lower(search_doc.city_name) = lower(:city))
-                      AND (
-                          :country_code IS NULL
-                          OR upper(search_doc.country_code) = upper(:country_code)
-                      )
-                      AND (
-                          :source_type IS NULL
-                          OR lower(
-                              COALESCE(university.metadata ->> 'source_type', '')
-                          ) = lower(:source_type)
-                          OR EXISTS (
-                              SELECT 1
-                              FROM jsonb_array_elements(
-                                  COALESCE(university.metadata -> 'source_snapshots', '[]'::jsonb)
-                              ) AS snapshot
-                              WHERE lower(
-                                  COALESCE(snapshot ->> 'source_type', '')
-                              ) = lower(:source_type)
-                          )
-                      )
+                    WHERE {where_clause}
                 )
                 SELECT
                     university_id,
@@ -129,15 +134,7 @@ class UniversitySearchRepository:
                 OFFSET :offset
                 """
             ),
-            {
-                "query": query,
-                "normalized_query": normalized_query,
-                "city": city,
-                "country_code": country_code,
-                "source_type": source_type,
-                "limit": limit,
-                "offset": offset,
-            },
+            params,
         )
         return [self._hit_from_row(row) for row in result.mappings().all()]
 

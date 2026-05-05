@@ -83,10 +83,18 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     ports:
       - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   scheduler-worker:
     build:
@@ -101,9 +109,33 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     command: python -m apps.scheduler.app.worker
+
+  auto-seed:
+    build:
+      context: ../..
+      dockerfile: apps/scheduler/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+      scheduler:
+        condition: service_healthy
+    command: python -m scripts.seed_demo_data
+    restart: "no"
 
   parser:
     build:
@@ -118,6 +150,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     ports:
@@ -136,6 +170,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     command: python -m apps.parser.app.worker
@@ -153,6 +189,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     ports:
@@ -171,6 +209,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
     command: python -m apps.normalizer.app.worker

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from libs.contracts.events import (
     EventHeader,
     NormalizeRequestEvent,
@@ -11,9 +13,11 @@ from apps.normalizer.app.cards import UniversityCardProjectionService
 from apps.normalizer.app.card_updated import CardUpdatedEmitter
 from apps.normalizer.app.claims import ClaimBuildService
 from apps.normalizer.app.facts import ResolvedFactGenerationService
-from apps.normalizer.app.universities import UniversityBootstrapService
+from apps.normalizer.app.universities import UniversityBootstrapError, UniversityBootstrapService
 
 from .models import ParseCompletedProcessingResult
+
+_log = logging.getLogger(__name__)
 
 
 def build_normalize_request_event(
@@ -66,7 +70,7 @@ class ParseCompletedProcessingService:
     def process(
         self,
         event: ParseCompletedEvent,
-    ) -> ParseCompletedProcessingResult:
+    ) -> ParseCompletedProcessingResult | None:
         normalize_request = build_normalize_request_event(
             event,
             normalizer_version=self._normalizer_version,
@@ -74,9 +78,17 @@ class ParseCompletedProcessingService:
         claim_result = self._claim_build_service.build_claims_from_extracted_fragments(
             normalize_request.payload
         )
-        bootstrap_result = self._university_bootstrap_service.consolidate_claims(
-            claim_result
-        )
+        try:
+            bootstrap_result = self._university_bootstrap_service.consolidate_claims(
+                claim_result
+            )
+        except UniversityBootstrapError as exc:
+            _log.warning(
+                "Skipping normalization for source=%s — no authoritative match: %s",
+                event.payload.source_key,
+                exc,
+            )
+            return None
         fact_result = self._resolved_fact_generation_service.generate_for_bootstrap(
             bootstrap_result
         )

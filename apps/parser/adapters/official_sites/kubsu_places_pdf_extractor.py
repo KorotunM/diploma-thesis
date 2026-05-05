@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from io import BytesIO
 from typing import Any
@@ -12,6 +13,8 @@ from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 from .base import OfficialSiteFragmentExtractor
 from .kubsu_programs_html_extractor import slugify
 from .html_extractor import normalize_text
+
+_log = logging.getLogger(__name__)
 
 YEAR_PATTERN = re.compile(r"(?P<year>20\d{2})")
 PROGRAM_LINE_PATTERN = re.compile(
@@ -135,7 +138,11 @@ class KubSUPlacesPdfExtractor(OfficialSiteFragmentExtractor):
                 ),
             )
         if not fragments:
-            raise ValueError("No structured KubSU admissions rows were extracted from PDF.")
+            _log.warning(
+                "KubSU PDF extractor: no admissions rows matched — "
+                "PDF structure may have changed at %s",
+                context.endpoint_url if context else "(unknown)",
+            )
         return fragments
 
     @staticmethod

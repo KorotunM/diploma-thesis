@@ -77,7 +77,7 @@ def _run_parser_consumer_session(
 def run_parser_worker(
     *,
     prefetch_count: int | None = None,
-    requeue_on_error: bool = True,
+    requeue_on_error: bool = False,
 ) -> None:
     initial_retry_seconds = _env_float("WORKER_RETRY_INITIAL_SECONDS", 2.0)
     max_retry_seconds = _env_float("WORKER_RETRY_MAX_SECONDS", 30.0)

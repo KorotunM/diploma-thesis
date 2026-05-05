@@ -94,6 +94,20 @@ class PipelineRunRepository:
             return None
         return self._record_from_row(row)
 
+    def crawled_endpoint_ids(self) -> set[str]:
+        """Return endpoint_ids that already have at least one succeeded run."""
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT DISTINCT metadata->>'endpoint_id'
+                FROM ops.pipeline_run
+                WHERE status = 'succeeded'
+                  AND metadata->>'endpoint_id' IS NOT NULL
+                """
+            )
+        )
+        return {row[0] for row in result.fetchall()}
+
     def commit(self) -> None:
         self._session.commit()
 

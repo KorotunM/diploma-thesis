@@ -22,6 +22,7 @@ from typing import Any
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
+from apps.scheduler.app.persistence import sql_text as _sql_text
 from scripts.source_bootstrap.workflow import (
     LiveSourceSeedResult,
     build_live_source_seed_service,
@@ -114,16 +115,30 @@ def _trigger_crawl(
     return pipeline_run.get("run_id")
 
 
-def _bootstrap_sources() -> LiveSourceSeedResult:
+def _bootstrap_sources_and_get_crawled() -> tuple[LiveSourceSeedResult, set[str]]:
     with managed_session("scheduler") as session:
         result = build_live_source_seed_service(session).bootstrap()
-    return result
+        rows = session.execute(
+            _sql_text(
+                """
+                SELECT DISTINCT metadata->>'endpoint_id'
+                FROM ops.pipeline_run
+                WHERE status = 'succeeded'
+                  AND metadata->>'endpoint_id' IS NOT NULL
+                """
+            )
+        ).fetchall()
+        already_crawled = {row[0] for row in rows}
+    return result, already_crawled
 
 
 def _trigger_demo_crawls(
     scheduler_url: str,
     source_keys: tuple[str, ...],
+    *,
+    skip_endpoint_ids: set[str] | None = None,
 ) -> list[TriggeredRun]:
+    skip = skip_endpoint_ids or set()
     triggered: list[TriggeredRun] = []
     for source_key in source_keys:
         try:
@@ -144,6 +159,12 @@ def _trigger_demo_crawls(
             endpoint_url = endpoint.get("endpoint_url", "")
             parser_profile = endpoint.get("parser_profile", "")
             if not endpoint_id or "<" in endpoint_url:
+                continue
+            if endpoint_id in skip:
+                print(
+                    f"[seed] Skipping {source_key} / {endpoint_url} — already succeeded.",
+                    file=sys.stderr,
+                )
                 continue
             try:
                 run_id = _trigger_crawl(scheduler_url, source_key, endpoint_id)
@@ -216,6 +237,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Only bootstrap sources, do not trigger any crawls.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Trigger crawls even for endpoints that have already succeeded.",
+    )
     return parser
 
 
@@ -223,10 +249,13 @@ def main(argv: list[str] | None = None) -> int:
     args = build_argument_parser().parse_args(argv)
 
     print("[seed] Bootstrapping source registry...", file=sys.stderr)
-    seed_result = _bootstrap_sources()
+    seed_result, already_crawled = _bootstrap_sources_and_get_crawled()
+    skip = set() if args.force else already_crawled
     print(
         f"[seed] Registered {seed_result.source_count} sources, "
-        f"{seed_result.endpoint_count} endpoints.",
+        f"{seed_result.endpoint_count} endpoints. "
+        f"Already succeeded: {len(already_crawled)} endpoint(s)"
+        + (" (--force: will re-trigger all)." if args.force else "."),
         file=sys.stderr,
     )
 
@@ -235,16 +264,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     print(
-        f"[seed] Waiting briefly for scheduler at {args.scheduler_url} to be reachable...",
+        f"[seed] Waiting for scheduler at {args.scheduler_url} to be reachable...",
         file=sys.stderr,
     )
-    deadline = time.monotonic() + 60.0
+    deadline = time.monotonic() + 120.0
     while time.monotonic() < deadline:
         try:
             _http_request("GET", f"{args.scheduler_url.rstrip('/')}/healthz", timeout=5.0)
             break
         except SeedHttpError:
-            time.sleep(2.0)
+            time.sleep(3.0)
     else:
         print(
             f"[seed] Scheduler at {args.scheduler_url} did not become healthy in time.",
@@ -252,8 +281,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    print("[seed] Triggering one crawl per endpoint...", file=sys.stderr)
-    triggered = _trigger_demo_crawls(args.scheduler_url, seed_result.source_keys)
+    print("[seed] Triggering crawls for new endpoints...", file=sys.stderr)
+    triggered = _trigger_demo_crawls(
+        args.scheduler_url,
+        seed_result.source_keys,
+        skip_endpoint_ids=skip,
+    )
     _print_summary(seed_result, triggered)
     return 0
 

@@ -19,12 +19,13 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                     endpoint_url="https://tabiturient.ru/map/sitemap.php",
                     parser_profile="aggregator.tabiturient.sitemap_xml",
                     role="discovery",
-                    content_kind="xml",
+                    content_kind="html",
                     implementation_status="implemented",
                     target_fields=(),
                     notes=(
                         "Use this sitemap only for endpoint discovery. Do not treat it as "
-                        "a normal university entity page."
+                        "a normal university entity page. The PHP script returns text/html "
+                        "Content-Type even though the body is XML — accept html to allow fetch."
                     ),
                 ),
                 EndpointBlueprint(

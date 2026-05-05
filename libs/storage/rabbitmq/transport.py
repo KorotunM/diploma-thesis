@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from libs.storage.settings import RabbitMQSettings, get_platform_settings
+
+_log = logging.getLogger(__name__)
 
 from .topology import (
     EXCHANGE_DEFINITIONS,
@@ -229,9 +232,14 @@ class RabbitMQConsumer:
         def callback(body: Any, message: Any) -> None:
             try:
                 handler(body, message)
-            except Exception:
+            except Exception as exc:
+                _log.error(
+                    "Message processing failed — rejecting (requeue=%s): %s",
+                    requeue_on_error,
+                    exc,
+                    exc_info=True,
+                )
                 message.reject(requeue=requeue_on_error)
-                raise
             else:
                 message.ack()
 

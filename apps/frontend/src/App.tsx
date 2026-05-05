@@ -4,17 +4,18 @@ import { SearchWorkspacePage } from "./pages/SearchWorkspacePage";
 import { UniversityCardPage } from "./pages/UniversityCardPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { LoginModal } from "./components/LoginModal";
+import logoSvg from "./assets/logo.svg";
 
 type AppView = "search" | "university" | "admin";
 
 const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin"];
 
-const NAV_LINKS = [
-  { id: "search" as AppView, label: "Поиск вуза" },
-  { id: null, label: "Специальности" },
-  { id: null, label: "Калькулятор" },
-  { id: null, label: "Отзывы" },
-  { id: null, label: "Рейтинги" },
+const NAV_LINKS: Array<{ id: AppView | null; label: string; soon?: boolean }> = [
+  { id: "search", label: "Поиск вуза" },
+  { id: null, label: "Специальности", soon: true },
+  { id: null, label: "Калькулятор", soon: true },
+  { id: null, label: "Отзывы", soon: true },
+  { id: null, label: "Рейтинги", soon: true },
 ];
 
 function readViewFromLocation(): AppView {
@@ -72,24 +73,27 @@ export default function App() {
             onClick={() => navigateTo("search")}
             style={{ border: "none", cursor: "pointer", background: "none" }}
           >
-            <div className="app__logo-icon">А+</div>
+            <img src={logoSvg} alt="Абитуриент+" className="app__logo-icon" style={{ borderRadius: 10 }} />
             <div className="app__logo-text">
-              <span className="app__logo-title">Агрегатор вузов</span>
+              <span className="app__logo-title">Абитуриент+</span>
               <span className="app__logo-sub">Навигатор в мир образования</span>
             </div>
           </button>
 
           <nav className="app__nav" aria-label="Навигация">
-            {NAV_LINKS.map(({ id, label }) => (
+            {NAV_LINKS.map(({ id, label, soon }) => (
               <button
                 key={label}
                 className={`app__nav-link ${id === activeView ? "app__nav-link--active" : ""}`}
                 type="button"
-                onClick={() => id && navigateTo(id)}
-                disabled={id === null}
-                style={id === null ? { opacity: 0.4, cursor: "default" } : undefined}
+                title={soon ? "Раздел в разработке" : undefined}
+                onClick={() => {
+                  if (id) navigateTo(id);
+                  else alert("Раздел «" + label + "» находится в разработке.");
+                }}
               >
                 {label}
+                {soon && <span style={{ fontSize: "0.6rem", marginLeft: 4, opacity: 0.6, verticalAlign: "super" }}>скоро</span>}
               </button>
             ))}
           </nav>

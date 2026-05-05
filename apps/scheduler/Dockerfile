@@ -13,6 +13,7 @@ COPY libs ./libs
 COPY schemas ./schemas
 COPY docs ./docs
 COPY migrations ./migrations
+COPY scripts ./scripts
 COPY alembic.ini ./
 
 EXPOSE 8001
