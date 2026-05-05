@@ -1,0 +1,96 @@
+@use "../variables" as *;
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.modal {
+  background: $color-surface;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-dropdown;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.modal__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: $color-text;
+  margin: 0;
+}
+
+.modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: $color-page-bg;
+  border-radius: $radius-xs;
+  color: $color-text-muted;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: background 0.15s;
+}
+
+.modal__close:hover {
+  background: darken(#f3f4f6, 5%);
+  color: $color-text;
+}
+
+.modal__body {
+  padding: 20px 24px 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.modal__error {
+  padding: 10px 14px;
+  background: $color-error-bg;
+  border-radius: $radius-xs;
+  color: $color-error-text;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.modal__submit {
+  width: 100%;
+  padding: 13px;
+  background: $color-brand;
+  color: #fff;
+  border: none;
+  border-radius: $radius-sm;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+
+.modal__submit:hover {
+  background: $color-brand-hover;
+}
+
+.modal__hint {
+  text-align: center;
+  font-size: 0.78rem;
+  color: $color-text-muted;
+}

@@ -1,73 +1,124 @@
 import { useEffect, useState } from "react";
 
-import { HomePage } from "./pages/HomePage";
 import { SearchWorkspacePage } from "./pages/SearchWorkspacePage";
 import { UniversityCardPage } from "./pages/UniversityCardPage";
-import { EvidenceDrawer } from "./widgets/evidence-drawer/EvidenceDrawer";
+import { AdminDashboard } from "./pages/AdminDashboard";
+import { LoginModal } from "./components/LoginModal";
 
-type AppView = "search" | "monitoring" | "evidence" | "university";
+type AppView = "search" | "university" | "admin";
 
-const NAV_VIEWS: Array<{ id: AppView; label: string }> = [
-  { id: "search", label: "Поиск" },
-  { id: "monitoring", label: "Мониторинг" },
-  { id: "evidence", label: "Доказательства" },
+const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin"];
+
+const NAV_LINKS = [
+  { id: "search" as AppView, label: "Поиск вуза" },
+  { id: null, label: "Специальности" },
+  { id: null, label: "Калькулятор" },
+  { id: null, label: "Отзывы" },
+  { id: null, label: "Рейтинги" },
 ];
-
-const ALL_VIEW_IDS: AppView[] = ["search", "monitoring", "evidence", "university"];
-
-export default function App() {
-  const [activeView, setActiveView] = useState<AppView>(readViewFromLocation);
-
-  useEffect(() => {
-    const handleHashChange = () => {
-      setActiveView(readViewFromLocation());
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-    };
-  }, []);
-
-  return (
-    <div className="app">
-      <header className="app__header">
-        <span className="app__logo">Агрегатор вузов</span>
-        <nav className="app__nav" aria-label="Разделы интерфейса">
-          {NAV_VIEWS.map((view) => (
-            <button
-              key={view.id}
-              className={`app__nav-button ${
-                view.id === activeView ? "app__nav-button--active" : ""
-              }`}
-              type="button"
-              onClick={() => navigateToView(view.id)}
-            >
-              {view.label}
-            </button>
-          ))}
-        </nav>
-      </header>
-
-      <main className="app__main">
-        {activeView === "search" ? <SearchWorkspacePage /> : null}
-        {activeView === "monitoring" ? <HomePage /> : null}
-        {activeView === "evidence" ? <EvidenceDrawer /> : null}
-        {activeView === "university" ? <UniversityCardPage /> : null}
-      </main>
-    </div>
-  );
-}
-
-function navigateToView(view: AppView): void {
-  const nextHash = `#${view}`;
-  if (window.location.hash === nextHash) {
-    return;
-  }
-  window.location.hash = nextHash;
-}
 
 function readViewFromLocation(): AppView {
   const hash = window.location.hash.replace("#", "");
   return ALL_VIEW_IDS.includes(hash as AppView) ? (hash as AppView) : "search";
+}
+
+function navigateTo(view: AppView): void {
+  const next = `#${view}`;
+  if (window.location.hash !== next) {
+    window.location.hash = next;
+  }
+}
+
+export default function App() {
+  const [activeView, setActiveView] = useState<AppView>(readViewFromLocation);
+  const [isAdmin, setIsAdmin] = useState(
+    () => localStorage.getItem("admin_auth") === "1",
+  );
+  const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    const handleHashChange = () => setActiveView(readViewFromLocation());
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  const handleLoginSuccess = () => {
+    setIsAdmin(true);
+    setShowLogin(false);
+    navigateTo("admin");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_auth");
+    setIsAdmin(false);
+    navigateTo("search");
+  };
+
+  const handleLoginClick = () => {
+    if (isAdmin) {
+      navigateTo("admin");
+    } else {
+      setShowLogin(true);
+    }
+  };
+
+  return (
+    <div className="app">
+      <header className="app__header">
+        <div className="app__header-inner">
+          <button
+            className="app__logo"
+            type="button"
+            onClick={() => navigateTo("search")}
+            style={{ border: "none", cursor: "pointer", background: "none" }}
+          >
+            <div className="app__logo-icon">А+</div>
+            <div className="app__logo-text">
+              <span className="app__logo-title">Агрегатор вузов</span>
+              <span className="app__logo-sub">Навигатор в мир образования</span>
+            </div>
+          </button>
+
+          <nav className="app__nav" aria-label="Навигация">
+            {NAV_LINKS.map(({ id, label }) => (
+              <button
+                key={label}
+                className={`app__nav-link ${id === activeView ? "app__nav-link--active" : ""}`}
+                type="button"
+                onClick={() => id && navigateTo(id)}
+                disabled={id === null}
+                style={id === null ? { opacity: 0.4, cursor: "default" } : undefined}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="app__header-actions">
+            {isAdmin ? (
+              <button className="app__user-btn" type="button" onClick={handleLoginClick}>
+                <div className="app__user-avatar">A</div>
+                Личный кабинет
+              </button>
+            ) : (
+              <button className="app__login-btn" type="button" onClick={handleLoginClick}>
+                <span>→</span> Войти
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="app__main">
+        {activeView === "search" && <SearchWorkspacePage />}
+        {activeView === "university" && <UniversityCardPage />}
+        {activeView === "admin" && isAdmin && <AdminDashboard onLogout={handleLogout} />}
+        {activeView === "admin" && !isAdmin && <SearchWorkspacePage />}
+      </main>
+
+      {showLogin && (
+        <LoginModal onClose={() => setShowLogin(false)} onSuccess={handleLoginSuccess} />
+      )}
+    </div>
+  );
 }

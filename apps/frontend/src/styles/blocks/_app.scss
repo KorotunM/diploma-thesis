@@ -1,73 +1,218 @@
 @use "../variables" as *;
 
 .app {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 0 24px 56px;
+  min-height: 100vh;
+  background: $color-page-bg;
 }
 
+// ── Header ──────────────────────────────────────────────────────────
 .app__header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: $color-surface;
+  border-bottom: 1px solid $color-border;
+  box-shadow: 0 1px 4px rgba(17, 24, 39, 0.06);
+}
+
+.app__header-inner {
   display: flex;
   align-items: center;
-  gap: 32px;
-  padding: 0 0 0;
-  border-bottom: 1px solid $color-border;
-  margin-bottom: 28px;
+  gap: 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
 }
 
+// Logo block
 .app__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  margin-right: 40px;
+  flex-shrink: 0;
+}
+
+.app__logo-icon {
+  width: 38px;
+  height: 38px;
+  background: $color-brand;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.app__logo-text {
+  display: grid;
+  gap: 1px;
+}
+
+.app__logo-title {
   font-weight: 800;
   font-size: 1.05rem;
   color: $color-text;
-  white-space: nowrap;
-  padding: 18px 0;
+  line-height: 1.2;
 }
 
+.app__logo-sub {
+  font-size: 0.7rem;
+  color: $color-text-muted;
+  line-height: 1;
+}
+
+// Nav
 .app__nav {
   display: flex;
+  align-items: center;
   gap: 0;
   flex: 1;
 }
 
-.app__nav-button {
-  padding: 18px 20px;
+.app__nav-link {
+  padding: 0 16px;
+  height: 64px;
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: $color-text-soft;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 500;
-  transition: color 0.15s ease, border-color 0.15s ease;
-  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
 }
 
-.app__nav-button:hover {
+.app__nav-link:hover {
   color: $color-text;
 }
 
-.app__nav-button--active {
+.app__nav-link--active {
+  color: $color-brand;
+  font-weight: 600;
+  border-bottom-color: $color-brand;
+}
+
+// Header actions
+.app__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.app__login-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: 1px solid $color-border-strong;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $color-text-soft;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app__login-btn:hover {
+  background: $color-page-bg;
   color: $color-text;
+}
+
+.app__user-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid $color-border;
+  border-radius: 999px;
+  background: transparent;
+  color: $color-text;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app__user-btn:hover {
+  background: $color-page-bg;
+}
+
+.app__user-avatar {
+  width: 28px;
+  height: 28px;
+  background: $color-brand;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
   font-weight: 700;
-  border-bottom-color: $color-text;
 }
 
 .app__main {
   min-width: 0;
 }
 
-@media (max-width: $breakpoint-mobile) {
-  .app {
-    padding: 0 16px 36px;
-  }
+// ── Admin dashboard ────────────────────────────────────────────────
+.admin-dashboard__topbar {
+  background: $color-surface;
+  border-bottom: 1px solid $color-border;
+}
 
-  .app__header {
-    flex-wrap: wrap;
+.admin-dashboard__topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.admin-dashboard__tabs {
+  display: flex;
+  gap: 0;
+}
+
+.admin-dashboard__content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+// ── Responsive ────────────────────────────────────────────────────
+@media (max-width: $breakpoint-mobile) {
+  .app__header-inner {
+    padding: 0 16px;
     gap: 0;
   }
 
   .app__logo {
-    width: 100%;
-    padding-bottom: 0;
+    margin-right: 16px;
+  }
+
+  .app__logo-sub {
+    display: none;
+  }
+
+  .app__nav-link {
+    padding: 0 10px;
+    font-size: 0.83rem;
+  }
+}
+
+@media (max-width: $breakpoint-small) {
+  .app__nav {
+    display: none;
   }
 }

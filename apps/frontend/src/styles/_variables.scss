@@ -1,63 +1,94 @@
-$color-text: #132238;
-$color-text-soft: #4f6377;
-$color-text-muted: #5b6f82;
+// Brand & accent
+$color-brand: #2563eb;
+$color-brand-hover: #1d4ed8;
+$color-brand-light: #dbeafe;
+$color-brand-text: #1d4ed8;
+
+// Text
+$color-text: #111827;
+$color-text-soft: #374151;
+$color-text-muted: #6b7280;
 $color-text-accent: #567894;
 
+// Page background
+$color-page-bg: #f3f4f6;
 $color-page-start: #f5f7fa;
 $color-page-end: #edf1f5;
-$color-surface: rgba(255, 255, 255, 0.82);
-$color-surface-strong: rgba(255, 255, 255, 0.92);
+
+// Surfaces
+$color-surface: #ffffff;
+$color-surface-strong: rgba(255, 255, 255, 0.96);
 $color-surface-muted: rgba(247, 250, 252, 0.84);
-$color-surface-glass: rgba(255, 255, 255, 0.72);
+$color-surface-glass: rgba(255, 255, 255, 0.82);
 $color-surface-code: #132238;
 
-$color-border: rgba(19, 34, 56, 0.08);
-$color-border-strong: rgba(19, 34, 56, 0.12);
-$color-border-dashed: rgba(19, 34, 56, 0.14);
+// Borders
+$color-border: rgba(17, 24, 39, 0.1);
+$color-border-strong: rgba(17, 24, 39, 0.15);
+$color-border-dashed: rgba(17, 24, 39, 0.14);
 
+// Hero (dark blue)
+$color-hero-bg: #0d1b2e;
+$color-hero-mid: #1a3a5c;
 $color-hero-start: #0d2438;
 $color-hero-end: #1f4d71;
 $color-hero-card: rgba(255, 255, 255, 0.12);
 $color-hero-card-border: rgba(255, 255, 255, 0.16);
 $color-hero-text: #f8fbff;
-$color-hero-copy: rgba(248, 251, 255, 0.82);
+$color-hero-copy: rgba(248, 251, 255, 0.78);
 
-$color-search-glow: rgba(151, 214, 194, 0.2);
+// Glows
+$color-search-glow: rgba(37, 99, 235, 0.12);
 $color-card-glow: rgba(186, 226, 255, 0.22);
 $color-overview-glow: rgba(255, 205, 137, 0.22);
 $color-evidence-glow: rgba(151, 214, 194, 0.18);
 
-$color-success-bg: #d8ecdc;
-$color-success-text: #245437;
-$color-warning-bg: #fff1cf;
-$color-warning-text: #89611b;
-$color-error-bg: #fff2e8;
-$color-error-text: #8c4d16;
-$color-info-bg: #d7e8f8;
-$color-info-text: #2d4f8e;
+// Semantic
+$color-success-bg: #d1fae5;
+$color-success-text: #065f46;
+$color-warning-bg: #fef3c7;
+$color-warning-text: #92400e;
+$color-error-bg: #fee2e2;
+$color-error-text: #991b1b;
+$color-info-bg: #dbeafe;
+$color-info-text: #1d4ed8;
 
-$color-status-live-bg: #ddf2e2;
-$color-status-live-text: #245437;
-$color-status-degraded-bg: #ffe1d0;
-$color-status-degraded-text: #953d17;
-$color-status-aging-bg: #fff0c9;
-$color-status-aging-text: #8d6315;
-$color-status-scheduled-bg: #dde9ff;
-$color-status-scheduled-text: #2d4f8e;
-$color-status-manual-bg: #ece8ff;
-$color-status-manual-text: #58409c;
-$color-status-inactive-bg: #e7eaee;
-$color-status-inactive-text: #56636f;
+// Status pills
+$color-status-live-bg: #d1fae5;
+$color-status-live-text: #065f46;
+$color-status-degraded-bg: #fee2e2;
+$color-status-degraded-text: #991b1b;
+$color-status-aging-bg: #fef3c7;
+$color-status-aging-text: #92400e;
+$color-status-scheduled-bg: #dbeafe;
+$color-status-scheduled-text: #1d4ed8;
+$color-status-manual-bg: #ede9fe;
+$color-status-manual-text: #5b21b6;
+$color-status-inactive-bg: #f3f4f6;
+$color-status-inactive-text: #6b7280;
 
-$shadow-hero: 0 28px 70px rgba(9, 30, 48, 0.18);
-$shadow-panel: 0 20px 45px rgba(19, 34, 56, 0.08);
-$shadow-card: 0 18px 32px rgba(19, 34, 56, 0.06);
+// Tag colors
+$color-tag-state-bg: #dcfce7;
+$color-tag-state-text: #15803d;
+$color-tag-head-bg: #dbeafe;
+$color-tag-head-text: #1d4ed8;
+$color-tag-city-bg: #f3f4f6;
+$color-tag-city-text: #374151;
 
-$radius-xl: 28px;
-$radius-lg: 22px;
-$radius-md: 18px;
-$radius-sm: 14px;
-$radius-xs: 12px;
+// Shadows
+$shadow-hero: 0 28px 70px rgba(9, 30, 48, 0.22);
+$shadow-panel: 0 4px 24px rgba(17, 24, 39, 0.07);
+$shadow-card: 0 1px 3px rgba(17, 24, 39, 0.08), 0 1px 2px rgba(17, 24, 39, 0.04);
+$shadow-card-hover: 0 4px 16px rgba(17, 24, 39, 0.1);
+$shadow-dropdown: 0 10px 40px rgba(17, 24, 39, 0.12);
 
+// Radii
+$radius-xl: 24px;
+$radius-lg: 16px;
+$radius-md: 12px;
+$radius-sm: 8px;
+$radius-xs: 6px;
+
+// Breakpoints
 $breakpoint-mobile: 960px;
 $breakpoint-small: 680px;

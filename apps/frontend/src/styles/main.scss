@@ -1,6 +1,7 @@
 @use "./variables";
 @use "./blocks/base";
 @use "./blocks/app";
+@use "./blocks/hero";
 @use "./blocks/panel";
 @use "./blocks/workspace";
 @use "./blocks/primitives";
@@ -9,3 +10,4 @@
 @use "./blocks/card-panel";
 @use "./blocks/overview-panel";
 @use "./blocks/evidence-panel";
+@use "./blocks/login-modal";

@@ -2,55 +2,64 @@
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .field__label {
-  font-size: 0.79rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: $color-text-accent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: $color-text-muted;
 }
 
 .field__control {
   width: 100%;
   min-width: 0;
-  padding: 14px 16px;
+  padding: 11px 14px;
   border: 1px solid $color-border-strong;
-  border-radius: 16px;
-  background: $color-surface-strong;
+  border-radius: $radius-sm;
+  background: $color-surface;
   color: $color-text;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .field__control:focus {
-  outline: 2px solid rgba(43, 126, 104, 0.22);
-  border-color: rgba(43, 126, 104, 0.45);
+  outline: none;
+  border-color: $color-brand;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .field__control--select {
   appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
+// Buttons
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 16px;
-  border-radius: 14px;
+  padding: 11px 20px;
+  border-radius: $radius-sm;
   border: 1px solid transparent;
-  font-weight: 800;
+  font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    opacity 0.16s ease;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+  white-space: nowrap;
 }
 
 .button:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .button:disabled {
@@ -59,28 +68,44 @@
 }
 
 .button--primary {
-  background: #16344f;
-  color: $color-hero-text;
-  box-shadow: 0 16px 28px rgba(22, 52, 79, 0.18);
+  background: $color-brand;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
-.button--secondary,
-.button--ghost {
+.button--primary:hover:not(:disabled) {
+  background: $color-brand-hover;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.button--secondary {
   border-color: $color-border-strong;
-  background: $color-surface-strong;
+  background: $color-surface;
   color: $color-text;
 }
 
+.button--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: $color-text-soft;
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: $color-page-bg;
+  color: $color-text;
+}
+
+// Chips & pills
 .chip,
 .dependency-chip,
 .status-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .chip {
@@ -89,7 +114,7 @@
 }
 
 .dependency-chip {
-  background: #edf3f8;
+  background: #f3f4f6;
   color: $color-text;
 }
 
@@ -126,13 +151,30 @@
   color: $color-status-inactive-text;
 }
 
+// Tag variants for university cards
+.tag--state {
+  background: $color-tag-state-bg;
+  color: $color-tag-state-text;
+}
+
+.tag--head {
+  background: $color-tag-head-bg;
+  color: $color-tag-head-text;
+}
+
+.tag--city {
+  background: $color-tag-city-bg;
+  color: $color-tag-city-text;
+}
+
+// Summary cards
 .summary-card {
   display: grid;
   gap: 4px;
   padding: 18px;
   border: 1px solid $color-border;
   border-radius: $radius-md;
-  background: rgba(255, 255, 255, 0.78);
+  background: $color-surface;
 }
 
 .summary-card span,
@@ -144,6 +186,7 @@
   font-size: 1.72rem;
 }
 
+// Key-value pairs
 .key-value {
   display: flex;
   justify-content: space-between;
@@ -153,10 +196,12 @@
 }
 
 .key-value span {
-  color: $color-text-accent;
+  color: $color-text-muted;
+  font-size: 0.88rem;
 }
 
 .key-value strong {
   overflow-wrap: anywhere;
   text-align: right;
+  font-size: 0.88rem;
 }

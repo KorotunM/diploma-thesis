@@ -1,12 +1,42 @@
+import { useState } from "react";
+
 import { useUniversitySearch } from "../features/search";
 import { ViewState } from "../shared/ui/view-state";
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const SOURCE_TYPE_OPTIONS = [
-  { value: "", label: "Все источники" },
-  { value: "official_site", label: "Официальные сайты" },
-  { value: "aggregator", label: "Агрегаторы" },
-  { value: "ranking", label: "Рейтинги" },
+const DIRECTIONS = [
+  "IT и цифровые технологии",
+  "Инженерия",
+  "Экономика",
+  "Медицина",
+  "Управление",
+  "Гуманитарные науки",
+];
+
+const FEATURE_CARDS = [
+  {
+    icon: "🎓",
+    iconClass: "feature-card__icon--blue",
+    title: "Подбор вуза",
+    desc: "Найдём вузы под ваши баллы и предпочтения",
+  },
+  {
+    icon: "🔢",
+    iconClass: "feature-card__icon--green",
+    title: "Калькулятор ЕГЭ",
+    desc: "Рассчитайте шансы на поступление",
+  },
+  {
+    icon: "📖",
+    iconClass: "feature-card__icon--purple",
+    title: "Специальности",
+    desc: "Изучите направления и профили обучения",
+  },
+  {
+    icon: "📊",
+    iconClass: "feature-card__icon--orange",
+    title: "Рейтинги",
+    desc: "Сравнивайте вузы по различным критериям",
+  },
 ];
 
 export function SearchPage() {
@@ -15,231 +45,260 @@ export function SearchPage() {
     setQuery,
     city,
     setCity,
-    country,
-    setCountry,
-    sourceType,
-    setSourceType,
     page,
     setPage,
     pageSize,
-    setPageSize,
     resetFilters,
     snapshot,
     error,
     loading,
-    refreshing,
   } = useUniversitySearch();
-  const hasQueryState =
-    query.trim().length > 0 ||
-    city.trim().length > 0 ||
-    country.trim().length > 0 ||
-    sourceType.trim().length > 0;
+
+  const [localQuery, setLocalQuery] = useState(query);
   const hasResults = (snapshot?.items.length ?? 0) > 0;
+  const hasQueryState = query.trim().length > 0 || city.trim().length > 0;
+
+  const handleSearch = () => {
+    setQuery(localQuery);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch();
+  };
+
+  const handleDirectionClick = (direction: string) => {
+    setLocalQuery(direction);
+    setQuery(direction);
+  };
 
   return (
-    <section className="panel panel--search search-panel">
-      <div className="search-panel__layout">
-        <aside className="search-panel__filters">
-          <div className="search-panel__filters-header">
-            <span className="panel__kicker">Фильтры</span>
-            <button className="button button--ghost" type="button" onClick={resetFilters}>
-              Сбросить
+    <>
+      {/* Hero */}
+      <section className="hero">
+        <div className="hero__inner">
+          <h1 className="hero__heading">Поступи в вуз мечты</h1>
+          <p className="hero__sub">
+            Найдите лучшие вузы, программы и возможности для вашего будущего
+          </p>
+
+          <div className="hero__search">
+            <input
+              className="hero__search-input"
+              type="search"
+              value={localQuery}
+              onChange={(e) => setLocalQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Введите название вуза, города или направления..."
+            />
+            <button className="hero__search-btn" type="button" onClick={handleSearch}>
+              Подобрать
             </button>
           </div>
 
-          <label className="field">
-            <span className="field__label">Название, алиас или домен</span>
-            <input
-              className="field__control"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="kubsu.ru или КубГУ"
-            />
-          </label>
-
-          <div className="search-panel__filter-grid">
-            <label className="field">
-              <span className="field__label">Город</span>
-              <input
-                className="field__control"
-                type="search"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="Краснодар"
-              />
-            </label>
-
-            <label className="field">
-              <span className="field__label">Страна</span>
-              <input
-                className="field__control"
-                type="search"
-                value={country}
-                onChange={(event) => setCountry(event.target.value)}
-                placeholder="RU"
-              />
-            </label>
-          </div>
-
-          <div className="search-panel__filter-grid">
-            <label className="field">
-              <span className="field__label">Тип источника</span>
-              <select
-                className="field__control field__control--select"
-                value={sourceType}
-                onChange={(event) => setSourceType(event.target.value)}
-              >
-                {SOURCE_TYPE_OPTIONS.map((option) => (
-                  <option key={option.value || "all"} value={option.value}>
-                    {option.label}
+          <div className="hero__filters">
+            <div className="hero__filter-wrap">
+              <span className="hero__filter-label">Направление подготовки</span>
+              <select className="hero__filter" defaultValue="">
+                <option value="">Любое направление</option>
+                {DIRECTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
                 ))}
               </select>
-            </label>
-
-            <label className="field">
-              <span className="field__label">Размер страницы</span>
-              <select
-                className="field__control field__control--select"
-                value={String(pageSize)}
-                onChange={(event) => setPageSize(Number(event.target.value))}
-              >
-                {PAGE_SIZE_OPTIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {value} на странице
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="search-panel__state">
-            <small>Запрос: {query.trim() || "режим просмотра"}</small>
-            <small>Город: {city.trim() || "любой"}</small>
-            <small>Страна: {country.trim().toUpperCase() || "любая"}</small>
-            <small>Источник: {sourceType || "все источники"}</small>
-          </div>
-        </aside>
-
-        <div className="search-panel__results">
-          {error && snapshot ? <p className="panel-alert">{error}</p> : null}
-
-          <div className="search-panel__toolbar">
-            <small>
-              Всего: <strong>{snapshot?.total ?? 0}</strong>
-            </small>
-            <small>{snapshot ? formatTimestamp(snapshot.receivedAt) : ""}</small>
-          </div>
-
-          <div className="search-panel__cards">
-            {loading && !snapshot ? (
-              <ViewState
-                kind="loading"
-                title="Загружаем результаты поиска"
-                message="Интерфейс ожидает первый ответ от backend search service."
-                detail="Запрос и фильтры уже синхронизированы с текущим URL."
-              />
-            ) : null}
-            {!loading && !snapshot && error ? (
-              <ViewState
-                kind="error"
-                title="Результаты поиска недоступны"
-                message={error}
-                detail="Повтори запрос после того, как backend search и delivery снова станут доступны."
-              />
-            ) : null}
-            {hasResults
-              ? snapshot?.items.map((item) => (
-                  <article
-                    key={item.university_id}
-                    className="search-panel__card"
-                  >
-                    <div className="search-panel__card-header">
-                      <div>
-                        <strong>{item.canonical_name}</strong>
-                        <p>{item.university_id}</p>
-                      </div>
-                      <div className="search-panel__chips">
-                        <span className="chip">{item.city ?? "город неизвестен"}</span>
-                        <span className="chip">{item.country_code ?? "страна неизвестна"}</span>
-                      </div>
-                    </div>
-                    <dl className="search-panel__meta">
-                      <div>
-                        <dt>Сайт</dt>
-                        <dd>{item.website ?? "не указан"}</dd>
-                      </div>
-                      <div>
-                        <dt>Алиасы</dt>
-                        <dd>{item.aliases.length > 0 ? item.aliases.join(", ") : "нет"}</dd>
-                      </div>
-                      <div>
-                        <dt>Оценка</dt>
-                        <dd>{item.score.toFixed(3)}</dd>
-                      </div>
-                      <div>
-                        <dt>Сигналы совпадения</dt>
-                        <dd>{item.match_signals.join(", ") || "нет"}</dd>
-                      </div>
-                    </dl>
-                    <div className="search-panel__actions">
-                      <button
-                        className="button button--primary"
-                        type="button"
-                        onClick={() => openUniversityCard(item.university_id)}
-                      >
-                        Открыть карточку
-                      </button>
-                    </div>
-                  </article>
-                ))
-              : null}
-            {!loading && snapshot && !hasResults && !hasQueryState ? (
-              <ViewState
-                kind="empty"
-                title="Поиск готов"
-                message="Пока нет активного запроса или фильтров."
-                detail="Начни с названия вуза, домена, города, страны или типа источника."
-              />
-            ) : null}
-            {!loading && snapshot && !hasResults && hasQueryState ? (
-              <ViewState
-                kind="empty"
-                title="Совпадения не найдены"
-                message="Текущий запрос и фильтры не вернули ни одного документа."
-                detail="Расшири условия поиска через поля и фильтры выше."
-              />
-            ) : null}
-          </div>
-
-          {snapshot ? (
-            <div className="search-panel__pagination">
-              <button
-                className="button button--secondary"
-                type="button"
-                disabled={loading || page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Назад
-              </button>
-              <div className="search-panel__pagination-status">
-                <strong>Страница {snapshot.page}</strong>
-                <small>{snapshot.total} совпадений всего</small>
-              </div>
-              <button
-                className="button button--secondary"
-                type="button"
-                disabled={loading || !snapshot.hasMore}
-                onClick={() => setPage(page + 1)}
-              >
-                Далее
-              </button>
             </div>
-          ) : null}
+            <div className="hero__filter-wrap">
+              <span className="hero__filter-label">Регион</span>
+              <input
+                className="hero__filter"
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Вся Россия"
+              />
+            </div>
+            <div className="hero__filter-wrap">
+              <span className="hero__filter-label">Форма обучения</span>
+              <select className="hero__filter" defaultValue="full">
+                <option value="full">Очная</option>
+                <option value="part">Заочная</option>
+                <option value="mixed">Очно-заочная</option>
+              </select>
+            </div>
+            <div className="hero__filter-wrap">
+              <span className="hero__filter-label">Бюджет/платно</span>
+              <select className="hero__filter" defaultValue="">
+                <option value="">Любой вариант</option>
+                <option value="budget">Бюджет</option>
+                <option value="paid">Платно</option>
+              </select>
+            </div>
+            <div className="hero__filter-wrap">
+              <span className="hero__filter-label">Баллы ЕГЭ</span>
+              <select className="hero__filter" defaultValue="0">
+                <option value="0">От 0 баллов</option>
+                <option value="60">От 60 баллов</option>
+                <option value="70">От 70 баллов</option>
+                <option value="80">От 80 баллов</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="hero__directions">
+            <span className="hero__directions-label">Популярные направления</span>
+            {DIRECTIONS.map((d) => (
+              <button
+                key={d}
+                className="hero__direction-chip"
+                type="button"
+                onClick={() => handleDirectionClick(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
         </div>
+      </section>
+
+      {/* Feature cards */}
+      <div className="feature-cards">
+        {FEATURE_CARDS.map((card) => (
+          <div key={card.title} className="feature-card">
+            <div className={`feature-card__icon ${card.iconClass}`}>{card.icon}</div>
+            <div className="feature-card__text">
+              <div className="feature-card__title">{card.title}</div>
+              <div className="feature-card__desc">{card.desc}</div>
+            </div>
+            <span className="feature-card__arrow">›</span>
+          </div>
+        ))}
       </div>
-    </section>
+
+      {/* Results */}
+      <div className="search-page">
+        <div className="section-header">
+          <h2 className="section-header__title">
+            {hasQueryState ? "Результаты поиска" : "Популярные вузы"}
+          </h2>
+          {snapshot && (
+            <span className="section-header__count">{snapshot.total} вузов</span>
+          )}
+          {hasQueryState && (
+            <button
+              className="section-header__link"
+              type="button"
+              onClick={resetFilters}
+            >
+              Сбросить фильтры ✕
+            </button>
+          )}
+        </div>
+
+        {error && !loading && (
+          <ViewState
+            kind="error"
+            title="Поиск недоступен"
+            message={error}
+            detail="Проверьте, что backend сервис запущен."
+          />
+        )}
+
+        {loading && !snapshot && (
+          <ViewState kind="loading" title="Загружаем вузы" message="Ждём ответ от сервера..." />
+        )}
+
+        {!loading && snapshot && !hasResults && (
+          <ViewState
+            kind="empty"
+            title="Вузы не найдены"
+            message="Попробуйте изменить запрос или сбросить фильтры."
+          />
+        )}
+
+        {hasResults && (
+          <div className="uni-list">
+            {snapshot!.items.map((item) => (
+              <div
+                key={item.university_id}
+                className="uni-card"
+                onClick={() => openUniversityCard(item.university_id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") openUniversityCard(item.university_id);
+                }}
+              >
+                <div className="uni-card__logo">{item.canonical_name.charAt(0)}</div>
+
+                <div className="uni-card__info">
+                  <p className="uni-card__name">{item.canonical_name}</p>
+                  <p className="uni-card__fullname">
+                    {item.aliases.length > 0 ? item.aliases[0] : item.website ?? "сайт не указан"}
+                  </p>
+                  <div className="uni-card__tags">
+                    <span className="uni-card__tag uni-card__tag--state">Государственный</span>
+                    {item.city && (
+                      <span className="uni-card__tag uni-card__tag--city">
+                        📍 {item.city}
+                      </span>
+                    )}
+                    {item.country_code && item.country_code !== "RU" && (
+                      <span className="uni-card__tag uni-card__tag--city">
+                        {item.country_code}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="uni-card__stats">
+                  <div className="uni-card__stat">
+                    <span className="uni-card__stat-value uni-card__stat-value--rating">
+                      ★ {item.score.toFixed(1)}
+                    </span>
+                    <span className="uni-card__stat-label">Рейтинг</span>
+                  </div>
+                  <div className="uni-card__stat">
+                    <span className="uni-card__stat-value">—</span>
+                    <span className="uni-card__stat-label">Бюджетных мест</span>
+                  </div>
+                  <div className="uni-card__stat">
+                    <span className="uni-card__stat-value">—</span>
+                    <span className="uni-card__stat-label">Проходной балл</span>
+                  </div>
+                </div>
+
+                <div className="uni-card__arrow">›</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {snapshot && (
+          <div className="search-pagination">
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={loading || page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Назад
+            </button>
+            <div className="search-pagination__status">
+              <strong>Страница {snapshot.page}</strong>
+              <span>{snapshot.total} совпадений</span>
+            </div>
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={loading || !snapshot.hasMore}
+              onClick={() => setPage(page + 1)}
+            >
+              Далее
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -248,17 +307,4 @@ function openUniversityCard(universityId: string): void {
   url.searchParams.set("university_id", universityId);
   window.history.replaceState({}, "", url);
   window.location.hash = "university";
-}
-
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }
