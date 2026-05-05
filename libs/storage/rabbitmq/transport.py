@@ -220,7 +220,11 @@ class RabbitMQConsumer:
     ) -> Any:
         queue = self._queues[queue_name]
         channel = self._connection.channel()
-        channel.basic_qos(prefetch_count=prefetch_count or self._settings.prefetch_count)
+        channel.basic_qos(
+            prefetch_size=0,
+            prefetch_count=prefetch_count or self._settings.prefetch_count,
+            a_global=False,
+        )
 
         def callback(body: Any, message: Any) -> None:
             try:

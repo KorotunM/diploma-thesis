@@ -1,6 +1,4 @@
-import { formatSearchFilters } from "../features/search/formatSearchFilters";
 import { useUniversitySearch } from "../features/search";
-import { useSelectedUniversity } from "../shared/selected-university";
 import { ViewState } from "../shared/ui/view-state";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -12,7 +10,6 @@ const SOURCE_TYPE_OPTIONS = [
 ];
 
 export function SearchPage() {
-  const { activeUniversityId, setActiveUniversityId } = useSelectedUniversity();
   const {
     query,
     setQuery,
@@ -41,34 +38,10 @@ export function SearchPage() {
 
   return (
     <section className="panel panel--search search-panel">
-      <div className="panel__header">
-        <div>
-          <p className="panel__kicker">Поиск</p>
-          <h2 className="panel__title">Главная рабочая зона для поиска вузов</h2>
-          <p className="panel__copy">
-            Здесь живет только поиск: фильтры, выдача и выбор карточки. Мониторинг и provenance
-            вынесены в отдельные представления, чтобы первая страница оставалась рабочей, а не
-            декоративной.
-          </p>
-        </div>
-        <span className={`panel__badge ${refreshing ? "panel__badge--refreshing" : ""}`}>
-          {loading && !snapshot
-            ? "Ищем"
-            : snapshot
-              ? `${snapshot.total} результатов в индексе`
-              : error
-                ? "Поиск недоступен"
-                : "Готово к просмотру"}
-        </span>
-      </div>
-
       <div className="search-panel__layout">
         <aside className="search-panel__filters">
           <div className="search-panel__filters-header">
-            <div>
-              <p className="panel__kicker">Фильтры</p>
-              <h3 className="search-panel__subtitle">Состояние поиска синхронизировано с URL</h3>
-            </div>
+            <span className="panel__kicker">Фильтры</span>
             <button className="button button--ghost" type="button" onClick={resetFilters}>
               Сбросить
             </button>
@@ -154,34 +127,9 @@ export function SearchPage() {
 
           <div className="search-panel__toolbar">
             <small>
-              Backend-запрос:{" "}
-              <strong>{snapshot?.requestedQuery || query.trim() || "режим просмотра"}</strong>
+              Всего: <strong>{snapshot?.total ?? 0}</strong>
             </small>
-            <small>
-              Фильтры:{" "}
-              <strong>
-                {formatSearchFilters({
-                  city: snapshot?.filters.city ?? city,
-                  country: snapshot?.filters.country ?? country,
-                  sourceType: snapshot?.filters.source_type ?? sourceType,
-                })}
-              </strong>
-            </small>
-            <small>{snapshot ? formatTimestamp(snapshot.receivedAt) : "ожидание ответа"}</small>
-          </div>
-
-          <div className="search-panel__toolbar search-panel__toolbar--secondary">
-            <small>
-              Страница <strong>{snapshot?.page ?? page}</strong> / размер{" "}
-              <strong>{snapshot?.pageSize ?? pageSize}</strong>
-            </small>
-            <small>
-              Всего <strong>{snapshot?.total ?? 0}</strong>
-            </small>
-            <small>
-              Следующая страница:{" "}
-              <strong>{snapshot?.hasMore ? "доступна" : "конец выдачи"}</strong>
-            </small>
+            <small>{snapshot ? formatTimestamp(snapshot.receivedAt) : ""}</small>
           </div>
 
           <div className="search-panel__cards">
@@ -205,11 +153,7 @@ export function SearchPage() {
               ? snapshot?.items.map((item) => (
                   <article
                     key={item.university_id}
-                    className={`search-panel__card ${
-                      item.university_id === activeUniversityId
-                        ? "search-panel__card--active"
-                        : ""
-                    }`}
+                    className="search-panel__card"
                   >
                     <div className="search-panel__card-header">
                       <div>
@@ -243,11 +187,9 @@ export function SearchPage() {
                       <button
                         className="button button--primary"
                         type="button"
-                        onClick={() => openUniversityCard(item.university_id, setActiveUniversityId)}
+                        onClick={() => openUniversityCard(item.university_id)}
                       >
-                        {item.university_id === activeUniversityId
-                          ? "Карточка выбрана"
-                          : "Открыть карточку"}
+                        Открыть карточку
                       </button>
                     </div>
                   </article>
@@ -301,15 +243,11 @@ export function SearchPage() {
   );
 }
 
-function openUniversityCard(
-  universityId: string,
-  setActiveUniversityId: (universityId: string) => void,
-): void {
-  setActiveUniversityId(universityId);
-  document.getElementById("university-card")?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+function openUniversityCard(universityId: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("university_id", universityId);
+  window.history.replaceState({}, "", url);
+  window.location.hash = "university";
 }
 
 function formatTimestamp(value: string): string {

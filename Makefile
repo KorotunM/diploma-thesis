@@ -3,7 +3,7 @@
 COMPOSE := docker compose -f infra/docker-compose/docker-compose.yml
 
 up:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up --build
 
 down:
 	$(COMPOSE) down

@@ -6,7 +6,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -58,6 +58,18 @@ services:
     volumes:
       - ../minio/bootstrap.sh:/bootstrap.sh:ro
 
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/scheduler/Dockerfile
+    env_file:
+      - ../env/local/app.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: alembic upgrade head
+    restart: "no"
+
   scheduler:
     build:
       context: ../..
@@ -71,6 +83,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8001:8001"
 
@@ -87,6 +101,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: python -m apps.scheduler.app.worker
 
   parser:
@@ -102,6 +118,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8002:8002"
 
@@ -118,6 +136,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: python -m apps.parser.app.worker
 
   normalizer:
@@ -133,6 +153,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8003:8003"
 
@@ -149,6 +171,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: python -m apps.normalizer.app.worker
 
   backend:
@@ -160,6 +184,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8004:8004"
 
@@ -195,6 +221,8 @@ services:
     image: grafana/grafana:latest
     env_file:
       - ../env/local/app.env
+    environment:
+      GF_LOG_LEVEL: warn
     ports:
       - "3000:3000"
     volumes:

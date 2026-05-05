@@ -3,121 +3,53 @@
 .app {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 32px 24px 56px;
+  padding: 0 24px 56px;
 }
 
-.app__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
-  gap: 20px;
-  padding: 32px;
-  border-radius: $radius-xl;
-  background: linear-gradient(145deg, $color-hero-start, $color-hero-end);
-  box-shadow: $shadow-hero;
-  color: $color-hero-text;
+.app__header {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 0 0;
+  border-bottom: 1px solid $color-border;
+  margin-bottom: 28px;
 }
 
-.app__eyebrow {
-  margin: 0 0 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.75rem;
-  opacity: 0.72;
-}
-
-.app__title {
-  margin: 0;
-  max-width: 10ch;
-  font-size: clamp(2.4rem, 4vw, 4.8rem);
-  line-height: 0.94;
-}
-
-.app__copy {
-  max-width: 62ch;
-  margin: 18px 0 0;
-  color: $color-hero-copy;
+.app__logo {
+  font-weight: 800;
   font-size: 1.05rem;
-  line-height: 1.65;
-}
-
-.app__hero-meta {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-}
-
-.app__meta-card {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  border: 1px solid $color-hero-card-border;
-  border-radius: $radius-md;
-  background: $color-hero-card;
-  backdrop-filter: blur(12px);
-}
-
-.app__meta-card strong {
-  font-size: 1.1rem;
-}
-
-.app__meta-card small {
-  color: rgba(248, 251, 255, 0.78);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.app__meta-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.72;
+  color: $color-text;
+  white-space: nowrap;
+  padding: 18px 0;
 }
 
 .app__nav {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin: 18px 0 24px;
+  display: flex;
+  gap: 0;
+  flex: 1;
 }
 
 .app__nav-button {
-  display: grid;
-  gap: 6px;
-  padding: 16px 18px;
-  border: 1px solid $color-border;
-  border-radius: $radius-md;
-  background: rgba(255, 255, 255, 0.74);
-  box-shadow: $shadow-card;
-  color: $color-text;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.app__nav-button span {
-  font-weight: 800;
-  font-size: 1.02rem;
-}
-
-.app__nav-button small {
+  padding: 18px 20px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
   color: $color-text-soft;
-  line-height: 1.5;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  margin-bottom: -1px;
 }
 
 .app__nav-button:hover {
-  transform: translateY(-2px);
+  color: $color-text;
 }
 
 .app__nav-button--active {
-  border-color: rgba(22, 52, 79, 0.16);
-  background:
-    radial-gradient(circle at top left, rgba(151, 214, 194, 0.16), transparent 40%),
-    rgba(255, 255, 255, 0.9);
-  box-shadow: 0 20px 36px rgba(19, 34, 56, 0.1);
+  color: $color-text;
+  font-weight: 700;
+  border-bottom-color: $color-text;
 }
 
 .app__main {
@@ -126,15 +58,16 @@
 
 @media (max-width: $breakpoint-mobile) {
   .app {
-    padding: 20px 16px 36px;
+    padding: 0 16px 36px;
   }
 
-  .app__hero,
-  .app__nav {
-    grid-template-columns: 1fr;
+  .app__header {
+    flex-wrap: wrap;
+    gap: 0;
   }
 
-  .app__title {
-    max-width: none;
+  .app__logo {
+    width: 100%;
+    padding-bottom: 0;
   }
 }

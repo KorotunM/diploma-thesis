@@ -240,3 +240,11 @@ Invoke-RestMethod "http://localhost:8004/api/v1/universities/<university_id>/pro
 - `POST /admin/v1/crawl-jobs` запускает реальный async path без replay
 - backend search/card/provenance показывают результат после worker processing
 - e2e тест `tests/e2e/test_live_mvp_bootstrap_to_provenance_flow.py` проходит
+
+Сервис	URL
+Frontend	http://localhost:5173
+Scheduler API	http://localhost:8001
+Backend API	http://localhost:8004
+RabbitMQ UI	http://localhost:15672 (aggregator/aggregator)
+MinIO Console	http://localhost:9001 (aggregator/aggregator-secret)
+Grafana	http://localhost:3000 (admin/admin)

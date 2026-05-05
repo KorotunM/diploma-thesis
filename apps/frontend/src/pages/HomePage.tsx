@@ -15,12 +15,7 @@ export function HomePage() {
     <section className="panel panel--overview overview-panel">
       <div className="panel__header">
         <div>
-          <p className="panel__kicker">Мониторинг</p>
           <h2 className="panel__title">Состояние пайплайна и актуальность источников</h2>
-          <p className="panel__copy">
-            Отдельное представление для runtime-наблюдения: health сервисов, деградации,
-            свежесть источников и текущая нагрузка на контур обхода.
-          </p>
         </div>
         <div className="overview-panel__status">
           <span className={`panel__badge ${refreshing ? "panel__badge--refreshing" : ""}`}>
