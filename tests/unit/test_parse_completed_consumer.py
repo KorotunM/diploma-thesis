@@ -123,7 +123,9 @@ def test_build_normalize_request_event_preserves_parser_context() -> None:
 
 def test_parse_completed_processing_service_runs_full_normalization_chain() -> None:
     event = build_event()
-    claim_result = SimpleNamespace(claims=["claim"])
+    # Claims must have a .metadata dict so _split_by_entity can inspect record_group_key.
+    fake_claim = SimpleNamespace(metadata={})
+    claim_result = SimpleNamespace(claims=[fake_claim], evidence=[])
     bootstrap_result = SimpleNamespace(university=SimpleNamespace(university_id=uuid4()))
     fact_result = SimpleNamespace(
         facts=[
@@ -152,8 +154,10 @@ def test_parse_completed_processing_service_runs_full_normalization_chain() -> N
         normalizer_version="normalizer.0.2.0",
     )
 
-    result = service.process(event)
+    results = service.process(event)
 
+    assert len(results) == 1
+    result = results[0]
     assert claim_build_service.calls[0].normalizer_version == "normalizer.0.2.0"
     assert bootstrap_service.calls == [claim_result]
     assert fact_service.calls == [bootstrap_result]

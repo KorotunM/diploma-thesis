@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from uuid import UUID
 
 from libs.contracts.events import (
     EventHeader,
@@ -11,7 +12,7 @@ from libs.contracts.events import (
 
 from apps.normalizer.app.cards import UniversityCardProjectionService
 from apps.normalizer.app.card_updated import CardUpdatedEmitter
-from apps.normalizer.app.claims import ClaimBuildService
+from apps.normalizer.app.claims import ClaimBuildResult, ClaimBuildService, ClaimEvidenceRecord, ClaimRecord
 from apps.normalizer.app.facts import ResolvedFactGenerationService
 from apps.normalizer.app.universities import UniversityBootstrapError, UniversityBootstrapService
 
@@ -70,7 +71,7 @@ class ParseCompletedProcessingService:
     def process(
         self,
         event: ParseCompletedEvent,
-    ) -> ParseCompletedProcessingResult | None:
+    ) -> list[ParseCompletedProcessingResult]:
         normalize_request = build_normalize_request_event(
             event,
             normalizer_version=self._normalizer_version,
@@ -78,36 +79,80 @@ class ParseCompletedProcessingService:
         claim_result = self._claim_build_service.build_claims_from_extracted_fragments(
             normalize_request.payload
         )
-        try:
-            bootstrap_result = self._university_bootstrap_service.consolidate_claims(
-                claim_result
+        entity_groups = self._split_by_entity(claim_result)
+        results: list[ParseCompletedProcessingResult] = []
+        for group in entity_groups:
+            try:
+                bootstrap_result = self._university_bootstrap_service.consolidate_claims(group)
+            except UniversityBootstrapError as exc:
+                _log.warning(
+                    "Skipping normalization for source=%s — bootstrap error: %s",
+                    event.payload.source_key,
+                    exc,
+                )
+                continue
+            fact_result = self._resolved_fact_generation_service.generate_for_bootstrap(
+                bootstrap_result
             )
-        except UniversityBootstrapError as exc:
-            _log.warning(
-                "Skipping normalization for source=%s — no authoritative match: %s",
-                event.payload.source_key,
-                exc,
+            projection_result = self._university_card_projection_service.create_projection(
+                fact_result
             )
-            return None
-        fact_result = self._resolved_fact_generation_service.generate_for_bootstrap(
-            bootstrap_result
-        )
-        projection_result = self._university_card_projection_service.create_projection(
-            fact_result
-        )
-        card_updated = None
-        if self._card_updated_emitter is not None:
-            card_updated = self._card_updated_emitter.emit(
-                university_id=projection_result.projection.university_id,
-                card_version=projection_result.projection.card_version,
-                updated_fields=[fact.field_name for fact in fact_result.facts],
-                trace_id=normalize_request.header.trace_id,
+            card_updated = None
+            if self._card_updated_emitter is not None:
+                card_updated = self._card_updated_emitter.emit(
+                    university_id=projection_result.projection.university_id,
+                    card_version=projection_result.projection.card_version,
+                    updated_fields=[fact.field_name for fact in fact_result.facts],
+                    trace_id=normalize_request.header.trace_id,
+                )
+            results.append(
+                ParseCompletedProcessingResult(
+                    normalize_request=normalize_request,
+                    claim_result=group,
+                    bootstrap_result=bootstrap_result,
+                    fact_result=fact_result,
+                    projection_result=projection_result,
+                    card_updated=card_updated,
+                )
             )
-        return ParseCompletedProcessingResult(
-            normalize_request=normalize_request,
-            claim_result=claim_result,
-            bootstrap_result=bootstrap_result,
-            fact_result=fact_result,
-            projection_result=projection_result,
-            card_updated=card_updated,
-        )
+        return results
+
+    @staticmethod
+    def _split_by_entity(claim_result: ClaimBuildResult) -> list[ClaimBuildResult]:
+        """Split a multi-entity document (e.g. a ranking page) into per-entity groups.
+
+        Fragments from ranking/aggregator pages carry ``record_group_key`` in their
+        metadata.  When multiple distinct keys are present the document contains data
+        for more than one university and must be processed entity-by-entity.
+        Documents with a single group (or no group key at all) are returned as-is.
+        """
+        groups: dict[str | None, list[ClaimRecord]] = {}
+        for claim in claim_result.claims:
+            group_key: str | None = (
+                claim.metadata.get("fragment_metadata", {}).get("record_group_key")
+            )
+            groups.setdefault(group_key, []).append(claim)
+
+        if len(groups) <= 1:
+            return [claim_result]
+
+        evidence_by_claim: dict[UUID, list[ClaimEvidenceRecord]] = {}
+        for ev in claim_result.evidence:
+            evidence_by_claim.setdefault(ev.claim_id, []).append(ev)
+
+        result: list[ClaimBuildResult] = []
+        for claims in groups.values():
+            claim_ids = {c.claim_id for c in claims}
+            evidence = [
+                ev
+                for cid in claim_ids
+                for ev in evidence_by_claim.get(cid, [])
+            ]
+            result.append(
+                ClaimBuildResult(
+                    parsed_document=claim_result.parsed_document,
+                    claims=claims,
+                    evidence=evidence,
+                )
+            )
+        return result

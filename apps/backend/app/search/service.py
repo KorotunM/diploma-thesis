@@ -34,19 +34,6 @@ class UniversitySearchService:
         cleaned_city = self._clean_query(city) if city is not None else None
         cleaned_country = self._clean_country(country)
         cleaned_source_type = self._clean_source_type(source_type)
-        if cleaned_query is None and not any(
-            [cleaned_city, cleaned_country, cleaned_source_type]
-        ):
-            return UniversitySearchResponse(
-                query="",
-                total=0,
-                page=DEFAULT_SEARCH_PAGE,
-                page_size=max(1, min(page_size, MAX_SEARCH_LIMIT)),
-                has_more=False,
-                filters=UniversitySearchFilters(),
-                items=[],
-            )
-
         resolved_page = max(DEFAULT_SEARCH_PAGE, page)
         resolved_page_size = max(1, min(page_size, MAX_SEARCH_LIMIT))
         offset = (resolved_page - 1) * resolved_page_size

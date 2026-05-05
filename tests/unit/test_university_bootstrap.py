@@ -71,6 +71,21 @@ class FakeUniversityBootstrapSession:
             return MappingResult()
         if "from core.university" in sql and "where university_id = :university_id" in sql:
             return MappingResult(self.universities.get(params["university_id"]))
+        if "from core.university" in sql and "where canonical_domain = :canonical_domain" in sql:
+            match = next(
+                (u for u in self.universities.values() if u.get("canonical_domain") == params["canonical_domain"]),
+                None,
+            )
+            return MappingResult(match)
+        if "from core.university" in sql and "where canonical_name = :canonical_name" in sql:
+            match = next(
+                (u for u in self.universities.values() if u.get("canonical_name") == params["canonical_name"]),
+                None,
+            )
+            return MappingResult(match)
+        if "from core.university" in sql and "similarity(" in sql:
+            # Trigram search — return empty in unit tests (no fuzzy matching)
+            return MappingResult()
         if "insert into core.university" in sql:
             return MappingResult(self._upsert_university(params))
         raise AssertionError(f"Unexpected SQL statement: {statement}")

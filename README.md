@@ -1,26 +1,25 @@
 # diploma-thesis
 
-Фундамент проекта собран вокруг архитектуры из `deep-research-report.md`: агрегатор вузов строится как `evidence-first` data pipeline, где первичны raw-артефакты, извлеченные утверждения, provenance и версии обработки, а пользовательская карточка вуза является только проекцией.
+Проект строится как `evidence-first` data pipeline для агрегации данных о вузах: сначала сохраняются raw-артефакты и извлечённые утверждения, затем они нормализуются в facts, а пользовательская карточка вуза является только delivery-проекцией.
 
-## Что уже заложено
+## Что уже есть
 
-- Монорепозиторий с сервисами `scheduler`, `parser`, `normalizer`, `backend` и каркасом `frontend`.
-- Общие Python-контракты событий и базовые доменные модели для `Claim`, `ResolvedFact`, `UniversityCard`.
-- JSON Schema для ключевых событий и канонической карточки.
-- SQL-фундамент под схемы `ops`, `ingestion`, `parsing`, `normalize`, `core`, `delivery`.
-- Локальная инфраструктура через Docker Compose: `PostgreSQL`, `RabbitMQ`, `MinIO`, `Prometheus`, `Grafana`.
-- Стартовые health/metrics endpoints для каждого backend-сервиса.
+- Монорепозиторий с сервисами `scheduler`, `parser`, `normalizer`, `backend`, `frontend`.
+- Общие event-контракты и доменные модели.
+- SQL-схемы `ops`, `ingestion`, `parsing`, `normalize`, `core`, `delivery`.
+- Локальная инфраструктура через Docker Compose: `Postgres`, `RabbitMQ`, `MinIO`, `Prometheus`, `Grafana`.
+- Worker-процессы для live queue processing.
+- Frontend с поиском, карточкой вуза, мониторингом пайплайна и панелью доказательств.
 
-## Архитектурные принципы
+## Архитектурный принцип
 
-- Источник истины: `raw -> parsed -> claims -> resolved facts -> delivery projection`.
-- Любой внешний факт хранится как отдельное утверждение с источником, временем, версией парсера и трассировкой происхождения.
-- Каноническая карточка вуза вычисляется, а не редактируется напрямую.
-- Логика парсинга и нормализации должна быть replayable и versioned.
-- Event contracts и canonical schemas живут отдельно от конкретных сервисов.
-- LLM допускается только как assist-слой для неоднозначных кейсов и не пишет напрямую в resolved facts.
+Основная цепочка такая:
 
-## Структура
+`raw -> parsed -> claims -> resolved facts -> delivery projection`
+
+Любой внешний факт должен быть трассируемым до источника, времени захвата, версии парсера и evidence.
+
+## Структура репозитория
 
 ```text
 apps/
@@ -33,20 +32,14 @@ libs/
   contracts/
   domain/
   storage/
-  source_sdk/
   observability/
   quality/
 schemas/
   canonical/
   events/
-  openapi/
   sql/
 infra/
   docker-compose/
-  rabbitmq/
-  minio/
-  prometheus/
-  grafana/
   env/
 docs/
 tests/
@@ -54,29 +47,70 @@ tests/
 
 ## Быстрый старт
 
-1. Поднимите инфраструктуру:
+### Полный запуск через Docker Compose
 
-   ```powershell
-   docker compose -f infra/docker-compose/docker-compose.yml up --build
-   ```
+```bash
+docker compose \
+  -p diploma-thesis \
+  -f infra/docker-compose/docker-compose.yml \
+  -f infra/docker-compose/docker-compose.override.yml \
+  up --build
+```
 
-2. Локальный запуск Python-сервисов без Docker:
+### Локальный запуск Python-сервисов без Docker
 
-   ```powershell
-   py -3 -m pip install -e .[dev,worker,parser]
-   $env:PYTHONPATH='.'
-   uvicorn apps.scheduler.app.main:app --reload --port 8001
-   uvicorn apps.parser.app.main:app --reload --port 8002
-   uvicorn apps.normalizer.app.main:app --reload --port 8003
-   uvicorn apps.backend.app.main:app --reload --port 8004
-   ```
+```bash
+python -m pip install -e '.[dev,worker,parser]'
+export PYTHONPATH='.'
+uvicorn apps.scheduler.app.main:app --reload --port 8001
+uvicorn apps.parser.app.main:app --reload --port 8002
+uvicorn apps.normalizer.app.main:app --reload --port 8003
+uvicorn apps.backend.app.main:app --reload --port 8004
+```
 
-3. Фронтенд:
+### Frontend
 
-   ```powershell
-   Set-Location apps/frontend
-   npm install
-   npm run dev
-   ```
+```bash
+cd apps/frontend
+npm install
+npm run dev
+```
 
-Детали решений вынесены в [docs/architecture-foundation.md](docs/architecture-foundation.md) и [docs/roadmap.md](docs/roadmap.md).
+## Как сделать дамп Postgres и забрать его в проект
+
+Текущие локальные параметры БД:
+
+- host: `postgres`
+- port: `5432`
+- db: `aggregator`
+- user: `aggregator`
+- password: `aggregator`
+
+Создать dump внутри контейнера:
+
+```bash
+docker compose \
+  -p docker-compose \
+  -f infra/docker-compose/docker-compose.yml \
+  -f infra/docker-compose/docker-compose.override.yml \
+  exec -T postgres sh -lc 'PGPASSWORD=aggregator pg_dump -U aggregator -d aggregator -Fc -f /tmp/diploma-thesis.dump'
+```
+
+Скопировать dump в проект:
+
+```bash
+mkdir -p backups
+docker compose \
+  -p docker-compose \
+  -f infra/docker-compose/docker-compose.yml \
+  -f infra/docker-compose/docker-compose.override.yml \
+  cp postgres:/tmp/diploma-thesis.dump ./backups/diploma-thesis.dump
+```
+
+## Полезные замечания
+
+- Если compose-стек запущен с другим `project name`, замени `-p diploma-thesis` на своё значение.
+- Если нужен plain SQL, замени `-Fc -f /tmp/diploma-thesis.dump` на `-f /tmp/diploma-thesis.sql`.
+- Для восстановления из custom dump нужен `pg_restore`.
+
+Подробности по архитектуре и MVP-сценарию смотри в `docs/`.

@@ -36,7 +36,7 @@ class FakeSearchSession:
         sql = " ".join(statement.split()).lower()
         self.calls.append({"statement": statement, "params": params})
         assert "from delivery.university_search_doc" in sql
-        if params["query"] is not None:
+        if params.get("query") is not None:
             assert "ts_rank_cd" in sql
             assert "similarity(" in sql
         assert "order by" in sql
@@ -172,7 +172,7 @@ def test_university_search_service_builds_api_response_with_filters_and_paging()
     assert response.items[1].match_signals == ["trigram"]
 
 
-def test_university_search_service_returns_empty_response_for_blank_query() -> None:
+def test_university_search_service_returns_all_results_for_blank_query() -> None:
     repository = UniversitySearchRepository(
         session=FakeSearchSession(build_search_rows()),
         sql_text=lambda value: value,
@@ -181,15 +181,10 @@ def test_university_search_service_returns_empty_response_for_blank_query() -> N
 
     response = service.search("   ")
 
-    assert response == UniversitySearchResponse(
-        query="",
-        total=0,
-        page=1,
-        page_size=20,
-        has_more=False,
-        filters={},
-        items=[],
-    )
+    assert response.query == ""
+    assert response.total == 7
+    assert len(response.items) == 2
+    assert response.items[0].canonical_name == "Example University"
 
 
 def test_university_search_service_supports_filter_only_browse() -> None:

@@ -8,6 +8,7 @@ from .models import (
 from .repository import (
     UniversityBootstrapRepository,
     deterministic_university_id,
+    deterministic_university_id_from_identity,
 )
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "UniversityRecord",
     "UniversitySimilarityCandidate",
     "deterministic_university_id",
+    "deterministic_university_id_from_identity",
     "UniversityBootstrapError",
     "UniversityBootstrapService",
 ]

@@ -340,3 +340,15 @@ class UniversityBootstrapRepository:
 
 def deterministic_university_id(source_key: str) -> UUID:
     return uuid5(NAMESPACE_URL, f"core.university:{source_key}")
+
+
+def deterministic_university_id_from_identity(
+    *,
+    canonical_domain: str | None,
+    canonical_name: str | None,
+) -> UUID:
+    if canonical_domain:
+        return uuid5(NAMESPACE_URL, f"core.university:domain:{canonical_domain.lower()}")
+    if canonical_name:
+        return uuid5(NAMESPACE_URL, f"core.university:name:{canonical_name.casefold()}")
+    raise ValueError("Cannot derive university ID without canonical_domain or canonical_name.")

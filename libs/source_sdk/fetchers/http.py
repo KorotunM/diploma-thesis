@@ -55,9 +55,15 @@ class HttpFetcher:
         if self._rate_limiter is not None:
             await self._rate_limiter.acquire(context.source_key)
         request_headers = self._build_request_headers(context)
+        timeout = httpx.Timeout(
+            connect=10.0,
+            read=float(context.timeout_seconds),
+            write=10.0,
+            pool=5.0,
+        )
         async with self._client_factory(
             follow_redirects=self._follow_redirects,
-            timeout=float(context.timeout_seconds),
+            timeout=timeout,
             headers=request_headers,
         ) as client:
             response = await client.get(context.endpoint_url)

@@ -47,7 +47,7 @@ class FetchContext(BaseModel):
     parser_profile: str = "default"
     requested_at: datetime = Field(default_factory=utc_now)
     render_mode: RenderMode = "http"
-    timeout_seconds: int = Field(default=30, ge=1, le=180)
+    timeout_seconds: int = Field(default=60, ge=1, le=300)
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_backoff_seconds: int = Field(default=60, ge=1, le=3600)
     respect_robots_txt: bool = True
@@ -70,7 +70,7 @@ class FetchContext(BaseModel):
             parser_profile=payload.parser_profile,
             requested_at=payload.requested_at,
             render_mode=policy.get("render_mode", "http"),
-            timeout_seconds=policy.get("timeout_seconds", 30),
+            timeout_seconds=policy.get("timeout_seconds", 60),
             max_retries=policy.get("max_retries", 3),
             retry_backoff_seconds=policy.get("retry_backoff_seconds", 60),
             respect_robots_txt=policy.get("respect_robots_txt", True),

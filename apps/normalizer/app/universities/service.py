@@ -30,10 +30,16 @@ from .models import (
     UniversityBootstrapResult,
     UniversityRecord,
 )
-from .repository import UniversityBootstrapRepository, deterministic_university_id
+from .repository import (
+    UniversityBootstrapRepository,
+    deterministic_university_id,
+    deterministic_university_id_from_identity,
+)
 
 AUTHORITATIVE_EXACT_MATCH_MERGE_POLICY = "authoritative_anchor_exact_match_merge"
 AUTHORITATIVE_SOURCE_DOCUMENT_MERGE_POLICY = "authoritative_source_document_merge"
+TRUSTED_SOURCE_BOOTSTRAP_POLICY = "trusted_source_bootstrap"
+AUTHORITATIVE_PROMOTION_POLICY = "authoritative_promotion_from_trusted"
 
 
 class UniversityBootstrapError(ValueError):
@@ -91,6 +97,29 @@ class UniversityBootstrapService:
                 university=existing_university,
                 claim_result=claim_result,
             )
+
+        # Before creating a fresh record, check if a trusted-bootstrapped university
+        # already exists for the same identity (domain / name). If so, promote it in-place
+        # so the authoritative source takes ownership without duplicating the row.
+        claims_by_field_pre = self._claims_by_field(
+            claims=claim_result.claims,
+            source=source,
+        )
+        pre_domain = self._canonical_domain(claims_by_field_pre)
+        pre_name = self._canonical_name_optional(claims_by_field_pre)
+        if pre_domain or pre_name:
+            pre_match = self._match_service.match(
+                UniversityMatchCandidate(
+                    canonical_domain=pre_domain,
+                    canonical_name=pre_name,
+                )
+            )
+            if pre_match.status == "matched" and pre_match.university is not None:
+                return self._promote_trusted_to_authoritative(
+                    source=source,
+                    university=pre_match.university,
+                    claim_result=claim_result,
+                )
 
         candidate = self._build_candidate(
             source=source,
@@ -186,8 +215,11 @@ class UniversityBootstrapService:
                 "Gray-zone trigram match requires manual review before merge."
             )
         if match.status != "matched" or match.university is None:
-            raise UniversityBootstrapError(
-                "No authoritative university was found for the provided exact match keys."
+            return self._bootstrap_trusted_source(
+                source=source,
+                claim_result=claim_result,
+                canonical_domain=canonical_domain,
+                canonical_name=canonical_name,
             )
 
         university = match.university
@@ -564,6 +596,197 @@ class UniversityBootstrapService:
             is_active=True,
             metadata={},
         )
+
+    def _bootstrap_trusted_source(
+        self,
+        *,
+        source: SourceAuthorityRecord,
+        claim_result: ClaimBuildResult,
+        canonical_domain: str | None,
+        canonical_name: str | None,
+    ) -> UniversityBootstrapResult:
+        if not canonical_name:
+            raise UniversityBootstrapError(
+                "Trusted bootstrap requires at least a canonical_name claim."
+            )
+        university_id = deterministic_university_id_from_identity(
+            canonical_domain=canonical_domain,
+            canonical_name=canonical_name,
+        )
+        existing = self._repository.find_university_by_id(university_id)
+        if existing is not None:
+            return self._merge_trusted_source_update(
+                source=source,
+                university=existing,
+                claim_result=claim_result,
+            )
+        claims_by_field = self._claims_by_field(claims=claim_result.claims, source=source)
+        candidate = UniversityBootstrapCandidate(
+            university_id=university_id,
+            canonical_name=canonical_name,
+            canonical_domain=canonical_domain,
+            country_code=self._string_claim_value(claims_by_field, "location.country_code"),
+            city_name=self._string_claim_value(claims_by_field, "location.city"),
+            metadata=self._trusted_bootstrap_metadata(
+                source=source,
+                claim_result=claim_result,
+            ),
+        )
+        university = self._repository.upsert_university(candidate)
+        self._repository.commit()
+        return UniversityBootstrapResult(
+            source=source,
+            sources_used=[source],
+            university=university,
+            claims_used=self._sort_claims(claim_result.claims),
+            evidence_used=self._sort_evidence(claim_result.evidence),
+        )
+
+    def _merge_trusted_source_update(
+        self,
+        *,
+        source: SourceAuthorityRecord,
+        university: UniversityRecord,
+        claim_result: ClaimBuildResult,
+    ) -> UniversityBootstrapResult:
+        existing_claims = self._repository.list_claims_for_university(university.university_id)
+        existing_evidence = self._repository.list_evidence_for_university(university.university_id)
+        combined_claims = self._merge_claims(existing_claims, claim_result.claims)
+        combined_evidence = self._merge_evidence(existing_evidence, claim_result.evidence)
+        candidate = UniversityBootstrapCandidate(
+            university_id=university.university_id,
+            canonical_name=university.canonical_name,
+            canonical_domain=university.canonical_domain,
+            country_code=university.country_code,
+            city_name=university.city_name,
+            metadata=self._merge_source_snapshots_metadata(
+                university=university,
+                source=source,
+                claim_result=claim_result,
+                combined_claims=combined_claims,
+                combined_evidence=combined_evidence,
+            ),
+        )
+        persisted = self._repository.upsert_university(candidate)
+        self._repository.commit()
+        return UniversityBootstrapResult(
+            source=source,
+            sources_used=[source],
+            university=persisted,
+            claims_used=combined_claims,
+            evidence_used=combined_evidence,
+        )
+
+    def _promote_trusted_to_authoritative(
+        self,
+        *,
+        source: SourceAuthorityRecord,
+        university: UniversityRecord,
+        claim_result: ClaimBuildResult,
+    ) -> UniversityBootstrapResult:
+        existing_claims = self._repository.list_claims_for_university(university.university_id)
+        existing_evidence = self._repository.list_evidence_for_university(university.university_id)
+        combined_claims = self._merge_claims(existing_claims, claim_result.claims)
+        combined_evidence = self._merge_evidence(existing_evidence, claim_result.evidence)
+        claims_by_field = self._claims_by_field(claims=combined_claims, source=source)
+        candidate = UniversityBootstrapCandidate(
+            university_id=university.university_id,
+            canonical_name=self._canonical_name(claims_by_field),
+            canonical_domain=self._canonical_domain(claims_by_field) or university.canonical_domain,
+            country_code=(
+                self._string_claim_value(claims_by_field, "location.country_code")
+                or university.country_code
+            ),
+            city_name=(
+                self._string_claim_value(claims_by_field, "location.city")
+                or university.city_name
+            ),
+            metadata=self._merge_source_snapshots_metadata(
+                university=university,
+                source=source,
+                claim_result=claim_result,
+                combined_claims=combined_claims,
+                combined_evidence=combined_evidence,
+                bootstrap_policy=AUTHORITATIVE_PROMOTION_POLICY,
+            ),
+        )
+        persisted = self._repository.upsert_university(candidate)
+        self._repository.commit()
+        return UniversityBootstrapResult(
+            source=source,
+            sources_used=[source],
+            university=persisted,
+            claims_used=combined_claims,
+            evidence_used=combined_evidence,
+        )
+
+    @staticmethod
+    def _trusted_bootstrap_metadata(
+        *,
+        source: SourceAuthorityRecord,
+        claim_result: ClaimBuildResult,
+    ) -> dict[str, Any]:
+        claim_ids = [str(claim.claim_id) for claim in claim_result.claims]
+        evidence_ids = [str(ev.evidence_id) for ev in claim_result.evidence]
+        field_names = sorted({claim.field_name for claim in claim_result.claims})
+        source_urls = sorted(UniversityBootstrapService._source_urls(claim_result.evidence))
+        return {
+            "bootstrap_policy": TRUSTED_SOURCE_BOOTSTRAP_POLICY,
+            "source_id": str(source.source_id),
+            "source_key": source.source_key,
+            "source_type": source.source_type,
+            "trust_tier": source.trust_tier.value,
+            "parsed_document_id": str(claim_result.parsed_document.parsed_document_id),
+            "parser_version": claim_result.parsed_document.parser_version,
+            "claim_ids": claim_ids,
+            "evidence_ids": evidence_ids,
+            "field_names": field_names,
+            "source_urls": source_urls,
+            "source_keys": [source.source_key],
+            "source_snapshots": [
+                UniversityBootstrapService._source_snapshot(
+                    source=source,
+                    parsed_document_id=str(claim_result.parsed_document.parsed_document_id),
+                    parser_version=claim_result.parsed_document.parser_version,
+                    claim_ids=claim_ids,
+                    evidence_ids=evidence_ids,
+                    field_names=field_names,
+                    source_urls=source_urls,
+                )
+            ],
+        }
+
+    def _merge_source_snapshots_metadata(
+        self,
+        *,
+        university: UniversityRecord,
+        source: SourceAuthorityRecord,
+        claim_result: ClaimBuildResult,
+        combined_claims: list[ClaimRecord],
+        combined_evidence: list[ClaimEvidenceRecord],
+        bootstrap_policy: str = TRUSTED_SOURCE_BOOTSTRAP_POLICY,
+    ) -> dict[str, Any]:
+        claim_ids = [str(c.claim_id) for c in combined_claims]
+        evidence_ids = [str(e.evidence_id) for e in combined_evidence]
+        field_names = sorted({c.field_name for c in combined_claims})
+        source_urls = sorted(self._source_urls(combined_evidence))
+        return {
+            "bootstrap_policy": bootstrap_policy,
+            "source_id": str(source.source_id),
+            "source_key": source.source_key,
+            "source_type": source.source_type,
+            "trust_tier": source.trust_tier.value,
+            "claim_ids": claim_ids,
+            "evidence_ids": evidence_ids,
+            "field_names": field_names,
+            "source_urls": source_urls,
+            "source_keys": sorted({c.source_key for c in combined_claims}),
+            "source_snapshots": self._merge_source_snapshots(
+                university=university,
+                merged_source=source,
+                claim_result=claim_result,
+            ),
+        }
 
     @staticmethod
     def _sort_claims(claims: list[ClaimRecord]) -> list[ClaimRecord]:

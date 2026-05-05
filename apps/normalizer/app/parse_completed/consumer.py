@@ -25,7 +25,7 @@ class ParseCompletedConsumer:
         self,
         body: Any,
         _message: Any | None = None,
-    ) -> ParseCompletedProcessingResult:
+    ) -> list[ParseCompletedProcessingResult]:
         event = ParseCompletedEvent.model_validate(body)
         return self._service.process(event)
 
