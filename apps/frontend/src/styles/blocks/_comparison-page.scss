@@ -1,19 +1,31 @@
 @use "../variables" as *;
 
-.cmp-page {
+.cmp2-page {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 28px 16px 64px;
-
-  &__title {
-    font-size: 22px;
-    font-weight: 700;
-    color: $color-text;
-    margin: 0 0 24px;
-  }
+  padding: 28px 16px 80px;
 }
 
-.cmp-empty {
+.cmp2-page__header {
+  margin-bottom: 28px;
+}
+
+.cmp2-page__title {
+  font-size: 22px;
+  font-weight: 700;
+  color: $color-text;
+  margin: 0 0 6px;
+}
+
+.cmp2-page__subtitle {
+  font-size: 14px;
+  color: $color-text-muted;
+  margin: 0;
+}
+
+// ── Empty states ──────────────────────────────────────────────────────────────
+
+.cmp2-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -21,122 +33,564 @@
   padding: 80px 24px;
   text-align: center;
 
-  &__icon {
-    font-size: 48px;
-    opacity: 0.25;
-  }
-
-  &__text {
-    font-size: 18px;
-    font-weight: 600;
-    color: $color-text-soft;
-    margin: 0;
-  }
-
-  &__hint {
-    font-size: 14px;
-    color: $color-text-muted;
-    margin: 0;
-  }
+  &__icon { font-size: 48px; opacity: 0.2; }
+  &__text { font-size: 18px; font-weight: 600; color: $color-text-soft; margin: 0; }
+  &__hint { font-size: 14px; color: $color-text-muted; margin: 0; }
 }
 
-.cmp-loading {
+.cmp2-loading {
   color: $color-text-muted;
   font-size: 14px;
+  padding: 20px 0;
 }
 
-.cmp-table-wrap {
-  overflow-x: auto;
-  border-radius: $radius-md;
-  box-shadow: $shadow-card;
+.cmp2-hint {
+  text-align: center;
+  padding: 40px 24px;
+  color: $color-text-muted;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.cmp-table {
-  width: 100%;
-  border-collapse: collapse;
+// ── Hero cards ────────────────────────────────────────────────────────────────
+
+.cmp2-heroes {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 24px;
   background: $color-surface;
-  font-size: 13px;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
 
-  th,
-  td {
-    padding: 12px 16px;
-    text-align: left;
-    border-bottom: 1px solid $color-border;
+  &__slot {
+    display: contents; // let children fill naturally
   }
 
-  &__row-label {
+  &__vs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: $color-text-muted;
+    background: $color-page-bg;
+    border-left: 1px solid $color-border;
+    border-right: 1px solid $color-border;
+    letter-spacing: 0.05em;
+  }
+}
+
+// ── University card inside hero ───────────────────────────────────────────────
+
+.cmp2-ucard {
+  flex: 1;
+  min-width: 0;
+  padding: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &--loading,
+  &--error {
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    color: $color-text-muted;
+    font-size: 13px;
+  }
+
+  &__skeleton {
+    width: 100%;
+    height: 80px;
+    background: linear-gradient(90deg, $color-page-bg 25%, darken($color-page-bg, 3%) 50%, $color-page-bg 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s infinite;
+    border-radius: $radius-sm;
+  }
+
+  &__remove {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: $color-text-muted;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: $radius-xs;
+    transition: color 0.15s, background 0.15s;
+
+    &:hover {
+      color: #ef4444;
+      background: #fee2e2;
+    }
+  }
+}
+
+.cmp2-ucard__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-right: 24px; // space for remove btn
+}
+
+.cmp2-ucard__logo {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: $radius-sm;
+  background: $color-brand-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: $color-brand;
+  overflow: hidden;
+  border: 1px solid $color-border;
+}
+
+.cmp2-ucard__logo-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.cmp2-ucard__logo-abbr {
+  font-size: 14px;
+  font-weight: 700;
+  color: $color-brand;
+}
+
+.cmp2-ucard__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cmp2-ucard__name {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: $color-brand;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.3;
+  transition: color 0.15s;
+  white-space: normal;
+  word-break: break-word;
+
+  &:hover { color: $color-brand-hover; text-decoration: underline; }
+}
+
+.cmp2-ucard__full-name {
+  font-size: 12px;
+  color: $color-text-muted;
+  margin: 3px 0 6px;
+  line-height: 1.4;
+}
+
+.cmp2-ucard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cmp2-ucard__tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: $color-success-bg;
+  color: $color-success-text;
+  font-weight: 500;
+
+  &--muted {
+    background: $color-page-bg;
+    color: $color-text-muted;
+  }
+}
+
+.cmp2-ucard__rating {
+  flex-shrink: 0;
+  text-align: center;
+  background: $color-brand;
+  color: #fff;
+  border-radius: $radius-sm;
+  padding: 6px 10px;
+  min-width: 44px;
+}
+
+.cmp2-ucard__rating-val {
+  font-size: 18px;
+  font-weight: 700;
+  display: block;
+  line-height: 1;
+}
+
+.cmp2-ucard__rating-max {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.cmp2-ucard__rating-count {
+  display: block;
+  font-size: 10px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+// Stats row at bottom of university card
+
+.cmp2-ucard__stats {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid $color-border;
+  padding-top: 12px;
+}
+
+.cmp2-ucard__stat {
+  flex: 1;
+  text-align: center;
+  padding: 0 8px;
+  border-right: 1px solid $color-border;
+
+  &:last-child { border-right: none; }
+}
+
+.cmp2-ucard__stat-val {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: $color-text;
+  line-height: 1.2;
+}
+
+.cmp2-ucard__stat-lbl {
+  display: block;
+  font-size: 11px;
+  color: $color-text-muted;
+  margin-top: 2px;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+.cmp2-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid $color-border;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  &__tab {
+    background: none;
+    border: none;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: $color-text-muted;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+
+    &:hover { color: $color-text; }
+
+    &--active {
+      color: $color-brand;
+      border-bottom-color: $color-brand;
+      font-weight: 600;
+    }
+  }
+}
+
+// ── Sections ──────────────────────────────────────────────────────────────────
+
+.cmp2-section {
+  margin-bottom: 32px;
+
+  &__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: $color-text;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid $color-border;
+  }
+}
+
+// ── Comparison bars (Ключевые различия) ───────────────────────────────────────
+
+.cmp2-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cmp2-bar-row {
+  &__label {
     font-size: 12px;
     font-weight: 600;
     color: $color-text-muted;
-    white-space: nowrap;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__cols {
+    display: grid;
+    grid-template-columns: 1fr 80px 1fr;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__track {
+    flex: 1;
+    height: 10px;
     background: $color-page-bg;
-    width: 160px;
-    min-width: 140px;
+    border-radius: 5px;
+    overflow: hidden;
   }
 
-  &__col-header {
-    background: $color-surface;
-    min-width: 180px;
+  &__fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.5s ease;
+    min-width: 4px;
+
+    &--left {
+      background: #2563eb;
+      margin-left: auto; // fill from right to left
+      float: right;
+    }
+
+    &--right {
+      background: #16a34a;
+    }
   }
 
-  &__row:hover td {
-    background: rgba($color-page-bg, 0.6);
-  }
-
-  &__cell {
+  &__val {
+    font-size: 14px;
+    font-weight: 600;
     color: $color-text;
-    vertical-align: top;
+    white-space: nowrap;
+    min-width: 40px;
+
+    &--left { text-align: right; }
+    &--right { text-align: left; }
+  }
+
+  &__divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  &__vs {
+    font-size: 11px;
+    font-weight: 800;
+    color: $color-text-muted;
+    letter-spacing: 0.05em;
+  }
+
+  &__uni {
+    font-size: 10px;
+    color: $color-text-muted;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70px;
+    text-align: center;
+
+    &--left { color: #2563eb; }
+    &--right { color: #16a34a; }
+  }
+}
+
+// ── Base parameters table ─────────────────────────────────────────────────────
+
+.cmp2-params {
+  background: $color-surface;
+  border-radius: $radius-md;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+
+  &__header {
+    display: grid;
+    grid-template-columns: 180px 1fr 1fr;
+    padding: 10px 16px;
+    background: $color-page-bg;
+    border-bottom: 1px solid $color-border;
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-muted;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 180px 1fr 1fr;
+    padding: 11px 16px;
+    border-bottom: 1px solid $color-border;
+    font-size: 13px;
+    transition: background 0.1s;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: rgba($color-page-bg, 0.6); }
+
+    &--diff {
+      background: rgba($color-brand-light, 0.3);
+      &:hover { background: rgba($color-brand-light, 0.5); }
+    }
+  }
+
+  &__label-col,
+  &__val-col {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-muted;
+  }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-muted;
+  }
+
+  &__val {
+    color: $color-text;
+    font-size: 13px;
     word-break: break-word;
   }
 }
 
-.cmp-col-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  justify-content: space-between;
-
-  &__name {
-    background: none;
-    border: none;
-    color: $color-brand;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0;
-    text-align: left;
-    line-height: 1.4;
-
-    &:hover { text-decoration: underline; }
-  }
-
-  &__remove {
-    background: none;
-    border: none;
-    color: $color-text-muted;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-    padding: 0;
-    flex-shrink: 0;
-    margin-top: -2px;
-
-    &:hover { color: #ef4444; }
-  }
-}
-
-.cmp-link {
+.cmp2-link {
   color: $color-brand;
   text-decoration: none;
+  font-size: 12px;
   word-break: break-all;
 
   &:hover { text-decoration: underline; }
 }
 
-.cmp-loading-cell {
-  color: $color-text-muted;
+// ── Programs comparison ───────────────────────────────────────────────────────
+
+.cmp2-programs {
+  background: $color-surface;
+  border-radius: $radius-md;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+
+  &__header {
+    display: grid;
+    grid-template-columns: 120px 1fr 1fr;
+    padding: 10px 16px;
+    background: $color-page-bg;
+    border-bottom: 1px solid $color-border;
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-muted;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 120px 1fr 1fr;
+    padding: 9px 16px;
+    border-bottom: 1px solid $color-border;
+    font-size: 13px;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: rgba($color-page-bg, 0.5); }
+  }
+
+  &__code {
+    color: $color-text-muted;
+    font-size: 12px;
+    font-family: monospace;
+  }
+
+  &__cell {
+    color: $color-text;
+
+    &--has { color: $color-success-text; font-weight: 500; }
+    &--no { color: $color-text-muted; }
+  }
+
+  &__col-code { font-size: 12px; font-weight: 600; color: $color-text-muted; }
+  &__col-label { font-size: 12px; font-weight: 600; color: $color-text-muted; }
+
+  &__more {
+    padding: 10px 16px;
+    font-size: 12px;
+    color: $color-text-muted;
+    text-align: center;
+    border-top: 1px solid $color-border;
+    margin: 0;
+  }
 }
 
-.cmp-error-cell {
+.cmp2-empty-text {
+  font-size: 14px;
   color: $color-text-muted;
+  padding: 20px 0;
+}
+
+// ── Skeleton animation ────────────────────────────────────────────────────────
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ── Responsive ────────────────────────────────────────────────────────────────
+
+@media (max-width: $breakpoint-small) {
+  .cmp2-heroes {
+    flex-direction: column;
+
+    &__vs {
+      width: 100%;
+      height: 32px;
+      border-left: none;
+      border-right: none;
+      border-top: 1px solid $color-border;
+      border-bottom: 1px solid $color-border;
+    }
+  }
+
+  .cmp2-bar-row__cols {
+    grid-template-columns: 1fr 50px 1fr;
+  }
+
+  .cmp2-params__header,
+  .cmp2-params__row {
+    grid-template-columns: 120px 1fr 1fr;
+  }
 }

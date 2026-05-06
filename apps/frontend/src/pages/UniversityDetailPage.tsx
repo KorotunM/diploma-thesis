@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../shared/auth";
 import { useFrontendRuntime } from "../shared/runtime";
 import { useSelectedUniversity } from "../shared/selected-university";
-import type { AdmissionProgramDto, UniversityCardDto } from "../shared/backend-api/types";
+import type { AdmissionProgramDto, UniversityCardDto, UniversityProvenanceDto } from "../shared/backend-api/types";
 
 // ── Direction name mapping (Russian UGNS) ──────────────────────────────────────
 const UGNS: Record<string, string> = {
@@ -105,6 +105,23 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "students", label: "Студенты" },
   { id: "reviews", label: "Отзывы" },
 ];
+
+// ── Provenance dot ────────────────────────────────────────────────────────────
+
+function ProvenanceDot({ url }: { url: string }) {
+  let hostname = url;
+  try { hostname = new URL(url).hostname.replace(/^www\./, ""); } catch { /* */ }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="prov-dot"
+      title={`Источник: ${hostname}`}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -210,6 +227,7 @@ export function UniversityDetailPage({
   const [card, setCard] = useState<UniversityCardDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [provenance, setProvenance] = useState<UniversityProvenanceDto | null>(null);
 
   const [tab, setTab] = useState<Tab>("about");
   const [programSearch, setProgramSearch] = useState("");
@@ -225,12 +243,15 @@ export function UniversityDetailPage({
     setLoading(true);
     setError(null);
     setCard(null);
+    setProvenance(null);
     backendApi
       .getUniversityCard(activeUniversityId)
       .then((c) => {
         setCard(c);
         setIsFavorite(c.is_favorite);
         setIsCompared(c.is_compared);
+        // Load provenance lazily after card is shown
+        backendApi.getUniversityProvenance(activeUniversityId).then(setProvenance).catch(() => {});
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Ошибка загрузки."))
       .finally(() => setLoading(false));
@@ -332,6 +353,24 @@ export function UniversityDetailPage({
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("");
   }, [name, shortName]);
+
+  // ── Field → source URL map (from provenance) ────────────────────────────────
+
+  const fieldSourceMap = useMemo(() => {
+    if (!provenance) return new Map<string, string>();
+    const claimToUrl = new Map<string, string>();
+    for (const ev of provenance.claim_evidence) {
+      if (ev.source_url) claimToUrl.set(ev.claim_id, ev.source_url);
+    }
+    const map = new Map<string, string>();
+    for (const fact of provenance.resolved_facts) {
+      for (const claimId of fact.selected_claim_ids) {
+        const url = claimToUrl.get(claimId);
+        if (url) { map.set(fact.field_name, url); break; }
+      }
+    }
+    return map;
+  }, [provenance]);
 
   // ── Render guards ────────────────────────────────────────────────────────────
 
@@ -519,15 +558,30 @@ export function UniversityDetailPage({
           )}
           <div className="ud-about__grid">
             <div className="ud-about__field">
-              <span className="ud-about__label">Год основания</span>
+              <span className="ud-about__label">
+                Год основания
+                {fieldSourceMap.has("institutional.founded_year") && (
+                  <ProvenanceDot url={fieldSourceMap.get("institutional.founded_year")!} />
+                )}
+              </span>
               <span className="ud-about__value">{foundedYear ?? "—"}</span>
             </div>
             <div className="ud-about__field">
-              <span className="ud-about__label">Телефон</span>
+              <span className="ud-about__label">
+                Телефон
+                {fieldSourceMap.has("contacts.phones") && (
+                  <ProvenanceDot url={fieldSourceMap.get("contacts.phones")!} />
+                )}
+              </span>
               <span className="ud-about__value">{phone ?? "—"}</span>
             </div>
             <div className="ud-about__field">
-              <span className="ud-about__label">Сайт</span>
+              <span className="ud-about__label">
+                Сайт
+                {fieldSourceMap.has("contacts.website") && (
+                  <ProvenanceDot url={fieldSourceMap.get("contacts.website")!} />
+                )}
+              </span>
               <span className="ud-about__value">
                 {website ? (
                   <a href={website} target="_blank" rel="noopener noreferrer">
@@ -539,8 +593,31 @@ export function UniversityDetailPage({
               </span>
             </div>
             <div className="ud-about__field">
-              <span className="ud-about__label">Адрес</span>
+              <span className="ud-about__label">
+                Город
+                {fieldSourceMap.has("location.city") && (
+                  <ProvenanceDot url={fieldSourceMap.get("location.city")!} />
+                )}
+              </span>
               <span className="ud-about__value">{address ?? city ?? "—"}</span>
+            </div>
+            <div className="ud-about__field">
+              <span className="ud-about__label">
+                Тип вуза
+                {fieldSourceMap.has("institutional.type") && (
+                  <ProvenanceDot url={fieldSourceMap.get("institutional.type")!} />
+                )}
+              </span>
+              <span className="ud-about__value">{instType ?? "—"}</span>
+            </div>
+            <div className="ud-about__field">
+              <span className="ud-about__label">
+                Название
+                {fieldSourceMap.has("canonical_name") && (
+                  <ProvenanceDot url={fieldSourceMap.get("canonical_name")!} />
+                )}
+              </span>
+              <span className="ud-about__value">{name}</span>
             </div>
           </div>
         </div>

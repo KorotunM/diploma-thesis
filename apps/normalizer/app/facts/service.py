@@ -431,7 +431,7 @@ class ResolvedFactGenerationService:
             selected_evidence_ids=[record.evidence_id for record in evidence],
             metadata={
                 "source_key": source_key,
-                "source_trust_tier": source_tiers[source_key].value,
+                "source_trust_tier": source_tiers.get(source_key, SourceTrustTier.EXPERIMENTAL).value,
                 "source_keys": sorted(
                     {
                         claim.source_key
@@ -506,7 +506,7 @@ class ResolvedFactGenerationService:
             selected_evidence_ids=[record.evidence_id for record in evidence],
             metadata={
                 "source_key": source_key,
-                "source_trust_tier": source_tiers[source_key].value,
+                "source_trust_tier": source_tiers.get(source_key, SourceTrustTier.EXPERIMENTAL).value,
                 "source_keys": sorted(
                     {
                         claim.source_key
