@@ -92,3 +92,5 @@ class UniversityCardResponse(UniversityCard):
         default_factory=dict
     )
     source_rationale: list[UniversityCardSourceRationale] = Field(default_factory=list)
+    is_favorite: bool = False
+    is_compared: bool = False

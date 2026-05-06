@@ -38,6 +38,19 @@ export interface ConfidenceValueDto {
   sources: FieldAttributionDto[];
 }
 
+export interface AdmissionProgramDto {
+  field_name: string;
+  faculty: string | null;
+  code: string | null;
+  name: string | null;
+  budget_places: number | null;
+  passing_score: number | null;
+  year: number | null;
+  confidence: number | null;
+  sources: Array<Record<string, unknown>>;
+  field_attribution: Record<string, unknown> | null;
+}
+
 export interface UniversityCardDto {
   university_id: string;
   canonical_name: ConfidenceValueDto;
@@ -59,7 +72,12 @@ export interface UniversityCardDto {
   };
   programs: Array<Record<string, unknown>>;
   tuition: Array<Record<string, unknown>>;
-  ratings: Array<Record<string, unknown>>;
+  ratings: Array<{
+    provider: string;
+    year: number;
+    metric: string;
+    value: string;
+  }>;
   dormitory: Record<string, unknown>;
   reviews: {
     summary: string | null;
@@ -75,45 +93,49 @@ export interface UniversityCardDto {
       website: string | null;
       emails: string[];
       phones: string[];
-      field_attribution: Record<
-        string,
-        {
-          field_name: string;
-          source_key: string | null;
-          source_trust_tier: string | null;
-          source_urls: string[];
-          selected_claim_ids: string[];
-          selected_evidence_ids: string[];
-          resolution_policy: string;
-          resolution_strategy: string | null;
-          rationale: string;
-        }
-      >;
     };
-    programs: Array<{
-      field_name: string;
-      faculty: string | null;
-      code: string | null;
-      name: string | null;
-      budget_places: number | null;
-      passing_score: number | null;
-      year: number | null;
-      confidence: number | null;
-      sources: Array<Record<string, unknown>>;
-      field_attribution: {
-        field_name: string;
-        source_key: string | null;
-        source_trust_tier: string | null;
-        source_urls: string[];
-        selected_claim_ids: string[];
-        selected_evidence_ids: string[];
-        resolution_policy: string;
-        resolution_strategy: string | null;
-        rationale: string;
-      } | null;
-    }>;
+    programs: AdmissionProgramDto[];
   };
+  is_favorite: boolean;
+  is_compared: boolean;
 }
+
+// ── Auth ──────────────────────────────────────────────────────────────
+
+export interface AuthResponseDto {
+  token: string;
+  user_id: string;
+  email: string;
+  display_name: string | null;
+}
+
+export interface CurrentUserDto {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+}
+
+// ── Favorites / Comparison ────────────────────────────────────────────
+
+export interface FavoriteItemDto {
+  university_id: string;
+  created_at: string;
+}
+
+export interface FavoritesResponseDto {
+  items: FavoriteItemDto[];
+}
+
+export interface ComparisonItemDto {
+  university_id: string;
+  added_at: string;
+}
+
+export interface ComparisonResponseDto {
+  items: ComparisonItemDto[];
+}
+
+// ── Provenance (kept for evidence drawer) ─────────────────────────────
 
 export interface DeliveryProjectionTraceDto {
   university_id: string;

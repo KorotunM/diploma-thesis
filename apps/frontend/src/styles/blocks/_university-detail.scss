@@ -1,0 +1,597 @@
+@use "../variables" as *;
+
+// ── Page wrapper ──────────────────────────────────────────────────────────────
+
+.ud-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.ud-back {
+  background: none;
+  border: none;
+  color: $color-brand;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover { text-decoration: underline; }
+}
+
+// ── Hero card ─────────────────────────────────────────────────────────────────
+
+.ud-hero {
+  background: $color-surface;
+  border-radius: $radius-lg;
+  padding: 24px;
+  display: flex;
+  gap: 20px;
+  box-shadow: $shadow-card;
+  margin-bottom: 12px;
+  align-items: flex-start;
+
+  @media (max-width: $breakpoint-small) {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &--skeleton {
+    gap: 16px;
+  }
+
+  &__logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: $color-brand-light;
+    color: $color-brand;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    flex-shrink: 0;
+    letter-spacing: -1px;
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text;
+    margin: 0 0 4px;
+    line-height: 1.3;
+  }
+
+  &__full-name {
+    font-size: 12px;
+    color: $color-text-muted;
+    margin: 0 0 12px;
+  }
+
+  &__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  &__description {
+    font-size: 13px;
+    color: $color-text-soft;
+    line-height: 1.65;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+
+    @media (max-width: $breakpoint-small) {
+      flex-direction: row;
+      align-items: center;
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  &__rating {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    background: #059669;
+    padding: 8px 14px;
+    border-radius: $radius-sm;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  &__score {
+    text-align: right;
+
+    &-value {
+      display: block;
+      font-size: 22px;
+      font-weight: 700;
+      color: $color-brand;
+    }
+
+    &-label {
+      font-size: 11px;
+      color: $color-text-muted;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 6px;
+  }
+}
+
+// ── Tags ──────────────────────────────────────────────────────────────────────
+
+.ud-tag {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &--green {
+    background: $color-success-bg;
+    color: $color-success-text;
+  }
+
+  &--blue {
+    background: $color-brand-light;
+    color: $color-brand-text;
+  }
+
+  &--gray {
+    background: $color-page-bg;
+    color: $color-text-soft;
+  }
+}
+
+// ── Icon buttons ──────────────────────────────────────────────────────────────
+
+.ud-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-sm;
+  border: 1px solid $color-border-strong;
+  background: $color-surface;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: $color-text-muted;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: $color-brand;
+    color: $color-brand;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--active {
+    color: #ef4444;
+    border-color: #ef4444;
+
+    &:hover { color: #dc2626; border-color: #dc2626; }
+  }
+
+  &--compare-active {
+    color: $color-brand;
+    border-color: $color-brand;
+  }
+}
+
+// ── Metrics row ───────────────────────────────────────────────────────────────
+
+.ud-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+
+  @media (max-width: 860px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (max-width: $breakpoint-small) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.ud-metric {
+  background: $color-surface;
+  border-radius: $radius-md;
+  padding: 16px 14px;
+  box-shadow: $shadow-card;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__value {
+    font-size: 22px;
+    font-weight: 700;
+    color: $color-text;
+    line-height: 1;
+  }
+
+  &__label {
+    font-size: 11px;
+    color: $color-text-muted;
+    line-height: 1.3;
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+.ud-tabs {
+  background: $color-surface;
+  border-radius: $radius-md;
+  padding: 0 8px;
+  margin-bottom: 12px;
+  box-shadow: $shadow-card;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
+
+  &__tab {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: $color-text-muted;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+
+    &:hover { color: $color-text-soft; }
+
+    &--active {
+      color: $color-brand;
+      border-bottom-color: $color-brand;
+      font-weight: 600;
+    }
+  }
+}
+
+// ── Sections ──────────────────────────────────────────────────────────────────
+
+.ud-section {
+  background: $color-surface;
+  border-radius: $radius-md;
+  padding: 24px;
+  box-shadow: $shadow-card;
+}
+
+// ── About tab ─────────────────────────────────────────────────────────────────
+
+.ud-about {
+  &__description {
+    font-size: 14px;
+    color: $color-text-soft;
+    line-height: 1.7;
+    background: $color-page-bg;
+    border-radius: $radius-sm;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+
+    @media (max-width: $breakpoint-small) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #9ca3af;
+    font-weight: 600;
+  }
+
+  &__value {
+    font-size: 14px;
+    color: $color-text;
+    font-weight: 500;
+    word-break: break-word;
+
+    a {
+      color: $color-brand;
+      text-decoration: none;
+
+      &:hover { text-decoration: underline; }
+    }
+  }
+}
+
+// ── Programs tab ──────────────────────────────────────────────────────────────
+
+.ud-programs {
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: $color-text;
+    margin: 0;
+  }
+
+  &__search {
+    padding: 8px 12px;
+    border: 1px solid $color-border-strong;
+    border-radius: $radius-sm;
+    font-size: 13px;
+    width: 220px;
+    background: $color-surface;
+    transition: border-color 0.15s;
+
+    &:focus {
+      outline: none;
+      border-color: $color-brand;
+    }
+
+    @media (max-width: $breakpoint-small) {
+      width: 100%;
+    }
+  }
+}
+
+// ── Direction accordion ───────────────────────────────────────────────────────
+
+.direction-accordion {
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  margin-bottom: 8px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 16px;
+    cursor: pointer;
+    background: $color-surface;
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.12s;
+
+    &:hover { background: $color-page-bg; }
+  }
+
+  &__toggle {
+    font-size: 10px;
+    color: $color-text-muted;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+
+    &--open { transform: rotate(90deg); }
+  }
+
+  &__name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__badge {
+    font-size: 11px;
+    color: $color-text-muted;
+    background: $color-page-bg;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  &__body {
+    border-top: 1px solid $color-border;
+  }
+}
+
+.program-table-header {
+  display: grid;
+  grid-template-columns: 90px 1fr 80px 100px 70px 70px;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  background: $color-page-bg;
+  border-bottom: 1px solid $color-border;
+
+  @media (max-width: $breakpoint-small) { display: none; }
+}
+
+.program-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 80px 100px 70px 70px;
+  gap: 8px;
+  align-items: center;
+  padding: 11px 16px;
+  border-bottom: 1px solid $color-border;
+  font-size: 13px;
+  transition: background 0.1s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: $color-page-bg; }
+
+  &__code { color: $color-brand; font-weight: 600; }
+  &__name { color: $color-text; }
+  &__form { color: $color-text-muted; }
+  &__level { color: $color-text-muted; }
+  &__budget { font-weight: 600; color: $color-success-text; text-align: center; }
+  &__paid { color: $color-text-soft; text-align: center; }
+
+  @media (max-width: $breakpoint-small) {
+    grid-template-columns: 1fr;
+    gap: 2px;
+
+    &__form, &__level { display: inline; }
+    &__budget::before { content: "Бюджет: "; color: $color-text-muted; font-weight: 400; }
+    &__paid::before { content: "Платно: "; color: $color-text-muted; }
+  }
+}
+
+// ── Show more ─────────────────────────────────────────────────────────────────
+
+.ud-show-more {
+  display: block;
+  margin: 16px auto 0;
+  padding: 10px 28px;
+  border: 1px solid $color-brand;
+  border-radius: $radius-sm;
+  background: none;
+  color: $color-brand;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: $color-brand-light; }
+}
+
+// ── Coming soon ───────────────────────────────────────────────────────────────
+
+.ud-coming-soon {
+  color: $color-text-muted;
+  font-size: 14px;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.ud-empty-text {
+  color: $color-text-muted;
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+// ── Empty / error ─────────────────────────────────────────────────────────────
+
+.ud-empty {
+  max-width: 480px;
+  margin: 80px auto;
+  text-align: center;
+  color: $color-text-muted;
+
+  button {
+    background: none;
+    border: none;
+    color: $color-brand;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: inherit;
+  }
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+.skeleton {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 6px;
+  display: block;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ── Auth prompt ───────────────────────────────────────────────────────────────
+
+.auth-prompt {
+  background: $color-brand-light;
+  border-radius: $radius-sm;
+  padding: 12px 16px;
+  margin: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  color: $color-brand-text;
+
+  p { margin: 0 0 8px; }
+}
+
+// ── Shared btn primitives ─────────────────────────────────────────────────────
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: $radius-sm;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+
+  &--primary {
+    background: $color-brand;
+    color: #fff;
+    border-color: $color-brand;
+
+    &:hover { background: $color-brand-hover; }
+  }
+
+  &--ghost {
+    background: none;
+    color: $color-brand;
+    border-color: $color-brand;
+
+    &:hover { background: $color-brand-light; }
+  }
+
+  &--sm { padding: 6px 12px; font-size: 13px; }
+}

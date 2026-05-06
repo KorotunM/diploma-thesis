@@ -1,6 +1,7 @@
 export interface JsonHttpClientOptions {
   baseUrl: string;
   requestTimeoutMs: number;
+  getToken?: () => string | null;
 }
 
 export interface JsonHttpRequestOptions {
@@ -12,11 +13,7 @@ export class HttpRequestError extends Error {
   readonly url: string;
   readonly detail: string | null;
 
-  constructor(params: {
-    status: number;
-    url: string;
-    detail: string | null;
-  }) {
+  constructor(params: { status: number; url: string; detail: string | null }) {
     super(params.detail ?? `HTTP request failed with status ${params.status}.`);
     this.name = "HttpRequestError";
     this.status = params.status;
@@ -28,14 +25,37 @@ export class HttpRequestError extends Error {
 export class JsonHttpClient {
   private readonly baseUrl: string;
   private readonly requestTimeoutMs: number;
+  private readonly getToken: (() => string | null) | undefined;
 
   constructor(options: JsonHttpClientOptions) {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this.requestTimeoutMs = options.requestTimeoutMs;
+    this.getToken = options.getToken;
   }
 
-  async get<T>(
+  private buildHeaders(extra?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = { Accept: "application/json", ...extra };
+    const token = this.getToken?.();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  }
+
+  async get<T>(path: string, options?: JsonHttpRequestOptions): Promise<T> {
+    return this._request<T>("GET", path, undefined, options);
+  }
+
+  async post<T>(path: string, body?: unknown, options?: JsonHttpRequestOptions): Promise<T> {
+    return this._request<T>("POST", path, body, options);
+  }
+
+  async delete<T = void>(path: string, options?: JsonHttpRequestOptions): Promise<T> {
+    return this._request<T>("DELETE", path, undefined, options);
+  }
+
+  private async _request<T>(
+    method: string,
     path: string,
+    body: unknown,
     options?: JsonHttpRequestOptions,
   ): Promise<T> {
     const url = joinUrl(this.baseUrl, path);
@@ -47,13 +67,16 @@ export class JsonHttpClient {
     const signal = mergeSignals(options?.signal, timeoutController.signal);
 
     try {
+      const headers = this.buildHeaders(
+        body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      );
       const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
         signal,
       });
+
       if (!response.ok) {
         throw new HttpRequestError({
           status: response.status,
@@ -61,7 +84,10 @@ export class JsonHttpClient {
           detail: await readErrorDetail(response),
         });
       }
-      return (await response.json()) as T;
+
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      return text ? (JSON.parse(text) as T) : (undefined as T);
     } finally {
       window.clearTimeout(timeoutId);
     }
@@ -69,15 +95,11 @@ export class JsonHttpClient {
 }
 
 export function describeRequestError(error: unknown): string {
-  if (isAbortError(error)) {
-    return "Request was aborted.";
-  }
+  if (isAbortError(error)) return "Request was aborted.";
   if (error instanceof HttpRequestError) {
     return error.detail ?? `Request failed with status ${error.status}.`;
   }
-  if (error instanceof Error) {
-    return error.message;
-  }
+  if (error instanceof Error) return error.message;
   return "Unknown request error.";
 }
 
@@ -104,44 +126,28 @@ async function readErrorDetail(response: Response): Promise<string | null> {
   }
 }
 
-function mergeSignals(
-  primary?: AbortSignal,
-  secondary?: AbortSignal,
-): AbortSignal | undefined {
-  if (!primary) {
-    return secondary;
-  }
-  if (!secondary) {
-    return primary;
-  }
-
+function mergeSignals(primary?: AbortSignal, secondary?: AbortSignal): AbortSignal | undefined {
+  if (!primary) return secondary;
+  if (!secondary) return primary;
   const controller = new AbortController();
   const abort = (reason?: unknown) => controller.abort(reason);
-
   if (primary.aborted || secondary.aborted) {
     abort(primary.reason ?? secondary.reason);
     return controller.signal;
   }
-
   primary.addEventListener("abort", () => abort(primary.reason), { once: true });
   secondary.addEventListener("abort", () => abort(secondary.reason), { once: true });
   return controller.signal;
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
-  if (!baseUrl || baseUrl === "/") {
-    return "";
-  }
+  if (!baseUrl || baseUrl === "/") return "";
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 }
 
 function joinUrl(baseUrl: string, path: string): string {
-  if (/^https?:\/\//.test(path)) {
-    return path;
-  }
+  if (/^https?:\/\//.test(path)) return path;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  if (!baseUrl) {
-    return normalizedPath;
-  }
+  if (!baseUrl) return normalizedPath;
   return `${baseUrl}${normalizedPath}`;
 }

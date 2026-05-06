@@ -318,9 +318,11 @@ class UniversityBootstrapService:
         *,
         claims: list[ClaimRecord],
         source: SourceAuthorityRecord,
+        extra_source_tiers: dict[str, SourceTrustTier] | None = None,
     ) -> dict[str, ClaimRecord]:
         result: dict[str, ClaimRecord] = {}
         tiers = source_tier_map(
+            source_tiers=extra_source_tiers,
             default_source_key=source.source_key,
             default_trust_tier=source.trust_tier,
         )
@@ -332,6 +334,21 @@ class UniversityBootstrapService:
             )
             if selected is not None:
                 result[field_name] = selected
+        return result
+
+    @staticmethod
+    def _source_tiers_from_university(university: UniversityRecord) -> dict[str, SourceTrustTier]:
+        result: dict[str, SourceTrustTier] = {}
+        for snap in university.metadata.get("source_snapshots", []):
+            if not isinstance(snap, dict):
+                continue
+            key = snap.get("source_key")
+            tier_val = snap.get("trust_tier")
+            if isinstance(key, str) and isinstance(tier_val, str):
+                try:
+                    result[key] = SourceTrustTier(tier_val)
+                except ValueError:
+                    pass
         return result
 
     def _anchor_source(self, university: UniversityRecord) -> SourceAuthorityRecord:
@@ -688,7 +705,10 @@ class UniversityBootstrapService:
         existing_evidence = self._repository.list_evidence_for_university(university.university_id)
         combined_claims = self._merge_claims(existing_claims, claim_result.claims)
         combined_evidence = self._merge_evidence(existing_evidence, claim_result.evidence)
-        claims_by_field = self._claims_by_field(claims=combined_claims, source=source)
+        extra_tiers = self._source_tiers_from_university(university)
+        claims_by_field = self._claims_by_field(
+            claims=combined_claims, source=source, extra_source_tiers=extra_tiers
+        )
         candidate = UniversityBootstrapCandidate(
             university_id=university.university_id,
             canonical_name=self._canonical_name(claims_by_field),

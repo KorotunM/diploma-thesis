@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 
-import { SearchWorkspacePage } from "./pages/SearchWorkspacePage";
-import { UniversityCardPage } from "./pages/UniversityCardPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
+import { ComparisonPage } from "./pages/ComparisonPage";
+import { SearchWorkspacePage } from "./pages/SearchWorkspacePage";
+import { UniversityDetailPage } from "./pages/UniversityDetailPage";
 import { LoginModal } from "./components/LoginModal";
+import { useAuth } from "./shared/auth";
 import logoSvg from "./assets/logo.svg";
 
-type AppView = "search" | "university" | "admin";
+type AppView = "search" | "university" | "admin" | "comparison";
 
-const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin"];
+const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin", "comparison"];
 
 const NAV_LINKS: Array<{ id: AppView | null; label: string; soon?: boolean }> = [
   { id: "search", label: "Поиск вуза" },
+  { id: "comparison", label: "Сравнение" },
   { id: null, label: "Специальности", soon: true },
   { id: null, label: "Калькулятор", soon: true },
-  { id: null, label: "Отзывы", soon: true },
   { id: null, label: "Рейтинги", soon: true },
 ];
 
@@ -31,11 +33,12 @@ function navigateTo(view: AppView): void {
 }
 
 export default function App() {
+  const { user, logout } = useAuth();
+
   const [activeView, setActiveView] = useState<AppView>(readViewFromLocation);
-  const [isAdmin, setIsAdmin] = useState(
-    () => localStorage.getItem("admin_auth") === "1",
-  );
   const [showLogin, setShowLogin] = useState(false);
+
+  const isAdmin = user?.email === "admin@example.com";
 
   useEffect(() => {
     const handleHashChange = () => setActiveView(readViewFromLocation());
@@ -44,24 +47,24 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = () => {
-    setIsAdmin(true);
     setShowLogin(false);
-    navigateTo("admin");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin_auth");
-    setIsAdmin(false);
+  const handleLogout = async () => {
+    await logout();
     navigateTo("search");
   };
 
   const handleLoginClick = () => {
-    if (isAdmin) {
-      navigateTo("admin");
+    if (user) {
+      if (isAdmin) navigateTo("admin");
     } else {
       setShowLogin(true);
     }
   };
+
+  const displayName = user?.display_name ?? user?.email ?? null;
+  const avatarLetter = displayName ? displayName[0].toUpperCase() : "А";
 
   return (
     <div className="app">
@@ -89,21 +92,40 @@ export default function App() {
                 title={soon ? "Раздел в разработке" : undefined}
                 onClick={() => {
                   if (id) navigateTo(id);
-                  else alert("Раздел «" + label + "» находится в разработке.");
+                  else alert(`Раздел «${label}» находится в разработке.`);
                 }}
               >
                 {label}
-                {soon && <span style={{ fontSize: "0.6rem", marginLeft: 4, opacity: 0.6, verticalAlign: "super" }}>скоро</span>}
+                {soon && (
+                  <span style={{ fontSize: "0.6rem", marginLeft: 4, opacity: 0.6, verticalAlign: "super" }}>
+                    скоро
+                  </span>
+                )}
               </button>
             ))}
           </nav>
 
           <div className="app__header-actions">
-            {isAdmin ? (
-              <button className="app__user-btn" type="button" onClick={handleLoginClick}>
-                <div className="app__user-avatar">A</div>
-                Личный кабинет
-              </button>
+            {user ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  className="app__user-btn"
+                  type="button"
+                  onClick={handleLoginClick}
+                  title={user.email}
+                >
+                  <div className="app__user-avatar">{avatarLetter}</div>
+                  {displayName}
+                </button>
+                <button
+                  className="app__login-btn"
+                  type="button"
+                  onClick={handleLogout}
+                  style={{ fontSize: "0.8rem" }}
+                >
+                  Выйти
+                </button>
+              </div>
             ) : (
               <button className="app__login-btn" type="button" onClick={handleLoginClick}>
                 <span>→</span> Войти
@@ -115,7 +137,12 @@ export default function App() {
 
       <main className="app__main">
         {activeView === "search" && <SearchWorkspacePage />}
-        {activeView === "university" && <UniversityCardPage />}
+        {activeView === "university" && (
+          <UniversityDetailPage onShowLogin={() => setShowLogin(true)} />
+        )}
+        {activeView === "comparison" && (
+          <ComparisonPage onShowLogin={() => setShowLogin(true)} />
+        )}
         {activeView === "admin" && isAdmin && <AdminDashboard onLogout={handleLogout} />}
         {activeView === "admin" && !isAdmin && <SearchWorkspacePage />}
       </main>

@@ -16,6 +16,7 @@ export function createFrontendRuntime(
     backendApi: new BackendApiClient({
       baseUrl: config.backendBaseUrl,
       requestTimeoutMs: config.apiRequestTimeoutMs,
+      getToken: () => localStorage.getItem("auth_token"),
     }),
     schedulerApi: new SchedulerApiClient({
       baseUrl: config.schedulerBaseUrl,

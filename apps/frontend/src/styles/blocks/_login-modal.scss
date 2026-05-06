@@ -94,3 +94,34 @@
   font-size: 0.78rem;
   color: $color-text-muted;
 }
+
+.modal__tabs {
+  display: flex;
+  border-bottom: 1px solid $color-border;
+  padding: 0 24px;
+  margin-top: 12px;
+}
+
+.modal__tab {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: $color-text-muted;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover { color: $color-text-soft; }
+
+  &--active {
+    color: $color-brand;
+    border-bottom-color: $color-brand;
+    font-weight: 600;
+  }
+}
+
+.modal__submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
