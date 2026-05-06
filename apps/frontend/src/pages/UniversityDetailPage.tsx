@@ -96,13 +96,11 @@ function formatNum(n: number): string {
 
 // ── Tab type ──────────────────────────────────────────────────────────────────
 
-type Tab = "about" | "programs" | "admission" | "students" | "reviews";
+type Tab = "about" | "programs" | "reviews";
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: "about", label: "О вузе" },
   { id: "programs", label: "Направления и программы" },
-  { id: "admission", label: "Поступление" },
-  { id: "students", label: "Студенты" },
   { id: "reviews", label: "Отзывы" },
 ];
 
@@ -661,18 +659,6 @@ export function UniversityDetailPage({
               Показать ещё ({directionGroups.length - 8})
             </button>
           )}
-        </div>
-      )}
-
-      {tab === "admission" && (
-        <div className="ud-section ud-coming-soon">
-          <p>Раздел «Поступление» находится в разработке.</p>
-        </div>
-      )}
-
-      {tab === "students" && (
-        <div className="ud-section ud-coming-soon">
-          <p>Раздел «Студенты» находится в разработке.</p>
         </div>
       )}
 

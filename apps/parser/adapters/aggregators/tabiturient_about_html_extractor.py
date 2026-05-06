@@ -52,6 +52,9 @@ _CITY_PATTERN = re.compile(
     re.UNICODE,
 )
 
+# Words that look like itemprop=addressLocality but are NOT city names
+_NON_CITY_WORDS = frozenset({"вузов", "вуза", "вузы", "вуз", "все", "всех"})
+
 
 def _norm(text: str) -> str:
     return _WHITESPACE.sub(" ", text).strip()
@@ -307,13 +310,22 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
 
     @staticmethod
     def _city(nodes: list[_Node], full_text: str) -> str | None:
-        # Look for itemprop=addressLocality
-        node = next(
-            (n for n in nodes if n.attrs.get("itemprop") in {"addressLocality", "addressRegion"} and n.text),
-            None,
-        )
-        if node:
-            return node.text
+        # Look for itemprop=addressLocality / addressRegion, but skip non-city link text
+        for node in nodes:
+            if node.attrs.get("itemprop") not in {"addressLocality", "addressRegion"}:
+                continue
+            text = node.text
+            if not text or len(text) < 2:
+                continue
+            if text.lower() in _NON_CITY_WORDS:
+                continue
+            # City names start with a capital letter and contain no digits
+            if text[0].islower() or any(c.isdigit() for c in text):
+                continue
+            # Strip leading "г. " / "г " prefixes that sometimes appear inside the node
+            text = re.sub(r"^г\.\s*|^г\s+", "", text).strip()
+            if text:
+                return text
         # Fallback: regex on full text
         m = _CITY_PATTERN.search(full_text)
         if m:

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useUniversitySearch } from "../features/search";
 import { ViewState } from "../shared/ui/view-state";
@@ -12,32 +12,72 @@ const DIRECTIONS = [
   "Гуманитарные науки",
 ];
 
-const FEATURE_CARDS = [
-  {
-    icon: "🎓",
-    iconClass: "feature-card__icon--blue",
-    title: "Подбор вуза",
-    desc: "Найдём вузы под ваши баллы и предпочтения",
-  },
-  {
-    icon: "🔢",
-    iconClass: "feature-card__icon--green",
-    title: "Калькулятор ЕГЭ",
-    desc: "Рассчитайте шансы на поступление",
-  },
-  {
-    icon: "📖",
-    iconClass: "feature-card__icon--purple",
-    title: "Специальности",
-    desc: "Изучите направления и профили обучения",
-  },
-  {
-    icon: "📊",
-    iconClass: "feature-card__icon--orange",
-    title: "Рейтинги",
-    desc: "Сравнивайте вузы по различным критериям",
-  },
+const EGE_SUBJECTS = [
+  { id: "math",        label: "Математика" },
+  { id: "russian",     label: "Русский" },
+  { id: "physics",     label: "Физика" },
+  { id: "social",      label: "Обществознание" },
+  { id: "history",     label: "История" },
+  { id: "biology",     label: "Биология" },
+  { id: "informatics", label: "Информатика" },
+  { id: "chemistry",   label: "Химия" },
+  { id: "literature",  label: "Литература" },
+  { id: "geography",   label: "География" },
+  { id: "foreign",     label: "Иностранные языки" },
 ];
+
+type EgeScores = Record<string, string>;
+
+// ── EGE panel ─────────────────────────────────────────────────────────────────
+
+function EgePanel({
+  scores,
+  checked,
+  onToggle,
+  onScore,
+}: {
+  scores: EgeScores;
+  checked: Set<string>;
+  onToggle: (id: string) => void;
+  onScore: (id: string, val: string) => void;
+}) {
+  return (
+    <div className="ege-panel__grid">
+        {EGE_SUBJECTS.map((s) => {
+          const active = checked.has(s.id);
+          return (
+            <div
+              key={s.id}
+              className={`ege-card${active ? " ege-card--active" : ""}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => onToggle(s.id)}
+              onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onToggle(s.id); } }}
+            >
+              <div className="ege-card__top">
+                <span className={`ege-card__checkbox${active ? " ege-card__checkbox--checked" : ""}`} aria-hidden>
+                  {active ? "✓" : ""}
+                </span>
+                <span className="ege-card__label">{s.label}</span>
+              </div>
+              <input
+                className="ege-card__score"
+                type="number"
+                min={0}
+                max={100}
+                placeholder="Баллы"
+                value={scores[s.id] ?? ""}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => { onScore(s.id, e.target.value); if (!checked.has(s.id)) onToggle(s.id); }}
+              />
+            </div>
+          );
+        })}
+      </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export function SearchPage() {
   const {
@@ -47,7 +87,6 @@ export function SearchPage() {
     setCity,
     page,
     setPage,
-    pageSize,
     resetFilters,
     snapshot,
     error,
@@ -55,20 +94,34 @@ export function SearchPage() {
   } = useUniversitySearch();
 
   const [localQuery, setLocalQuery] = useState(query);
+  const [showEge, setShowEge] = useState(false);
+  const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set());
+  const [egeScores, setEgeScores] = useState<EgeScores>({});
+
+  useEffect(() => {
+    if (!showEge) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowEge(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showEge]);
+
   const hasResults = (snapshot?.items.length ?? 0) > 0;
   const hasQueryState = query.trim().length > 0 || city.trim().length > 0;
 
-  const handleSearch = () => {
-    setQuery(localQuery);
+  const handleSearch = () => setQuery(localQuery);
+  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
+  const handleDirectionClick = (direction: string) => { setLocalQuery(direction); setQuery(direction); };
+
+  const handleEgeToggle = (id: string) => {
+    setEgeChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
-  };
-
-  const handleDirectionClick = (direction: string) => {
-    setLocalQuery(direction);
-    setQuery(direction);
+  const handleEgeScore = (id: string, val: string) => {
+    setEgeScores((prev) => ({ ...prev, [id]: val }));
   };
 
   return (
@@ -101,9 +154,7 @@ export function SearchPage() {
               <select className="hero__filter" defaultValue="">
                 <option value="">Любое направление</option>
                 {DIRECTIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
+                  <option key={d} value={d}>{d}</option>
                 ))}
               </select>
             </div>
@@ -135,12 +186,14 @@ export function SearchPage() {
             </div>
             <div className="hero__filter-wrap">
               <span className="hero__filter-label">Баллы ЕГЭ</span>
-              <select className="hero__filter" defaultValue="0">
-                <option value="0">От 0 баллов</option>
-                <option value="60">От 60 баллов</option>
-                <option value="70">От 70 баллов</option>
-                <option value="80">От 80 баллов</option>
-              </select>
+              <button
+                className={`hero__filter hero__filter--ege-btn${showEge ? " hero__filter--ege-btn--active" : ""}`}
+                type="button"
+                onClick={() => setShowEge((v) => !v)}
+              >
+                {egeChecked.size > 0 ? `${egeChecked.size} предмет${egeChecked.size === 1 ? "" : egeChecked.size < 5 ? "а" : "ов"}` : "Указать баллы"}
+                <span className="hero__filter-ege-arrow">{showEge ? "▲" : "▼"}</span>
+              </button>
             </div>
           </div>
 
@@ -160,19 +213,40 @@ export function SearchPage() {
         </div>
       </section>
 
-      {/* Feature cards */}
-      <div className="feature-cards">
-        {FEATURE_CARDS.map((card) => (
-          <div key={card.title} className="feature-card">
-            <div className={`feature-card__icon ${card.iconClass}`}>{card.icon}</div>
-            <div className="feature-card__text">
-              <div className="feature-card__title">{card.title}</div>
-              <div className="feature-card__desc">{card.desc}</div>
+      {/* EGE modal */}
+      {showEge && (
+        <div className="modal-overlay" onClick={() => setShowEge(false)}>
+          <div className="modal ege-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">
+                Баллы ЕГЭ
+                {egeChecked.size > 0 && (
+                  <span className="ege-panel__badge" style={{ marginLeft: 10 }}>{egeChecked.size} выбрано</span>
+                )}
+              </h2>
+              <button className="modal__close" type="button" onClick={() => setShowEge(false)}>✕</button>
             </div>
-            <span className="feature-card__arrow">›</span>
+            <div className="modal__body ege-modal__body">
+              <p className="ege-panel__hint">
+                Отметьте предметы и укажите баллы — подберём подходящие программы.
+              </p>
+              <EgePanel
+                scores={egeScores}
+                checked={egeChecked}
+                onToggle={handleEgeToggle}
+                onScore={handleEgeScore}
+              />
+              <button
+                className="modal__submit"
+                type="button"
+                onClick={() => setShowEge(false)}
+              >
+                Применить
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* Results */}
       <div className="search-page">
@@ -224,9 +298,7 @@ export function SearchPage() {
                 onClick={() => openUniversityCard(item.university_id)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") openUniversityCard(item.university_id);
-                }}
+                onKeyDown={(e) => { if (e.key === "Enter") openUniversityCard(item.university_id); }}
               >
                 <div className="uni-card__logo">{item.canonical_name.charAt(0)}</div>
 
@@ -238,14 +310,10 @@ export function SearchPage() {
                   <div className="uni-card__tags">
                     <span className="uni-card__tag uni-card__tag--state">Государственный</span>
                     {item.city && (
-                      <span className="uni-card__tag uni-card__tag--city">
-                        📍 {item.city}
-                      </span>
+                      <span className="uni-card__tag uni-card__tag--city">📍 {item.city}</span>
                     )}
                     {item.country_code && item.country_code !== "RU" && (
-                      <span className="uni-card__tag uni-card__tag--city">
-                        {item.country_code}
-                      </span>
+                      <span className="uni-card__tag uni-card__tag--city">{item.country_code}</span>
                     )}
                   </div>
                 </div>
