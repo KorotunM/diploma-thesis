@@ -24,7 +24,15 @@ def is_transient_dependency_error(exc: BaseException) -> bool:
     else:
         transient_error_types.append(SQLAlchemyOperationalError)
 
-    return any(isinstance(exc, error_type) for error_type in transient_error_types)
+    if any(isinstance(exc, error_type) for error_type in transient_error_types):
+        return True
+
+    # Treat publish errors wrapping connection resets as transient
+    cause = getattr(exc, "__cause__", None) or getattr(exc, "__context__", None)
+    if cause is not None and is_transient_dependency_error(cause):
+        return True
+
+    return False
 
 
 def run_resilient_worker_loop(

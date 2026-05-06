@@ -215,8 +215,11 @@ class UniversityBootstrapService:
                 claim_result=claim_result,
                 match=match,
             )
-            raise UniversityBootstrapError(
-                "Gray-zone trigram match requires manual review before merge."
+            return self._bootstrap_trusted_source(
+                source=source,
+                claim_result=claim_result,
+                canonical_domain=canonical_domain,
+                canonical_name=canonical_name,
             )
         if match.status != "matched" or match.university is None:
             return self._bootstrap_trusted_source(
@@ -715,7 +718,7 @@ class UniversityBootstrapService:
         )
         candidate = UniversityBootstrapCandidate(
             university_id=university.university_id,
-            canonical_name=self._canonical_name(claims_by_field),
+            canonical_name=university.canonical_name or self._canonical_name(claims_by_field),
             canonical_domain=self._canonical_domain(claims_by_field) or university.canonical_domain,
             country_code=(
                 self._string_claim_value(claims_by_field, "location.country_code")

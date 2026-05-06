@@ -18,7 +18,6 @@ from apps.normalizer.app.persistence import json_from_db, json_to_db
 from apps.normalizer.app.review_required import ReviewRequiredEmitter
 from apps.normalizer.app.resolution import SourceTrustTier
 from apps.normalizer.app.universities import (
-    UniversityBootstrapError,
     UniversityBootstrapRepository,
     UniversityBootstrapService,
     deterministic_university_id,
@@ -489,16 +488,12 @@ def test_secondary_claims_emit_review_required_for_gray_zone_trigram_match() -> 
     register_claim_result(session, official)
     register_claim_result(session, aggregator)
 
-    service.bootstrap_single_source_authoritative(official)
+    first = service.bootstrap_single_source_authoritative(official)
+    gray_zone_result = service.consolidate_claims(aggregator)
 
-    with pytest.raises(
-        UniversityBootstrapError,
-        match="Gray-zone trigram match requires manual review before merge.",
-    ):
-        service.consolidate_claims(aggregator)
-
-    assert len(session.universities) == 1
-    assert session.commit_count == 1
+    assert gray_zone_result.university.university_id != first.university.university_id
+    assert len(session.universities) == 2
+    assert session.commit_count == 2
     assert review_publisher.calls[0]["queue_name"] == "review.required"
     event = review_publisher.calls[0]["payload"]
     assert event["event_name"] == "review.required.v1"

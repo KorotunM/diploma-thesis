@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from apps.scheduler.app.discovery.models import DiscoveryMaterializationRequest
+from apps.scheduler.app.discovery.service import HttpDiscoveryFetcher, SourceEndpointDiscoveryService
 from apps.scheduler.app.sources.endpoint_repository import SourceEndpointRepository
 from apps.scheduler.app.sources.models import (
     CrawlPolicy,
@@ -19,6 +22,8 @@ from apps.scheduler.app.sources.models import (
 from apps.scheduler.app.sources.repository import SourceRepository
 from libs.source_catalog import EndpointBlueprint, SourceBlueprint, build_live_mvp_source_catalog
 from libs.storage import get_postgres_session_factory
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,12 +75,14 @@ class LiveSourceSeedResult:
     source_count: int
     endpoint_count: int
     source_keys: tuple[str, ...]
+    discovery_materialized_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "source_count": self.source_count,
             "endpoint_count": self.endpoint_count,
             "source_keys": list(self.source_keys),
+            "discovery_materialized_count": self.discovery_materialized_count,
         }
 
 
@@ -241,16 +248,22 @@ class LiveSourceSeedService:
         *,
         gateway: SchedulerSourceRegistryGateway,
         seed_specs: tuple[LiveSourceSeedSourceSpec, ...],
+        discovery_service: SourceEndpointDiscoveryService | None = None,
     ) -> None:
         self._gateway = gateway
         self._seed_specs = seed_specs
+        self._discovery_service = discovery_service
 
     def bootstrap(self) -> LiveSourceSeedResult:
         endpoint_count = 0
         source_keys: list[str] = []
+        discoverable_source_keys: list[str] = []
+
         for source_spec in self._seed_specs:
             self._gateway.ensure_source(source_spec)
             source_keys.append(source_spec.source_key)
+            if source_spec.metadata.get("discovery_rules"):
+                discoverable_source_keys.append(source_spec.source_key)
             for endpoint_spec in source_spec.endpoints:
                 self._gateway.ensure_endpoint(
                     source_key=source_spec.source_key,
@@ -258,21 +271,51 @@ class LiveSourceSeedService:
                 )
                 endpoint_count += 1
         self._gateway.commit()
+
+        discovery_materialized = 0
+        if self._discovery_service is not None:
+            for source_key in discoverable_source_keys:
+                try:
+                    resp = self._discovery_service.materialize_discovered_endpoints(
+                        DiscoveryMaterializationRequest(source_key=source_key, dry_run=False)
+                    )
+                    self._gateway.commit()
+                    discovery_materialized += resp.materialized_count
+                    _log.info(
+                        "Discovery materialization for %s: %d new endpoints.",
+                        source_key,
+                        resp.materialized_count,
+                    )
+                except Exception as exc:
+                    _log.warning(
+                        "Discovery materialization failed for %s: %s — skipping.",
+                        source_key,
+                        exc,
+                    )
+
         return LiveSourceSeedResult(
             source_count=len(self._seed_specs),
             endpoint_count=endpoint_count,
             source_keys=tuple(source_keys),
+            discovery_materialized_count=discovery_materialized,
         )
 
 
 def build_live_source_seed_service(session: Any) -> LiveSourceSeedService:
+    source_repository = SourceRepository(session)
+    endpoint_repository = SourceEndpointRepository(session)
     return LiveSourceSeedService(
         gateway=SchedulerSourceRegistryGateway(
             session=session,
-            source_repository=SourceRepository(session),
-            endpoint_repository=SourceEndpointRepository(session),
+            source_repository=source_repository,
+            endpoint_repository=endpoint_repository,
         ),
         seed_specs=build_live_mvp_source_seed_specs(),
+        discovery_service=SourceEndpointDiscoveryService(
+            source_repository=source_repository,
+            endpoint_repository=endpoint_repository,
+            fetcher=HttpDiscoveryFetcher(),
+        ),
     )
 
 

@@ -15,6 +15,10 @@ FOOTER_CONTACT_BLOCK_PATTERN = re.compile(
     (?P<body>.*?)\s*</div>\s*</div>\s*</div>""",
     re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
+COPYRIGHT_NAME_PATTERN = re.compile(
+    r"©[^«]{0,150}«(?P<name>[^»]{5,150})»",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 class KubSUAbiturientHtmlExtractor(OfficialSiteFragmentExtractor):
@@ -80,13 +84,19 @@ class KubSUAbiturientHtmlExtractor(OfficialSiteFragmentExtractor):
     @staticmethod
     def _canonical_name(content: str) -> str | None:
         match = TITLE_PATTERN.search(content)
-        if match is None:
-            return None
-        title = normalize_text(match.group("title"))
-        if not title:
-            return None
-        parts = [normalize_text(part) for part in title.split("|")]
-        return next((part for part in reversed(parts) if part), None)
+        if match is not None:
+            title = normalize_text(match.group("title"))
+            if title:
+                parts = [normalize_text(part) for part in title.split("|")]
+                name = next((part for part in reversed(parts) if part), None)
+                if name:
+                    return name
+        copyright_match = COPYRIGHT_NAME_PATTERN.search(content)
+        if copyright_match is not None:
+            name = normalize_text(copyright_match.group("name"))
+            if name:
+                return name
+        return None
 
     @staticmethod
     def _website(

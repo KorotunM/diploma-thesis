@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from html import unescape
 from typing import Any
+from urllib.parse import urlparse
 
 from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 
@@ -77,8 +78,22 @@ class KubSUProgramsHtmlExtractor(OfficialSiteFragmentExtractor):
         content = self._decode_content(artifact)
         rows = self._parse_rows(content)
 
+        website = self._website(context=context, artifact=artifact)
         fragments: list[ExtractedFragment] = []
         for row in rows:
+            self._append_fragment(
+                fragments,
+                context=context,
+                artifact=artifact,
+                field_name="contacts.website",
+                value=website,
+                locator="endpoint_host",
+                confidence=0.97,
+                metadata={
+                    "record_group_key": row.row_key,
+                    "source_field": "page.canonical_host",
+                },
+            )
             self._append_fragment(
                 fragments,
                 context=context,
@@ -152,6 +167,16 @@ class KubSUProgramsHtmlExtractor(OfficialSiteFragmentExtractor):
         if artifact.content is None:
             raise ValueError("Fetched artifact content is required for KubSU programs extraction.")
         return artifact.content.decode("utf-8", errors="replace")
+
+    @staticmethod
+    def _website(*, context: FetchContext, artifact: FetchedArtifact) -> str:
+        parsed = urlparse(artifact.final_url or artifact.source_url or context.endpoint_url)
+        if parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+        parsed = urlparse(context.endpoint_url)
+        if parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+        return context.endpoint_url
 
     def _parse_rows(self, content: str) -> list[ProgramRow]:
         table_match = TABLE_PATTERN.search(content)

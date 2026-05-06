@@ -34,6 +34,7 @@ class KubSUPlacesPdfExtractor(OfficialSiteFragmentExtractor):
         lines = self._extract_lines(artifact)
         year = self._resolve_year(lines=lines, context=context, artifact=artifact)
 
+        website = self._website(context=context, artifact=artifact)
         fragments: list[ExtractedFragment] = []
         current_faculty: str | None = None
 
@@ -51,7 +52,21 @@ class KubSUPlacesPdfExtractor(OfficialSiteFragmentExtractor):
             budget_places = int(match.group("budget_places"))
             faculty = current_faculty or "Admissions quotas"
             merge_key = self._program_merge_key(code=code, name=name, year=year)
+            record_group_key = f"pdf:{merge_key}"
 
+            self._append_fragment(
+                fragments,
+                context=context,
+                artifact=artifact,
+                field_name="contacts.website",
+                value=website,
+                locator="endpoint_host",
+                confidence=0.97,
+                metadata={
+                    "record_group_key": record_group_key,
+                    "source_field": "page.canonical_host",
+                },
+            )
             self._append_fragment(
                 fragments,
                 context=context,
@@ -182,6 +197,16 @@ class KubSUPlacesPdfExtractor(OfficialSiteFragmentExtractor):
             if match is not None:
                 return int(match.group("year"))
         raise ValueError("Could not determine admissions year from KubSU places PDF.")
+
+    @staticmethod
+    def _website(*, context: FetchContext, artifact: FetchedArtifact) -> str:
+        parsed = urlparse(artifact.final_url or artifact.source_url or context.endpoint_url)
+        if parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+        parsed = urlparse(context.endpoint_url)
+        if parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+        return context.endpoint_url
 
     @staticmethod
     def _program_merge_key(*, code: str, name: str, year: int) -> str:
