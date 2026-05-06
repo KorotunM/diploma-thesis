@@ -38,6 +38,7 @@ class ContactsInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     website: str | None = None
+    logo_url: str | None = None
     emails: list[str] = Field(default_factory=list)
     phones: list[str] = Field(default_factory=list)
 
@@ -45,6 +46,8 @@ class ContactsInfo(BaseModel):
 class InstitutionalInfo(BaseModel):
     institution_type: str | None = Field(default=None, alias="type")
     founded_year: int | None = None
+    category: str | None = None
+    is_flagship: bool | None = None
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -62,6 +65,8 @@ class ReviewSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     summary: str | None = None
+    rating: float | None = None
+    rating_count: int | None = None
     items: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -78,6 +83,7 @@ class UniversityCard(BaseModel):
     university_id: UUID = Field(default_factory=uuid4)
     canonical_name: ConfidenceValue
     aliases: list[str] = Field(default_factory=list)
+    description: str | None = None
     location: LocationInfo = Field(default_factory=LocationInfo)
     contacts: ContactsInfo = Field(default_factory=ContactsInfo)
     institutional: InstitutionalInfo = Field(

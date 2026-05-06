@@ -7,6 +7,14 @@ ImplementationStatus = Literal["implemented", "raw_only", "planned"]
 
 
 @dataclass(frozen=True, slots=True)
+class SatelliteEndpointSuffix:
+    """URL suffix + parser profile to register alongside each discovered entity URL."""
+
+    url_suffix: str
+    parser_profile: str
+
+
+@dataclass(frozen=True, slots=True)
 class DiscoveryRule:
     parent_endpoint_url: str
     child_parser_profile: str
@@ -14,6 +22,7 @@ class DiscoveryRule:
     exclude_url_patterns: tuple[str, ...] = ()
     allowed_hosts: tuple[str, ...] = ()
     notes: str | None = None
+    satellite_suffixes: tuple[SatelliteEndpointSuffix, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

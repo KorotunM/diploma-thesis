@@ -63,6 +63,8 @@ class AdmissionProgramResponse(BaseModel):
     name: str | None = None
     budget_places: int | None = None
     passing_score: int | None = None
+    study_form: str | None = None
+    level: str | None = None
     year: int | None = None
     confidence: float | None = None
     sources: list[dict[str, Any]] = Field(default_factory=list)

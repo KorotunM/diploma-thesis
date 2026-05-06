@@ -12,6 +12,15 @@ from .base import AggregatorFragmentExtractor
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
 
+# Russian date pattern: "29 марта 2026"
+_DATE_PATTERN = re.compile(
+    r"\b(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+_AUTHOR_TYPE_PATTERN = re.compile(r"(Студент|Выпускник|Абитуриент)[^\n]{0,30}вуза", re.IGNORECASE)
+_RATING_PATTERN = re.compile(r"(\d+[.,]\d+)\s*/\s*10")
+_RATING_COUNT_PATTERN = re.compile(r"([\d\s]+)\s+оцен[оки]+")
+
 
 def normalize_text(value: str) -> str:
     return WHITESPACE_PATTERN.sub(" ", value).strip()
@@ -134,6 +143,42 @@ class TabiturientUniversityHtmlExtractor(AggregatorFragmentExtractor):
                 external_id=slug,
             ),
         )
+
+        # ── Reviews ──────────────────────────────────────────────────────────
+        decoded = self._decode_content(artifact)
+        reviews = self._extract_reviews(decoded)
+        if reviews:
+            self._append_fragment(
+                fragments,
+                context=context,
+                artifact=artifact,
+                field_name="reviews.items",
+                value=reviews,
+                locator="div.review-item",
+                confidence=0.78,
+                metadata=self._metadata(
+                    source_field="tabiturient.reviews",
+                    external_id=slug,
+                ),
+            )
+
+        # ── User rating from header block ─────────────────────────────────────
+        rating = self._extract_rating(decoded)
+        if rating is not None:
+            self._append_fragment(
+                fragments,
+                context=context,
+                artifact=artifact,
+                field_name="reviews.rating",
+                value=rating,
+                locator="div.rating-score",
+                confidence=0.92,
+                metadata=self._metadata(
+                    source_field="tabiturient.user_rating",
+                    external_id=slug,
+                ),
+            )
+
         return fragments
 
     @staticmethod
@@ -238,3 +283,50 @@ class TabiturientUniversityHtmlExtractor(AggregatorFragmentExtractor):
         if external_id is not None:
             metadata["external_id"] = external_id
         return metadata
+
+    @staticmethod
+    def _extract_rating(html: str) -> float | None:
+        m = _RATING_PATTERN.search(html)
+        if m:
+            try:
+                return float(m.group(1).replace(",", "."))
+            except ValueError:
+                pass
+        return None
+
+    @staticmethod
+    def _extract_reviews(html: str) -> list[dict[str, Any]]:
+        """
+        Extract reviews from raw HTML using date-string anchors.
+        Each Russian date found marks a review; surrounding text is the body.
+        """
+        reviews: list[dict[str, Any]] = []
+        date_positions = list(_DATE_PATTERN.finditer(html))
+        if not date_positions:
+            return reviews
+
+        for date_match in date_positions:
+            window_start = max(0, date_match.start() - 3000)
+            context_before = html[window_start:date_match.start()]
+
+            date_str = (
+                f"{date_match.group(1)} {date_match.group(2)} {date_match.group(3)}"
+            )
+
+            author_match = _AUTHOR_TYPE_PATTERN.search(context_before[-800:])
+            author_type: str | None = (
+                normalize_text(author_match.group(0)) if author_match else None
+            )
+
+            clean = re.sub(r"<[^>]+>", " ", context_before)
+            review_text = normalize_text(clean)
+            review_text = review_text[-1500:].strip() if len(review_text) > 1500 else review_text.strip()
+
+            if len(review_text) < 50:
+                continue
+
+            reviews.append({"date": date_str, "text": review_text, "author_type": author_type})
+            if len(reviews) >= 30:
+                break
+
+        return reviews

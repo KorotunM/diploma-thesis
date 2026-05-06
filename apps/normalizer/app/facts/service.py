@@ -89,7 +89,7 @@ class ResolvedFactGenerationService:
                     bootstrap_result=bootstrap_result,
                     claim=claim,
                     evidence=evidence_by_claim_id.get(claim.claim_id, []),
-                    source_trust_tier=source_tiers[claim.source_key],
+                    source_trust_tier=source_tiers.get(claim.source_key, SourceTrustTier.EXPERIMENTAL),
                 )
                 for field_name in [*self._canonical_fields, *SUPPORTING_FACT_FIELDS]
                 if (claim := claims_by_field.get(field_name)) is not None

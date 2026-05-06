@@ -111,6 +111,13 @@
     }
   }
 
+  &__logo-img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
   &__rating {
     font-size: 28px;
     font-weight: 800;
@@ -120,6 +127,17 @@
     border-radius: $radius-sm;
     line-height: 1;
     letter-spacing: -1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  &__rating-count {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0;
+    opacity: 0.85;
   }
 
   &__score {
@@ -165,6 +183,11 @@
   &--gray {
     background: $color-page-bg;
     color: $color-text-soft;
+  }
+
+  &--orange {
+    background: #fff7ed;
+    color: #c2410c;
   }
 }
 
@@ -470,7 +493,7 @@
   &__form { color: $color-text-muted; }
   &__level { color: $color-text-muted; }
   &__budget { font-weight: 600; color: $color-success-text; text-align: center; }
-  &__paid { color: $color-text-soft; text-align: center; }
+  &__score { font-weight: 700; color: $color-brand; text-align: center; }
 
   @media (max-width: $breakpoint-small) {
     grid-template-columns: 1fr;
@@ -560,6 +583,90 @@
   color: $color-brand-text;
 
   p { margin: 0 0 8px; }
+}
+
+// ── Reviews tab ───────────────────────────────────────────────────────────────
+
+.ud-reviews-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: $color-page-bg;
+  border-radius: $radius-sm;
+
+  &__score {
+    font-size: 40px;
+    font-weight: 800;
+    color: #059669;
+    line-height: 1;
+  }
+
+  &__max {
+    font-size: 20px;
+    color: $color-text-muted;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+
+  &__count {
+    font-size: 14px;
+    color: $color-text-soft;
+    font-weight: 500;
+  }
+
+  &__source {
+    font-size: 12px;
+    color: $color-text-muted;
+    margin-left: auto;
+  }
+}
+
+.ud-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ud-review-card {
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  padding: 16px;
+  background: $color-surface;
+
+  &__meta {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  &__author {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-brand;
+    background: $color-brand-light;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  &__date {
+    font-size: 12px;
+    color: $color-text-muted;
+    align-self: center;
+  }
+
+  &__text {
+    font-size: 13px;
+    color: $color-text-soft;
+    line-height: 1.65;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }
 
 // ── Shared btn primitives ─────────────────────────────────────────────────────

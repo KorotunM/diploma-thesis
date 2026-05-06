@@ -15,9 +15,11 @@ from libs.source_sdk import (
 
 from .base import AggregatorFragmentExtractor
 from .payload_extractor import AggregatorPayloadExtractor
+from .tabiturient_about_html_extractor import TabiturientAboutHtmlExtractor
 from .tabiturient_html_extractor import TabiturientUniversityHtmlExtractor
+from .tabiturient_proxodnoi_html_extractor import TabiturientProxodnoiHtmlExtractor
 
-AGGREGATOR_ADAPTER_VERSION = "0.1.0"
+AGGREGATOR_ADAPTER_VERSION = "0.2.0"
 
 
 class AggregatorAdapter(SourceAdapter):
@@ -26,6 +28,8 @@ class AggregatorAdapter(SourceAdapter):
     supported_parser_profiles = (
         "aggregator.default",
         "aggregator.tabiturient.university_html",
+        "aggregator.tabiturient.about_html",
+        "aggregator.tabiturient.proxodnoi_html",
     )
 
     def __init__(
@@ -166,6 +170,8 @@ class AggregatorAdapter(SourceAdapter):
         return (
             AggregatorPayloadExtractor(),
             TabiturientUniversityHtmlExtractor(),
+            TabiturientAboutHtmlExtractor(),
+            TabiturientProxodnoiHtmlExtractor(),
         )
 
     def _resolve_extractor(

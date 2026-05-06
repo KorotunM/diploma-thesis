@@ -213,6 +213,8 @@ class UniversityCardReadService:
                     name=self._string_value(program.get("name")),
                     budget_places=self._int_value(program.get("budget_places")),
                     passing_score=self._int_value(program.get("passing_score")),
+                    study_form=self._string_value(program.get("study_form")),
+                    level=self._string_value(program.get("level")),
                     year=self._int_value(program.get("year")),
                     confidence=self._float_value(program.get("confidence")),
                     sources=self._list_of_dicts(program.get("sources")),

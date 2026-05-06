@@ -114,24 +114,35 @@ class UniversityCardProjectionService:
         return UniversityCard(
             university_id=fact_result.university.university_id,
             canonical_name=canonical_name,
-            aliases=[],
+            aliases=self._aliases(facts_by_field.get("aliases")),
+            description=self._string_fact_value(facts_by_field.get("description")),
             location=LocationInfo(
                 country=self._string_fact_value(facts_by_field.get("location.country_code")),
                 city=self._string_fact_value(facts_by_field.get("location.city")),
             ),
             contacts=ContactsInfo(
                 website=self._string_fact_value(facts_by_field.get("contacts.website")),
+                logo_url=self._string_fact_value(facts_by_field.get("contacts.logo_url")),
                 emails=self._string_list_fact_value(facts_by_field.get("contacts.emails")),
                 phones=self._string_list_fact_value(facts_by_field.get("contacts.phones")),
             ),
             institutional=InstitutionalInfo.model_validate(
-                {"type": None, "founded_year": None}
+                {
+                    "type": self._string_fact_value(facts_by_field.get("institutional.type")),
+                    "founded_year": None,
+                    "category": self._string_fact_value(facts_by_field.get("institutional.category")),
+                    "is_flagship": self._bool_fact_value(facts_by_field.get("institutional.is_flagship")),
+                }
             ),
             programs=self._programs(fact_result.facts),
             tuition=[],
             ratings=self._ratings(fact_result.facts),
             dormitory={},
-            reviews=ReviewSummary(),
+            reviews=ReviewSummary(
+                rating=self._float_fact_value(facts_by_field.get("reviews.rating")),
+                rating_count=self._int_fact_value(facts_by_field.get("reviews.rating_count")),
+                items=self._review_items(facts_by_field.get("reviews.items")),
+            ),
             sources=self._sources(fact_result.facts),
             version=CardVersionInfo(
                 card_version=card_version,
@@ -173,6 +184,42 @@ class UniversityCardProjectionService:
             seen.add(cleaned)
             result.append(cleaned)
         return result
+
+    @staticmethod
+    def _bool_fact_value(fact: ResolvedFactRecord | None) -> bool | None:
+        if fact is None:
+            return None
+        if isinstance(fact.value, bool):
+            return fact.value
+        return None
+
+    @staticmethod
+    def _float_fact_value(fact: ResolvedFactRecord | None) -> float | None:
+        if fact is None:
+            return None
+        if isinstance(fact.value, (int, float)):
+            return float(fact.value)
+        return None
+
+    @staticmethod
+    def _int_fact_value(fact: ResolvedFactRecord | None) -> int | None:
+        if fact is None:
+            return None
+        if isinstance(fact.value, int):
+            return fact.value
+        return None
+
+    @staticmethod
+    def _aliases(fact: ResolvedFactRecord | None) -> list[str]:
+        if fact is None or not isinstance(fact.value, list):
+            return []
+        return [str(v).strip() for v in fact.value if str(v).strip()]
+
+    @staticmethod
+    def _review_items(fact: ResolvedFactRecord | None) -> list[dict]:
+        if fact is None or not isinstance(fact.value, list):
+            return []
+        return [item for item in fact.value if isinstance(item, dict)]
 
     def _sources(self, facts: list[ResolvedFactRecord]) -> list[FieldAttribution]:
         deduped: dict[tuple[str, str], set[UUID]] = {}
@@ -236,6 +283,8 @@ class UniversityCardProjectionService:
                     "name": fact.value.get("name"),
                     "budget_places": fact.value.get("budget_places"),
                     "passing_score": fact.value.get("passing_score"),
+                    "study_form": fact.value.get("study_form"),
+                    "level": fact.value.get("level"),
                     "year": fact.value.get("year"),
                     "confidence": fact.fact_score,
                     "sources": [

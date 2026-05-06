@@ -168,18 +168,26 @@ function DirectionAccordion({
             <span>Форма</span>
             <span>Уровень</span>
             <span>Бюджет</span>
-            <span>Платно</span>
+            <span>Балл</span>
           </div>
           {programs.map((p, i) => (
             <div className="program-row" key={p.field_name ?? i}>
               <span className="program-row__code">{p.code ?? "—"}</span>
               <span className="program-row__name">{p.name ?? "—"}</span>
-              <span className="program-row__form">Очная</span>
-              <span className="program-row__level">{getLevel(p.code)}</span>
+              <span className="program-row__form">
+                {p.study_form === "full_time" ? "Очная"
+                  : p.study_form === "evening" ? "Вечерняя"
+                  : p.study_form === "distance" ? "Заочная"
+                  : p.study_form === "mixed" ? "Очно-заочная"
+                  : "—"}
+              </span>
+              <span className="program-row__level">{p.level ?? getLevel(p.code)}</span>
               <span className="program-row__budget">
                 {p.budget_places != null ? p.budget_places : "—"}
               </span>
-              <span className="program-row__paid">—</span>
+              <span className="program-row__score">
+                {p.passing_score != null ? p.passing_score : "—"}
+              </span>
             </div>
           ))}
         </div>
@@ -238,13 +246,21 @@ export function UniversityDetailPage({
   const city = card?.location?.city ?? null;
   const country = card?.location?.country ?? null;
   const website = card?.contacts?.website ?? null;
+  const logoUrl = card?.contacts?.logo_url ?? null;
   const phone = card?.contacts?.phones?.[0] ?? null;
   const address = card?.location?.address ?? null;
   const foundedYear = card?.institutional?.founded_year ?? null;
   const instType = card?.institutional?.type ?? null;
-  const description = card?.reviews?.summary ?? null;
+  const category = card?.institutional?.category ?? null;
+  const isFlagship = card?.institutional?.is_flagship ?? false;
+  const description = card?.description ?? card?.reviews?.summary ?? null;
+  const reviewRating = card?.reviews?.rating ?? null;
+  const reviewRatingCount = card?.reviews?.rating_count ?? null;
+  const reviewItems = card?.reviews?.items ?? [];
 
-  const rating = card?.ratings?.[0]?.value ?? null;
+  const rating = reviewRating != null
+    ? String(reviewRating)
+    : (card?.ratings?.[0]?.value ?? null);
 
   // ── Program groups ──────────────────────────────────────────────────────────
 
@@ -378,7 +394,11 @@ export function UniversityDetailPage({
       {/* ── Hero card ── */}
       <div className="ud-hero">
         <div className="ud-hero__logo">
-          {initials}
+          {logoUrl ? (
+            <img src={logoUrl} alt={shortName ?? name} className="ud-hero__logo-img" />
+          ) : (
+            initials
+          )}
         </div>
 
         <div className="ud-hero__content">
@@ -388,6 +408,12 @@ export function UniversityDetailPage({
           <div className="ud-hero__tags">
             {instType && (
               <span className="ud-tag ud-tag--green">{instType}</span>
+            )}
+            {isFlagship && (
+              <span className="ud-tag ud-tag--blue">Головной</span>
+            )}
+            {category && (
+              <span className="ud-tag ud-tag--orange">Категория {category}</span>
             )}
             {city && <span className="ud-tag ud-tag--gray">{city}</span>}
             {country && country !== "Russia" && (
@@ -400,7 +426,14 @@ export function UniversityDetailPage({
 
         <div className="ud-hero__right">
           {rating && (
-            <div className="ud-hero__rating">{rating}</div>
+            <div className="ud-hero__rating">
+              {rating}
+              {reviewRatingCount && (
+                <span className="ud-hero__rating-count">
+                  {reviewRatingCount.toLocaleString("ru-RU")} отзывов
+                </span>
+              )}
+            </div>
           )}
 
           <div className="ud-hero__score">
@@ -567,8 +600,39 @@ export function UniversityDetailPage({
       )}
 
       {tab === "reviews" && (
-        <div className="ud-section ud-coming-soon">
-          <p>Раздел «Отзывы» находится в разработке.</p>
+        <div className="ud-section">
+          {reviewRating != null && (
+            <div className="ud-reviews-summary">
+              <span className="ud-reviews-summary__score">{reviewRating}</span>
+              <span className="ud-reviews-summary__max">/10</span>
+              {reviewRatingCount != null && (
+                <span className="ud-reviews-summary__count">
+                  {reviewRatingCount.toLocaleString("ru-RU")} оценок
+                </span>
+              )}
+              <span className="ud-reviews-summary__source">по данным Табитуриент</span>
+            </div>
+          )}
+
+          {reviewItems.length === 0 ? (
+            <p className="ud-empty-text">Отзывы ещё не загружены.</p>
+          ) : (
+            <div className="ud-reviews-list">
+              {reviewItems.map((review, i) => (
+                <div className="ud-review-card" key={i}>
+                  <div className="ud-review-card__meta">
+                    {review.author_type && (
+                      <span className="ud-review-card__author">{review.author_type}</span>
+                    )}
+                    {review.date && (
+                      <span className="ud-review-card__date">{review.date}</span>
+                    )}
+                  </div>
+                  <p className="ud-review-card__text">{review.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -187,7 +187,7 @@ export function SearchPage() {
             <button
               className="section-header__link"
               type="button"
-              onClick={resetFilters}
+              onClick={() => { resetFilters(); setLocalQuery(""); }}
             >
               Сбросить фильтры ✕
             </button>

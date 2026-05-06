@@ -45,16 +45,25 @@ export interface AdmissionProgramDto {
   name: string | null;
   budget_places: number | null;
   passing_score: number | null;
+  study_form: string | null;
+  level: string | null;
   year: number | null;
   confidence: number | null;
   sources: Array<Record<string, unknown>>;
   field_attribution: Record<string, unknown> | null;
 }
 
+export interface ReviewItemDto {
+  date: string | null;
+  text: string;
+  author_type: string | null;
+}
+
 export interface UniversityCardDto {
   university_id: string;
   canonical_name: ConfidenceValueDto;
   aliases: string[];
+  description: string | null;
   location: {
     country: string | null;
     city: string | null;
@@ -63,12 +72,15 @@ export interface UniversityCardDto {
   };
   contacts: {
     website: string | null;
+    logo_url: string | null;
     emails: string[];
     phones: string[];
   };
   institutional: {
     type: string | null;
     founded_year: number | null;
+    category: string | null;
+    is_flagship: boolean | null;
   };
   programs: Array<Record<string, unknown>>;
   tuition: Array<Record<string, unknown>>;
@@ -81,7 +93,9 @@ export interface UniversityCardDto {
   dormitory: Record<string, unknown>;
   reviews: {
     summary: string | null;
-    items: Array<Record<string, unknown>>;
+    rating: number | null;
+    rating_count: number | null;
+    items: ReviewItemDto[];
   };
   sources: FieldAttributionDto[];
   version: {

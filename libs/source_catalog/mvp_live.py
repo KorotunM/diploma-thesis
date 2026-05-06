@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .models import DiscoveryRule, EndpointBlueprint, SourceBlueprint
+from .models import DiscoveryRule, EndpointBlueprint, SatelliteEndpointSuffix, SourceBlueprint
 
 
 def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
@@ -33,20 +33,53 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                     parser_profile="aggregator.tabiturient.university_html",
                     role="entity",
                     content_kind="html",
-                    implementation_status="planned",
+                    implementation_status="implemented",
                     target_fields=(
                         "canonical_name",
                         "aliases",
-                        "location.city",
-                        "location.country_code",
                         "contacts.website",
-                        "contacts.emails",
-                        "contacts.phones",
+                        "reviews.items",
+                        "reviews.rating",
                     ),
-                    notes=(
-                        "Primary entity pages are discovered from the sitemap. HTML field "
-                        "extraction for the live site is still pending."
+                    notes="Primary entity page. Extracts name, website, and reviews.",
+                ),
+                EndpointBlueprint(
+                    endpoint_url="https://tabiturient.ru/vuzu/<slug>/about/",
+                    parser_profile="aggregator.tabiturient.about_html",
+                    role="entity_detail",
+                    content_kind="html",
+                    implementation_status="implemented",
+                    target_fields=(
+                        "canonical_name",
+                        "aliases",
+                        "contacts.logo_url",
+                        "description",
+                        "institutional.type",
+                        "institutional.category",
+                        "institutional.is_flagship",
+                        "location.city",
+                        "ratings.tabiturient_user",
+                        "reviews.rating",
+                        "reviews.rating_count",
                     ),
+                    notes="About page. Extracts logo, description, category, institutional type, rating.",
+                ),
+                EndpointBlueprint(
+                    endpoint_url="https://tabiturient.ru/vuzu/<slug>/proxodnoi/",
+                    parser_profile="aggregator.tabiturient.proxodnoi_html",
+                    role="admissions_programs",
+                    content_kind="html",
+                    implementation_status="implemented",
+                    target_fields=(
+                        "programs.code",
+                        "programs.name",
+                        "programs.faculty",
+                        "programs.passing_score",
+                        "programs.budget_places",
+                        "programs.study_form",
+                        "programs.level",
+                    ),
+                    notes="Programs page with passing scores and budget places per program.",
                 ),
             ),
             discovery_rules=(
@@ -55,13 +88,23 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                     child_parser_profile="aggregator.tabiturient.university_html",
                     include_url_pattern=r"^https://tabiturient\.ru/vuzu/[a-z0-9_-]+/?$",
                     exclude_url_patterns=(
-                        r"^https://tabiturient\.ru/vuzu/[a-z0-9_-]+/(about|proxodnoi|dod|obsh)/?$",
+                        r"^https://tabiturient\.ru/vuzu/[a-z0-9_-]+/.+$",
                         r"^https://tabiturient\.ru/vuzu/[a-z0-9_-]+/.+\?.+$",
                     ),
                     allowed_hosts=("tabiturient.ru", "www.tabiturient.ru"),
                     notes=(
-                        "Only the root university card is primary. About/proxodnoi/dormitory "
-                        "and query-string variants are intentionally excluded."
+                        "Root university cards discovered from sitemap. "
+                        "About and proxodnoi pages are registered as satellite endpoints."
+                    ),
+                    satellite_suffixes=(
+                        SatelliteEndpointSuffix(
+                            url_suffix="/about/",
+                            parser_profile="aggregator.tabiturient.about_html",
+                        ),
+                        SatelliteEndpointSuffix(
+                            url_suffix="/proxodnoi/",
+                            parser_profile="aggregator.tabiturient.proxodnoi_html",
+                        ),
                     ),
                 ),
             ),

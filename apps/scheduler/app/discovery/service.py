@@ -87,12 +87,20 @@ def _validate_content_type(content_type: str, allowed_content_types: list[str]) 
 
 
 @dataclass(frozen=True, slots=True)
+class LoadedSatelliteSuffix:
+    url_suffix: str
+    parser_profile: str
+    crawl_policy: CrawlPolicy
+
+
+@dataclass(frozen=True, slots=True)
 class LoadedDiscoveryRule:
     parent_endpoint_url: str
     child_parser_profile: str
     include_url_pattern: str
     exclude_url_patterns: tuple[str, ...]
     child_crawl_policy: CrawlPolicy
+    satellite_suffixes: tuple[LoadedSatelliteSuffix, ...] = ()
 
 
 class SourceEndpointDiscoveryService:
@@ -159,6 +167,19 @@ class SourceEndpointDiscoveryService:
                         ),
                     )
                     materialized_count += 1
+                    # Create satellite endpoints (e.g. /about/, /proxodnoi/)
+                    for satellite in discovery_rule.satellite_suffixes:
+                        satellite_url = page.url.rstrip("/") + satellite.url_suffix
+                        if self._endpoint_repository.get_by_url(request.source_key, satellite_url) is None:
+                            self._endpoint_repository.create(
+                                request.source_key,
+                                CreateSourceEndpointRequest(
+                                    endpoint_url=satellite_url,
+                                    parser_profile=satellite.parser_profile,
+                                    crawl_policy=satellite.crawl_policy,
+                                ),
+                            )
+                            materialized_count += 1
             elif self._endpoint_requires_update(existing, discovery_rule):
                 action = (
                     DiscoveryMaterializationAction.DRY_RUN
@@ -270,12 +291,47 @@ class SourceEndpointDiscoveryService:
             raise SourceEndpointDiscoveryWorkflowError(
                 "Child endpoint seed spec does not contain crawl_policy."
             )
+        # Build satellite suffixes
+        raw_satellites = first_rule.get("satellite_suffixes") or []
+        loaded_satellites: list[LoadedSatelliteSuffix] = []
+        if isinstance(raw_satellites, list):
+            for sat in raw_satellites:
+                if not isinstance(sat, dict):
+                    continue
+                sat_suffix = sat.get("url_suffix")
+                sat_profile = sat.get("parser_profile")
+                if not sat_suffix or not sat_profile:
+                    continue
+                # Find crawl policy for satellite profile in endpoint_seed_specs
+                sat_spec = next(
+                    (
+                        value
+                        for value in endpoint_specs
+                        if isinstance(value, dict)
+                        and value.get("parser_profile") == sat_profile
+                    ),
+                    None,
+                )
+                if sat_spec is None:
+                    continue
+                sat_policy = sat_spec.get("crawl_policy")
+                if not isinstance(sat_policy, dict):
+                    continue
+                loaded_satellites.append(
+                    LoadedSatelliteSuffix(
+                        url_suffix=sat_suffix,
+                        parser_profile=sat_profile,
+                        crawl_policy=CrawlPolicy.model_validate(sat_policy),
+                    )
+                )
+
         return LoadedDiscoveryRule(
             parent_endpoint_url=parent_endpoint_url,
             child_parser_profile=child_parser_profile,
             include_url_pattern=include_url_pattern,
             exclude_url_patterns=exclude_url_patterns,
             child_crawl_policy=CrawlPolicy.model_validate(crawl_policy_payload),
+            satellite_suffixes=tuple(loaded_satellites),
         )
 
     def _update_source_discovery_metadata(

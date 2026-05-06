@@ -147,14 +147,19 @@ class FieldResolutionPolicyMatrix:
         eligible_claims = [
             claim
             for claim in claims
-            if claim.value is not None and policy.allows(source_tiers[claim.source_key])
+            if claim.value is not None
+            and policy.allows(
+                source_tiers.get(claim.source_key, SourceTrustTier.EXPERIMENTAL)
+            )
         ]
         if not eligible_claims:
             return None
         ranked_claims = sorted(
             eligible_claims,
             key=lambda claim: (
-                policy.preference_rank(source_tiers[claim.source_key]),
+                policy.preference_rank(
+                    source_tiers.get(claim.source_key, SourceTrustTier.EXPERIMENTAL)
+                ),
                 -claim.parser_confidence,
                 claim.created_at,
                 str(claim.claim_id),

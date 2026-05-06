@@ -181,7 +181,11 @@ class UniversityBootstrapService:
         self._repository.commit()
         return UniversityBootstrapResult(
             source=source,
-            sources_used=[source],
+            sources_used=self._merged_sources(
+                university=university,
+                anchor_source=source,
+                merged_source=source,
+            ),
             university=persisted,
             claims_used=combined_claims,
             evidence_used=combined_evidence,
