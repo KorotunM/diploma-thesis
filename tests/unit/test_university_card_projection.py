@@ -306,3 +306,101 @@ def test_university_card_projection_is_idempotent_by_university_and_card_version
     assert len(session.projections) == 1
     assert len(session.search_docs) == 1
     assert session.commit_count == 2
+
+
+def test_university_card_projection_includes_tabiturient_about_fields() -> None:
+    session = FakeCardProjectionSession()
+    service = build_service(session)
+    fact_result = build_fact_result()
+    university_id = fact_result.university.university_id
+    enriched_fact_result = fact_result.model_copy(
+        update={
+            "facts": [
+                *fact_result.facts,
+                fact(
+                    university_id=university_id,
+                    field_name="aliases",
+                    value=["СПбГЭТУ ЛЭТИ"],
+                    score=0.88,
+                    value_type="list",
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="description",
+                    value="Санкт-Петербургский государственный электротехнический университет ЛЭТИ.",
+                    score=0.8,
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="contacts.logo_url",
+                    value="https://tabiturient.ru/logovuz/eltech.png",
+                    score=0.99,
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="institutional.type",
+                    value="Государственный",
+                    score=0.9,
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="institutional.category",
+                    value="A",
+                    score=0.85,
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="institutional.is_flagship",
+                    value=True,
+                    score=0.87,
+                    value_type="bool",
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="reviews.rating",
+                    value=7.7,
+                    score=0.92,
+                    value_type="float",
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name="reviews.rating_count",
+                    value=4983,
+                    score=0.92,
+                    value_type="int",
+                ),
+                fact(
+                    university_id=university_id,
+                    field_name=f"{RATING_FIELD_PREFIX}tabiturient_user",
+                    value={
+                        "provider": "tabiturient",
+                        "year": 2025,
+                        "metric": "user_rating",
+                        "value": "7.7",
+                    },
+                    value_type="rating_item",
+                    resolution_policy=RATING_FIELD_POLICY,
+                    score=0.92,
+                    metadata={
+                        "source_key": "tabiturient-aggregator",
+                        "source_urls": ["https://tabiturient.ru/vuzu/eltech/about/"],
+                    },
+                ),
+            ],
+        }
+    )
+
+    result = service.create_projection(enriched_fact_result)
+    card = result.projection.card
+
+    assert card.aliases == ["СПбГЭТУ ЛЭТИ"]
+    assert card.description == (
+        "Санкт-Петербургский государственный электротехнический университет ЛЭТИ."
+    )
+    assert card.contacts.logo_url == "https://tabiturient.ru/logovuz/eltech.png"
+    assert card.institutional.institution_type == "Государственный"
+    assert card.institutional.category == "A"
+    assert card.institutional.is_flagship is True
+    assert card.reviews.rating == 7.7
+    assert card.reviews.rating_count == 4983
+    assert any(rating.provider == "tabiturient" for rating in card.ratings)

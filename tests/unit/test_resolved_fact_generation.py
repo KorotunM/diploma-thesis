@@ -425,6 +425,141 @@ def test_resolved_fact_generation_builds_structured_rating_fact() -> None:
     assert len(rating_fact.selected_evidence_ids) == 4
 
 
+def test_resolved_fact_generation_keeps_tabiturient_about_fields() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    about_claims = [
+        claim(
+            field_name="aliases",
+            value=["СПбГЭТУ ЛЭТИ"],
+            confidence=0.88,
+        ),
+        claim(
+            field_name="description",
+            value="Санкт-Петербургский государственный электротехнический университет ЛЭТИ.",
+            confidence=0.8,
+        ),
+        claim(
+            field_name="contacts.logo_url",
+            value="https://tabiturient.ru/logovuz/eltech.png",
+            confidence=0.99,
+        ),
+        claim(
+            field_name="institutional.type",
+            value="Государственный",
+            confidence=0.9,
+        ),
+        claim(
+            field_name="institutional.category",
+            value="A",
+            confidence=0.85,
+        ),
+        claim(
+            field_name="institutional.is_flagship",
+            value=True,
+            confidence=0.87,
+        ),
+        claim(
+            field_name="reviews.rating",
+            value=7.7,
+            confidence=0.92,
+        ),
+        claim(
+            field_name="reviews.rating_count",
+            value=4983,
+            confidence=0.92,
+        ),
+    ]
+    enriched_bootstrap = bootstrap_result.model_copy(
+        update={
+            "claims_used": [*bootstrap_result.claims_used, *about_claims],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                *[
+                    evidence_for(claim_record).model_copy(
+                        update={"source_url": "https://tabiturient.ru/vuzu/eltech/about/"}
+                    )
+                    for claim_record in about_claims
+                ],
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(enriched_bootstrap)
+    by_field = {fact.field_name: fact for fact in result.facts}
+
+    assert by_field["aliases"].value == ["СПбГЭТУ ЛЭТИ"]
+    assert by_field["description"].value.startswith("Санкт-Петербургский")
+    assert by_field["contacts.logo_url"].value == "https://tabiturient.ru/logovuz/eltech.png"
+    assert by_field["institutional.type"].value == "Государственный"
+    assert by_field["institutional.category"].value == "A"
+    assert by_field["institutional.is_flagship"].value is True
+    assert by_field["reviews.rating"].value == 7.7
+    assert by_field["reviews.rating_count"].value == 4983
+
+
+def test_resolved_fact_generation_keeps_direct_tabiturient_rating_item() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    rating_claim = claim(
+        field_name="ratings.tabiturient_user",
+        value={
+            "provider": "tabiturient",
+            "year": 2025,
+            "metric": "user_rating",
+            "value": "7.7",
+        },
+        confidence=0.92,
+    ).model_copy(
+        update={
+            "source_key": "tabiturient-aggregator",
+            "metadata": {
+                "fragment_id": str(uuid4()),
+                "provider_name": "Tabiturient",
+                "provider_key": "tabiturient",
+            },
+        }
+    )
+    enriched_bootstrap = bootstrap_result.model_copy(
+        update={
+            "sources_used": [
+                bootstrap_result.source,
+                bootstrap_result.source.model_copy(
+                    update={
+                        "source_key": "tabiturient-aggregator",
+                        "source_type": "aggregator",
+                        "trust_tier": SourceTrustTier.TRUSTED,
+                    }
+                ),
+            ],
+            "claims_used": [*bootstrap_result.claims_used, rating_claim],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                evidence_for(rating_claim).model_copy(
+                    update={"source_url": "https://tabiturient.ru/vuzu/eltech/about/"}
+                ),
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(enriched_bootstrap)
+    by_field = {fact.field_name: fact for fact in result.facts}
+
+    assert by_field["ratings.tabiturient_user"].value == {
+        "provider": "tabiturient",
+        "year": 2025,
+        "metric": "user_rating",
+        "value": "7.7",
+    }
+    assert by_field["ratings.tabiturient_user"].value_type == "rating_item"
+    assert by_field["ratings.tabiturient_user"].metadata["provider_key"] == "tabiturient"
+    assert by_field["ratings.tabiturient_user"].metadata["source_key"] == (
+        "tabiturient-aggregator"
+    )
+
+
 def test_resolved_fact_generation_builds_structured_program_fact() -> None:
     session = FakeResolvedFactSession()
     service = build_service(session)
@@ -584,6 +719,72 @@ def test_resolved_fact_generation_builds_structured_program_fact() -> None:
     assert program_fact.metadata["source_urls"] == ["https://example.edu/programs"]
     assert len(program_fact.selected_claim_ids) == 6
     assert len(program_fact.selected_evidence_ids) == 6
+
+
+def test_resolved_fact_generation_keeps_direct_program_item_with_budget_places() -> None:
+    session = FakeResolvedFactSession()
+    service = build_service(session)
+    bootstrap_result = build_bootstrap_result()
+    program_claim = claim(
+        field_name="programs.tabiturient_090301_ai",
+        value={
+            "faculty": "Faculty of Computer Science",
+            "code": "09.03.01",
+            "name": "Artificial Intelligence",
+            "budget_places": 42,
+            "passing_score": 251,
+            "study_form": "full_time",
+            "level": "Bachelor",
+            "year": 2025,
+        },
+        confidence=0.82,
+    ).model_copy(
+        update={
+            "source_key": "tabiturient-aggregator",
+            "metadata": {
+                "fragment_id": str(uuid4()),
+                "program_merge_key": "09.03.01:2025:artificial-intelligence",
+                "program_code": "09.03.01",
+                "program_year": 2025,
+                "provider_name": "Tabiturient",
+            },
+        }
+    )
+    enriched_bootstrap = bootstrap_result.model_copy(
+        update={
+            "sources_used": [
+                bootstrap_result.source,
+                bootstrap_result.source.model_copy(
+                    update={
+                        "source_key": "tabiturient-aggregator",
+                        "source_type": "aggregator",
+                        "trust_tier": SourceTrustTier.TRUSTED,
+                    }
+                ),
+            ],
+            "claims_used": [*bootstrap_result.claims_used, program_claim],
+            "evidence_used": [
+                *bootstrap_result.evidence_used,
+                evidence_for(program_claim).model_copy(
+                    update={"source_url": "https://tabiturient.ru/vuzu/eltech/proxodnoi"}
+                ),
+            ],
+        }
+    )
+
+    result = service.generate_for_bootstrap(enriched_bootstrap)
+    by_field = {fact.field_name: fact for fact in result.facts}
+
+    program_fact = by_field["programs.tabiturient_090301_ai"]
+    assert program_fact.value_type == "program_item"
+    assert program_fact.value["budget_places"] == 42
+    assert program_fact.value["passing_score"] == 251
+    assert program_fact.value["study_form"] == "full_time"
+    assert program_fact.value["level"] == "Bachelor"
+    assert program_fact.metadata["program_item_key"] == (
+        "09.03.01:2025:artificial-intelligence"
+    )
+    assert program_fact.selected_claim_ids == [program_claim.claim_id]
 
 
 def test_resolved_fact_generation_merges_pdf_budget_places_into_html_program_group() -> None:

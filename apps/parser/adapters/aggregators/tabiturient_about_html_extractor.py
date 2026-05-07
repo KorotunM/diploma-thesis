@@ -17,8 +17,11 @@ _WHITESPACE = re.compile(r"\s+")
 # e.g. "7.7 /10" or "7.7/10" or "Рейтинг: 7.7"
 _RATING_PATTERN = re.compile(r"(\d+[.,]\d+)\s*/\s*10")
 
-# e.g. "4 983 оценок" or "4983 оценок" or "оценки"
-_RATING_COUNT_PATTERN = re.compile(r"([\d\s]+)\s+оцен[ок]+")
+# e.g. "4 983 оценок", "4983 оценок" or "6552 оценки".
+_RATING_COUNT_PATTERN = re.compile(
+    r"\b(\d{1,3}(?:\s\d{3})+|\d{1,6})\s+оцен(?:ок|ки|ка)\b",
+    re.IGNORECASE,
+)
 
 # e.g. "65 образовательных программ" or "65 программ"
 _PROGRAMS_COUNT_PATTERN = re.compile(r"(\d+)\s+(?:образовательных\s+)?программ")
@@ -36,8 +39,11 @@ _AVG_SCORE_PATTERN = re.compile(
 # Logo: img with /logovuz/ in src
 _LOGO_SRC_PATTERN = re.compile(r"/logovuz/[^\"'>\s]+", re.IGNORECASE)
 
-# Category letter A/B/C/D/E near globalrating
-_CATEGORY_PATTERN = re.compile(r"\bкатегория[:\s]*([A-E])\b|\bкатегори[яи]\s*«?([A-E])»?", re.IGNORECASE)
+# Category letter A/B/C/D/E with optional +/- near globalrating.
+_CATEGORY_PATTERN = re.compile(
+    r"\bкатегория[:\s]*([A-E][+-]?)(?![A-Z])|\bкатегори[яи]\s*«?([A-E][+-]?)(?![A-Z])»?",
+    re.IGNORECASE,
+)
 
 # University type
 _GOV_TYPE_PATTERN = re.compile(r"(?:Гос|Государственн)[^\s,<]{0,8}\.?\s*вуз", re.IGNORECASE)
@@ -54,6 +60,25 @@ _CITY_PATTERN = re.compile(
 
 # Words that look like itemprop=addressLocality but are NOT city names
 _NON_CITY_WORDS = frozenset({"вузов", "вуза", "вузы", "вуз", "все", "всех"})
+
+_DESCRIPTION_SKIP_PATTERN = re.compile(
+    r"(?:"
+    r"направления подготовки|укрупненная группа|бакалавриат|специалитет|магистратура|"
+    r"проходн|бюджетн|стоимость обучения|отзывы|рейтинг вузов|быстрый поиск|"
+    r"вопрос\s*:|ответ\s*:|вопросы студентов|вопросы абитуриентов|"
+    r"кто может посоветовать|куда поступить|пожалуйста,\s*подождите|oops|загрузить еще раз"
+    r")",
+    re.IGNORECASE,
+)
+_PROGRAM_CODE_PATTERN = re.compile(r"\b\d{2}\.\d{2}\.\d{2}\b")
+_DESCRIPTION_HINT_PATTERN = re.compile(
+    r"(?:является|основан|университет|институт|академи|студент|обуча|наук)",
+    re.IGNORECASE,
+)
+_CITY_REGION_SUFFIX_PATTERN = re.compile(
+    r"\s+и\s+[А-ЯЁа-яё\s-]+(?:область|край|республика)\b.*$",
+    re.IGNORECASE,
+)
 
 
 def _norm(text: str) -> str:
@@ -94,7 +119,7 @@ class _Node:
         if itemprop:
             return f'{self.tag}[itemprop="{itemprop}"]'
         cls = self.attrs.get("class")
-        if cls:
+        if cls and cls.split():
             return f"{self.tag}.{cls.split()[0]}"
         return self.tag
 
@@ -266,24 +291,40 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
 
     @staticmethod
     def _description(nodes: list[_Node]) -> str | None:
-        candidates: list[str] = []
+        candidates: list[tuple[float, str]] = []
         for node in nodes:
-            if node.tag not in {"p", "div"}:
+            if node.tag not in {"p", "div", "span"}:
                 continue
             text = node.text
             # Minimum length and should look like a description (Cyrillic, sentence-like)
-            if len(text) < 80:
+            if len(text) < 120 or len(text) > 3000:
                 continue
             if not re.search(r"[А-ЯЁа-яё]{5,}", text):
                 continue
-            # Skip nav/menu-like text
-            if re.search(r"(?:меню|навигация|шапка|footer|header)", text, re.IGNORECASE):
+            if _PROGRAM_CODE_PATTERN.search(text):
                 continue
-            candidates.append(text)
+            # Skip nav/menu/program-list blocks. The about page contains large divs with
+            # admission programs; storing them as description pollutes the card.
+            if _DESCRIPTION_SKIP_PATTERN.search(text):
+                continue
+            if "{" in text and "}" in text:
+                continue
+            if "http://" in text or "https://" in text:
+                continue
+
+            css_class = node.attr("class").lower()
+            score = min(len(text), 1500) / 1500
+            if "font2" in css_class:
+                score += 1.5
+            if node.attrs.get("itemprop") == "description":
+                score += 0.4
+            if _DESCRIPTION_HINT_PATTERN.search(text):
+                score += 0.6
+            score += min(text.count("."), 4) * 0.1
+            candidates.append((score, text))
         if not candidates:
             return None
-        # Return the longest candidate (most likely the actual description)
-        return max(candidates, key=len)
+        return max(candidates, key=lambda item: item[0])[1]
 
     @staticmethod
     def _inst_type(full_text: str) -> str | None:
@@ -299,7 +340,7 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
         for node in nodes:
             if "globalrating" in node.attr("href"):
                 # The category letter should be near this link
-                m = re.search(r"\b([A-E])\b", node.text)
+                m = re.search(r"(?<![A-Z])([A-E][+-]?)(?![A-Z])", node.text)
                 if m:
                     return m.group(1)
         # Fallback: search full text
@@ -314,23 +355,40 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
         for node in nodes:
             if node.attrs.get("itemprop") not in {"addressLocality", "addressRegion"}:
                 continue
-            text = node.text
-            if not text or len(text) < 2:
-                continue
-            if text.lower() in _NON_CITY_WORDS:
-                continue
-            # City names start with a capital letter and contain no digits
-            if text[0].islower() or any(c.isdigit() for c in text):
-                continue
-            # Strip leading "г. " / "г " prefixes that sometimes appear inside the node
-            text = re.sub(r"^г\.\s*|^г\s+", "", text).strip()
+            text = TabiturientAboutHtmlExtractor._clean_city(node.text)
             if text:
                 return text
-        # Fallback: regex on full text
-        m = _CITY_PATTERN.search(full_text)
-        if m:
-            return m.group(1)
+
+        # Tabiturient often stores the locality as a city link instead of schema.org address.
+        for node in nodes:
+            if "/city/" not in node.attr("href"):
+                continue
+            text = TabiturientAboutHtmlExtractor._clean_city(node.text)
+            if text:
+                return text
+
+        # Fallback: regex on full text. Filter every candidate, otherwise "рейтинг вузов"
+        # is incorrectly parsed as city "вузов".
+        for match in _CITY_PATTERN.finditer(full_text):
+            text = TabiturientAboutHtmlExtractor._clean_city(match.group(1))
+            if text:
+                return text
         return None
+
+    @staticmethod
+    def _clean_city(text: str) -> str | None:
+        value = _norm(text)
+        value = re.sub(r"^г\.\s*|^г\s+", "", value).strip()
+        value = _CITY_REGION_SUFFIX_PATTERN.sub("", value).strip()
+        if not value or len(value) < 2:
+            return None
+        if value.casefold() in _NON_CITY_WORDS:
+            return None
+        if value[0].islower() or any(c.isdigit() for c in value):
+            return None
+        if len(value.split()) > 3:
+            return None
+        return value
 
     @staticmethod
     def _rating(full_text: str) -> float | None:

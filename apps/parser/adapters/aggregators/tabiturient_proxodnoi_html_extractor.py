@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import html as html_lib
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -12,6 +13,7 @@ from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 from .base import AggregatorFragmentExtractor
 
 _WHITESPACE = re.compile(r"\s+")
+_TAG_PATTERN = re.compile(r"<[^>]+>")
 
 # Program code: "01.03.02" format
 _CODE_PATTERN = re.compile(r"\b(\d{2}\.\d{2}\.\d{2})\b")
@@ -27,6 +29,29 @@ _SCORE_PATTERN = re.compile(r"\b(\d{3})\b")
 
 # Budget places: number before "мест" or "бюджет"
 _BUDGET_PATTERN = re.compile(r"(\d+)\s*(?:бюдж|мест|б\.м\.)", re.IGNORECASE)
+_CARD_PATTERN = re.compile(
+    r'<div\s+class="mobpaddcard"[^>]*>(?P<body>.*?)(?=<div\s+class="mobpaddcard"|</body>)',
+    re.IGNORECASE | re.DOTALL,
+)
+_CARD_TITLE_PATTERN = re.compile(
+    r'<span[^>]*class="[^"]*\bfont2\b[^"]*"[^>]*text-transform\s*:\s*uppercase[^>]*>\s*'
+    r"<b>(?P<name>.*?)</b>",
+    re.IGNORECASE | re.DOTALL,
+)
+_CARD_LEVEL_CODE_PATTERN = re.compile(
+    r'<span[^>]*class="[^"]*\bfont2\b[^"]*"[^>]*>\s*'
+    r"(?P<level>[^<|]+)\s*\|\s*(?P<code>\d{2}\.\d{2}\.\d{2})\s*</span>",
+    re.IGNORECASE | re.DOTALL,
+)
+_CARD_FACULTY_PATTERN = re.compile(
+    r"<b>\s*Подразделение:\s*</b>\s*(?P<faculty>.*?)</span>",
+    re.IGNORECASE | re.DOTALL,
+)
+_CARD_SCORE_PATTERN = re.compile(
+    r'<span\s+class="font11">\s*<b>(?P<score>\d{3})</b>\s*</span>\s*'
+    r'<center>\s*<span\s+class="font0">(?P<form>.*?)</span>',
+    re.IGNORECASE | re.DOTALL,
+)
 
 # Study form keywords
 _FORMS = {
@@ -41,6 +66,10 @@ _FORMS = {
 
 def _norm(text: str) -> str:
     return _WHITESPACE.sub(" ", text).strip()
+
+
+def _html_text(value: str) -> str:
+    return _norm(html_lib.unescape(_TAG_PATTERN.sub(" ", value)))
 
 
 def _level_from_code(code: str) -> str:
@@ -186,6 +215,59 @@ def _extract_programs_from_nodes(nodes: list[_Node]) -> list[_ProgramBlock]:
     return programs
 
 
+def _extract_programs_from_cards(html: str) -> list[_ProgramBlock]:
+    programs: list[_ProgramBlock] = []
+    seen: set[tuple[str | None, str, int | None, str | None]] = set()
+
+    for card_match in _CARD_PATTERN.finditer(html):
+        body = card_match.group("body")
+        code_level_match = _CARD_LEVEL_CODE_PATTERN.search(body)
+        title_match = _CARD_TITLE_PATTERN.search(body)
+        if code_level_match is None or title_match is None:
+            continue
+
+        code = code_level_match.group("code")
+        level = _html_text(code_level_match.group("level")) or _level_from_code(code)
+        name = _html_text(title_match.group("name"))
+        if not name:
+            continue
+
+        faculty_match = _CARD_FACULTY_PATTERN.search(body)
+        faculty = _html_text(faculty_match.group("faculty")) if faculty_match else None
+
+        score_match = _CARD_SCORE_PATTERN.search(body)
+        passing_score = int(score_match.group("score")) if score_match else None
+        study_form = _study_form(_html_text(score_match.group("form"))) if score_match else None
+
+        text = _html_text(body)
+        budget_places = None
+        budget_match = _BUDGET_PATTERN.search(text)
+        if budget_match:
+            try:
+                budget_places = int(budget_match.group(1))
+            except ValueError:
+                budget_places = None
+
+        dedupe_key = (code, name.casefold(), passing_score, study_form)
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        programs.append(
+            _ProgramBlock(
+                name=name,
+                code=code,
+                faculty=faculty,
+                passing_score=passing_score,
+                budget_places=budget_places,
+                study_form=study_form,
+                level=level,
+                raw_text=text,
+            )
+        )
+
+    return programs
+
+
 def _finalize(block: _ProgramBlock, texts: list[str]) -> None:
     combined = " ".join(texts)
     block.raw_text = combined
@@ -233,15 +315,17 @@ class TabiturientProxodnoiHtmlExtractor(AggregatorFragmentExtractor):
         artifact: FetchedArtifact,
     ) -> list[ExtractedFragment]:
         html = self._decode(artifact)
-        parser = _ProxodnoiPageParser()
-        parser.feed(html)
-        parser.close()
-
-        programs = _extract_programs_from_nodes(parser.nodes)
+        programs = _extract_programs_from_cards(html)
+        if not programs:
+            parser = _ProxodnoiPageParser()
+            parser.feed(html)
+            parser.close()
+            programs = _extract_programs_from_nodes(parser.nodes)
         slug = self._slug(context.endpoint_url)
 
         frags: list[ExtractedFragment] = []
         for i, prog in enumerate(programs):
+            program_merge_key = f"{prog.code}:{prog.level}:{prog.name}:2025"
             value: dict[str, Any] = {
                 "faculty": prog.faculty,
                 "code": prog.code,
@@ -269,6 +353,9 @@ class TabiturientProxodnoiHtmlExtractor(AggregatorFragmentExtractor):
                         "source_field": "tabiturient.proxodnoi.program",
                         "external_id": slug,
                         "program_code": prog.code,
+                        "program_merge_key": program_merge_key,
+                        "record_group_key": f"tabiturient:{slug}:{program_merge_key}",
+                        "program_year": 2025,
                     },
                 )
             )

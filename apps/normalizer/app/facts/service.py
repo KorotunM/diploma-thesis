@@ -23,8 +23,17 @@ CANONICAL_FACT_FIELDS = (
     "location.country_code",
 )
 SUPPORTING_FACT_FIELDS = (
+    "aliases",
+    "description",
+    "contacts.logo_url",
     "contacts.emails",
     "contacts.phones",
+    "institutional.type",
+    "institutional.category",
+    "institutional.is_flagship",
+    "reviews.rating",
+    "reviews.rating_count",
+    "reviews.items",
 )
 RATING_FIELD_PREFIX = "ratings."
 PROGRAM_FIELD_PREFIX = "programs."
@@ -247,6 +256,13 @@ class ResolvedFactGenerationService:
     ) -> list[ResolvedFactCandidate]:
         claims_by_item_key = self._rating_claims_by_item_key(bootstrap_result.claims_used)
         candidates: list[ResolvedFactCandidate] = []
+        candidates.extend(
+            self._direct_rating_candidates(
+                bootstrap_result=bootstrap_result,
+                evidence_by_claim_id=evidence_by_claim_id,
+                source_tiers=source_tiers,
+            )
+        )
         for rating_item_key, rating_claims in sorted(claims_by_item_key.items()):
             selected_claims = self._select_rating_claims(
                 claims=rating_claims,
@@ -269,6 +285,97 @@ class ResolvedFactGenerationService:
             )
         return candidates
 
+    def _direct_rating_candidates(
+        self,
+        *,
+        bootstrap_result: UniversityBootstrapResult,
+        evidence_by_claim_id: dict[UUID, list[ClaimEvidenceRecord]],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> list[ResolvedFactCandidate]:
+        candidates: list[ResolvedFactCandidate] = []
+        for claim in bootstrap_result.claims_used:
+            if not claim.field_name.startswith(RATING_FIELD_PREFIX):
+                continue
+            if claim.field_name in RATING_COMPONENT_FIELDS:
+                continue
+            if not self._is_rating_item_value(claim.value):
+                continue
+            evidence = evidence_by_claim_id.get(claim.claim_id, [])
+            source_trust_tier = source_tiers.get(claim.source_key, SourceTrustTier.EXPERIMENTAL)
+            policy = self._policy_matrix.policy_for(claim.field_name)
+            if not policy.allows(source_trust_tier):
+                continue
+            candidates.append(
+                ResolvedFactCandidate(
+                    resolved_fact_id=deterministic_resolved_fact_id(
+                        university_id=bootstrap_result.university.university_id,
+                        field_name=claim.field_name,
+                        card_version=self._card_version,
+                    ),
+                    university_id=bootstrap_result.university.university_id,
+                    field_name=claim.field_name,
+                    value={
+                        "provider": str(claim.value["provider"]),
+                        "year": int(claim.value["year"]),
+                        "metric": str(claim.value["metric"]),
+                        "value": str(claim.value["value"]),
+                    },
+                    value_type="rating_item",
+                    fact_score=claim.parser_confidence,
+                    resolution_policy=policy.policy_name,
+                    card_version=self._card_version,
+                    selected_claim_ids=[claim.claim_id],
+                    selected_evidence_ids=[record.evidence_id for record in evidence],
+                    metadata={
+                        "source_key": claim.source_key,
+                        "source_trust_tier": source_trust_tier.value,
+                        "source_keys": sorted(
+                            {
+                                candidate.source_key
+                                for candidate in bootstrap_result.claims_used
+                                if candidate.field_name == claim.field_name
+                                and candidate.value is not None
+                            }
+                        ),
+                        "parser_version": claim.parser_version,
+                        "normalizer_version": claim.normalizer_version,
+                        "entity_hint": claim.entity_hint,
+                        "bootstrap_policy": bootstrap_result.university.metadata.get(
+                            "bootstrap_policy"
+                        ),
+                        "field_resolution_policy": policy.policy_name,
+                        "allowed_trust_tiers": [tier.value for tier in policy.allowed_tiers],
+                        "preferred_trust_tiers": [
+                            tier.value for tier in policy.preferred_tiers
+                        ],
+                        "resolution_strategy": policy.strategy.value,
+                        "source_urls": sorted({record.source_url for record in evidence}),
+                        "rating_item_key": self._metadata_string(claim, "rating_item_key")
+                        or claim.field_name.removeprefix(RATING_FIELD_PREFIX),
+                        "provider_name": self._metadata_string(claim, "provider_name")
+                        or str(claim.value["provider"]),
+                        "provider_key": self._metadata_string(claim, "provider_key")
+                        or str(claim.value["provider"]),
+                        "rank_display": self._metadata_string(claim, "rank_display"),
+                        "scale": self._metadata_string(claim, "scale"),
+                    },
+                )
+            )
+        return candidates
+
+    @staticmethod
+    def _is_rating_item_value(value: object) -> bool:
+        if not isinstance(value, dict):
+            return False
+        required = {"provider", "year", "metric", "value"}
+        if not required.issubset(value):
+            return False
+        try:
+            int(value["year"])
+        except (TypeError, ValueError):
+            return False
+        return all(value[key] is not None for key in required)
+
     def _program_candidates(
         self,
         *,
@@ -278,6 +385,13 @@ class ResolvedFactGenerationService:
     ) -> list[ResolvedFactCandidate]:
         claims_by_item_key = self._program_claims_by_item_key(bootstrap_result.claims_used)
         candidates: list[ResolvedFactCandidate] = []
+        candidates.extend(
+            self._direct_program_candidates(
+                bootstrap_result=bootstrap_result,
+                evidence_by_claim_id=evidence_by_claim_id,
+                source_tiers=source_tiers,
+            )
+        )
         for program_item_key, program_claims in sorted(claims_by_item_key.items()):
             selected_claims = self._select_program_claims(
                 claims=program_claims,
@@ -299,6 +413,102 @@ class ResolvedFactGenerationService:
                 )
             )
         return candidates
+
+    def _direct_program_candidates(
+        self,
+        *,
+        bootstrap_result: UniversityBootstrapResult,
+        evidence_by_claim_id: dict[UUID, list[ClaimEvidenceRecord]],
+        source_tiers: dict[str, SourceTrustTier],
+    ) -> list[ResolvedFactCandidate]:
+        candidates: list[ResolvedFactCandidate] = []
+        for claim in bootstrap_result.claims_used:
+            if not claim.field_name.startswith(PROGRAM_FIELD_PREFIX):
+                continue
+            if claim.field_name in PROGRAM_COMPONENT_FIELDS:
+                continue
+            if not self._is_program_item_value(claim.value):
+                continue
+            evidence = evidence_by_claim_id.get(claim.claim_id, [])
+            source_trust_tier = source_tiers.get(claim.source_key, SourceTrustTier.EXPERIMENTAL)
+            policy = self._policy_matrix.policy_for("programs.name")
+            if not policy.allows(source_trust_tier):
+                continue
+
+            program_item_key = (
+                self._metadata_string(claim, "program_merge_key")
+                or self._metadata_string(claim, "record_group_key")
+                or claim.field_name.removeprefix(PROGRAM_FIELD_PREFIX)
+            )
+            value = claim.value
+            candidates.append(
+                ResolvedFactCandidate(
+                    resolved_fact_id=deterministic_resolved_fact_id(
+                        university_id=bootstrap_result.university.university_id,
+                        field_name=claim.field_name,
+                        card_version=self._card_version,
+                    ),
+                    university_id=bootstrap_result.university.university_id,
+                    field_name=claim.field_name,
+                    value={
+                        "faculty": self._optional_string(value.get("faculty")),
+                        "code": self._optional_string(value.get("code")),
+                        "name": self._optional_string(value.get("name")),
+                        "budget_places": self._optional_int(value.get("budget_places")),
+                        "passing_score": self._optional_float_or_int(value.get("passing_score")),
+                        "study_form": self._optional_string(value.get("study_form")),
+                        "level": self._optional_string(value.get("level")),
+                        "year": self._optional_int(value.get("year")),
+                    },
+                    value_type="program_item",
+                    fact_score=claim.parser_confidence,
+                    resolution_policy=policy.policy_name,
+                    card_version=self._card_version,
+                    selected_claim_ids=[claim.claim_id],
+                    selected_evidence_ids=[record.evidence_id for record in evidence],
+                    metadata={
+                        "source_key": claim.source_key,
+                        "source_trust_tier": source_trust_tier.value,
+                        "source_keys": sorted(
+                            {
+                                candidate.source_key
+                                for candidate in bootstrap_result.claims_used
+                                if candidate.field_name == claim.field_name
+                                and candidate.value is not None
+                            }
+                        ),
+                        "parser_version": claim.parser_version,
+                        "normalizer_version": claim.normalizer_version,
+                        "entity_hint": claim.entity_hint,
+                        "bootstrap_policy": bootstrap_result.university.metadata.get(
+                            "bootstrap_policy"
+                        ),
+                        "field_resolution_policy": policy.policy_name,
+                        "allowed_trust_tiers": [tier.value for tier in policy.allowed_tiers],
+                        "preferred_trust_tiers": [
+                            tier.value for tier in policy.preferred_tiers
+                        ],
+                        "resolution_strategy": policy.strategy.value,
+                        "source_urls": sorted({record.source_url for record in evidence}),
+                        "program_item_key": program_item_key,
+                        "program_code": self._metadata_string(claim, "program_code")
+                        or self._optional_string(value.get("code")),
+                        "program_year": self._metadata_int(claim, "program_year")
+                        or self._optional_int(value.get("year")),
+                        "provider_name": self._metadata_string(claim, "provider_name"),
+                    },
+                )
+            )
+        return candidates
+
+    @staticmethod
+    def _is_program_item_value(value: object) -> bool:
+        if not isinstance(value, dict):
+            return False
+        return bool(
+            ResolvedFactGenerationService._optional_string(value.get("code"))
+            and ResolvedFactGenerationService._optional_string(value.get("name"))
+        )
 
     @staticmethod
     def _rating_claims_by_item_key(
@@ -566,9 +776,42 @@ class ResolvedFactGenerationService:
         return None
 
     @staticmethod
+    def _optional_string(value: object) -> str | None:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return None
+
+    @staticmethod
     def _int_value(claim: ClaimRecord) -> int | None:
         if isinstance(claim.value, int):
             return claim.value
+        return None
+
+    @staticmethod
+    def _optional_int(value: object) -> int | None:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.strip():
+            try:
+                return int(value.strip())
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _optional_float_or_int(value: object) -> float | int | None:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int | float):
+            return value
+        if isinstance(value, str) and value.strip():
+            try:
+                parsed = float(value.strip().replace(",", "."))
+            except ValueError:
+                return None
+            return int(parsed) if parsed.is_integer() else parsed
         return None
 
     @staticmethod
