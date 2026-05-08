@@ -263,11 +263,14 @@ export function UniversityDetailPage({
   const name = strVal(card?.canonical_name?.value) ?? "Вуз";
   const shortName = card?.aliases?.[0] ?? null;
   const city = card?.location?.city ?? null;
+  const region = card?.location?.region ?? null;
   const country = card?.location?.country ?? null;
   const website = card?.contacts?.website ?? null;
   const logoUrl = card?.contacts?.logo_url ?? null;
   const phone = card?.contacts?.phones?.[0] ?? null;
   const address = card?.location?.address ?? null;
+  const avgPassingScore = card?.stats?.avg_passing_score ?? null;
+  const budgetPlaces = card?.stats?.budget_places ?? null;
   const foundedYear = card?.institutional?.founded_year ?? null;
   const instType = card?.institutional?.type ?? null;
   const category = card?.institutional?.category ?? null;
@@ -599,6 +602,39 @@ export function UniversityDetailPage({
               </span>
               <span className="ud-about__value">{address ?? city ?? "—"}</span>
             </div>
+            {region && (
+              <div className="ud-about__field">
+                <span className="ud-about__label">
+                  Регион
+                  {fieldSourceMap.has("location.region") && (
+                    <ProvenanceDot url={fieldSourceMap.get("location.region")!} />
+                  )}
+                </span>
+                <span className="ud-about__value">{region}</span>
+              </div>
+            )}
+            {avgPassingScore != null && (
+              <div className="ud-about__field">
+                <span className="ud-about__label">
+                  Средний проходной балл
+                  {fieldSourceMap.has("stats.avg_passing_score") && (
+                    <ProvenanceDot url={fieldSourceMap.get("stats.avg_passing_score")!} />
+                  )}
+                </span>
+                <span className="ud-about__value">{avgPassingScore}</span>
+              </div>
+            )}
+            {budgetPlaces != null && (
+              <div className="ud-about__field">
+                <span className="ud-about__label">
+                  Бюджетных мест
+                  {fieldSourceMap.has("stats.budget_places") && (
+                    <ProvenanceDot url={fieldSourceMap.get("stats.budget_places")!} />
+                  )}
+                </span>
+                <span className="ud-about__value">{budgetPlaces}</span>
+              </div>
+            )}
             <div className="ud-about__field">
               <span className="ud-about__label">
                 Тип вуза

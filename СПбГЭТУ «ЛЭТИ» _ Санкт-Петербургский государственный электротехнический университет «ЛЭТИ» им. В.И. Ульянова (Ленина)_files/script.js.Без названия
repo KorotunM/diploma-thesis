@@ -1,0 +1,2202 @@
+window.onload = function() {
+var advtd = $('.advtd').height();
+var content = $('.content').height();
+if(advtd>content){
+var advtd = advtd+20;
+$('.content').css('min-height', advtd+'px');	
+}
+
+};
+
+window.onscroll = function() {
+
+var adv2 = $('.adv2').height();
+var adv1 = $('.adv1').height();
+if(adv2){
+var advtd = $('.advtd').height()+20;
+var content = $('.content').height();
+
+
+if(advtd<content){
+var header = $('.header').height();
+var cont = header+adv1+10;
+var scrolled = $(window).scrollTop();
+var totheight=$(document).height();
+var footer = $('.footer').height();
+var sum1=totheight-footer-adv2-20;
+var sum2=content-adv2-20;
+
+if(scrolled>cont){
+$('.adv2').css('position', 'fixed');
+$('.adv2').css('top', '0');
+}
+
+if(scrolled<=cont){
+$('.adv2').css('position', 'relative');
+}
+
+if(scrolled>sum1){
+$('.adv2').css('position', 'absolute');
+$('.adv2').css('top', sum2);
+}
+
+
+}
+
+}
+
+};
+
+function closepopup(){
+$('.popup').fadeOut();
+$('body').css('overflow','auto');
+}
+
+
+  $('#popup1').mouseup(function (e){
+    var div = $('#popupcontent1');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+    $('#popup2').mouseup(function (e){
+    var div = $('#popupcontent2');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+      $('#popup3').mouseup(function (e){
+    var div = $('#popupregistr');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+  
+        $('#popup4').mouseup(function (e){
+    var div = $('#popupcontent4');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+        $('#popup5').mouseup(function (e){
+    var div = $('#popupcontent5');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+          $('#popup6').mouseup(function (e){
+    var div = $('#popupcontent6');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+
+          $('#popup7').mouseup(function (e){
+    var div = $('#popupcontent7');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('.popup').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+  
+    $('#popup1-1').mouseup(function (e){
+    var div = $('#popupcontent1');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('#popup1-1').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+    $('#popup8').mouseup(function (e){
+    var div = $('#popupcontent8');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('#popup8').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+      $('#popup9').mouseup(function (e){
+    var div = $('#popupcontent9');
+    if (!div.is(e.target) && div.has(e.target).length === 0) {
+      $('#popup9').fadeOut();
+	  $('body').css('overflow','auto');
+    }
+  });
+  
+  function sendfilet(url,tgchatid,fileid){
+	  	$('#sendfilepre'+fileid+'').fadeOut(0);
+	$('#sendfilepost'+fileid+'').fadeIn(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     "https://artoteka.club/tabiturient/ajsendfile.php", 
+										dataType: "html",
+										data: {
+											tgchatid: tgchatid,
+											fileid: fileid
+										},				
+										success: function(response) {
+										},
+										error: function(response) {	
+
+										}
+									});		
+	
+	
+}
+
+  function openf(id){
+var openstatus=document.getElementById('openstatus'+id).innerHTML;
+if(openstatus=='0'){
+$('#open'+id).fadeIn(0);
+document.getElementById('openstatus'+id).innerHTML=1;
+$('#openimg'+id).addClass('rotate');
+$('#openimgm'+id).addClass('rotate');
+$('body,html').animate({scrollTop: $('#vuz'+id).offset().top-0},500);
+}
+if(openstatus=='1'){
+$('#open'+id).fadeOut(0);
+document.getElementById('openstatus'+id).innerHTML=0;
+$('#openimg'+id).removeClass('rotate');
+$('#openimgm'+id).removeClass('rotate');
+}
+
+}
+
+
+  function opendopf(id){
+
+var w = $('.header').width();
+if(w<=1020){  
+  
+var opendopstatus=document.getElementById('opendopstatus'+id).innerHTML;
+if(opendopstatus=='0'){
+$('#dop'+id).fadeIn(0);
+document.getElementById('opendopstatus'+id).innerHTML=1;
+$('#opendopimg'+id).addClass('rotate');
+$('body,html').animate({scrollTop: $('#vuz'+id).offset().top-0},500);
+}
+if(opendopstatus=='1'){
+$('#dop'+id).fadeOut(0);
+document.getElementById('opendopstatus'+id).innerHTML=0;
+$('#opendopimg'+id).removeClass('rotate');
+}
+}
+
+}
+
+
+function openmenu(url){
+$('.menuuser').fadeOut(0);	
+document.getElementById('listopen2').innerHTML=0;
+$('.userlabimg2').removeClass('userlabimg2active');
+var listopen=document.getElementById('listopen').innerHTML;
+
+if(listopen=='0'){
+$('.menu').fadeIn(0);
+document.getElementById('listopen').innerHTML=1;
+$('.list').attr("src", url+"/img/x.png");
+}
+
+if(listopen=='1'){
+$('.menu').fadeOut(0);
+document.getElementById('listopen').innerHTML=0;
+$('.list').attr("src", url+"/img/list.png");
+}
+
+}
+
+
+function openmenu2(url){
+	
+$('.menu').fadeOut(0);
+document.getElementById('listopen').innerHTML=0;
+$('.list').attr("src", url+"/img/list.png");
+	
+var listopen2=document.getElementById('listopen2').innerHTML;
+
+if(listopen2=='0'){
+$('.menuuser').fadeIn(0);
+document.getElementById('listopen2').innerHTML=1;
+$('.userlabimg2').addClass('userlabimg2active');
+}
+
+if(listopen2=='1'){
+$('.menuuser').fadeOut(0);
+document.getElementById('listopen2').innerHTML=0;
+$('.userlabimg2').removeClass('userlabimg2active');
+}
+
+}
+
+
+function popup(id){
+$('#popup'+id).fadeIn(0); 
+
+var w = $('.header').width();
+if(w<=1020){
+$('body').css('overflow','hidden');
+}
+}
+
+
+
+
+
+
+function key(id,minege){
+	ege = $('input[name=ege'+id+']').val()*1;
+	
+	if(ege>=minege){
+	$('#ege'+id).css('background', 'linear-gradient(to right, #F3F8E7, #F3F8E7, #F3F8E7)');
+	}
+    if(ege<minege){
+	$('#ege'+id).css('background', 'linear-gradient(to right, #F8EBEB, #F8EBEB)');
+	}
+	if(ege>100){
+	$('input[name=ege'+id+']').val('100');
+	}
+if(ege==''){
+$('#ege'+id).css('background', 'linear-gradient(to right, #f1f1f1, #ffffff)');	
+}
+}
+
+
+function cir(id){
+$('.cir'+id).toggleClass('on');
+
+}
+
+function cir2(id,url,page1,page2,page3,page4){
+$('.loader1-0').fadeIn(0);
+$('.cir'+id).toggleClass('on');
+var cirans=document.getElementById('cirans'+id).innerHTML;
+if(cirans=='0'){
+document.getElementById('cirans'+id).innerHTML=1;	
+}
+if(cirans=='1'){
+document.getElementById('cirans'+id).innerHTML=0;	
+}
+setTimeout(function() {
+showvuz2(url,page1,page2,page3,page4);
+}, 100);
+}
+
+function cir3(id,url,idvuz){
+
+$('.cir'+id).toggleClass('on');
+var cirans=document.getElementById('cirans'+id).innerHTML;
+if(cirans=='0'){
+document.getElementById('cirans'+id).innerHTML=1;	
+}
+if(cirans=='1'){
+document.getElementById('cirans'+id).innerHTML=0;	
+}
+setTimeout(function() {
+showspec(url,idvuz,'0');
+}, 100);
+
+}
+
+
+function cir4(id,url){
+$('.loader1-0-0').fadeIn(0);
+$('.cir'+id).toggleClass('on');
+var cirans=document.getElementById('cirans'+id).innerHTML;
+if(cirans=='0'){
+document.getElementById('cirans'+id).innerHTML=1;	
+}
+if(cirans=='1'){
+document.getElementById('cirans'+id).innerHTML=0;	
+}
+setTimeout(function() {
+shownp(url);
+}, 100);
+}
+
+function cir5(id,url){
+
+$('.cir'+id).toggleClass('on');
+var cirans=document.getElementById('cirans'+id).innerHTML;
+if(cirans=='0'){
+document.getElementById('cirans'+id).innerHTML=1;	
+}
+if(cirans=='1'){
+document.getElementById('cirans'+id).innerHTML=0;	
+}
+
+}
+
+
+function cgggf(url){	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajcggg.php", 
+										dataType: "html",
+
+										data: {
+										},				
+										success: function(response) {
+											document.getElementById('cggg').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('cggg').innerHTML = '';
+										}
+									});
+	
+}
+
+
+function shownp(url){	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajnp.php", 
+										dataType: "html",
+
+										data: {
+											search: $('input[name=search]').val(),
+											city: $('input[name=citynnp]').val(),
+											city2: $('input[name=citynnp2]').val(),
+											sort: $('select[name=sort]').val(),
+											limit : document.getElementById('limit').innerHTML,
+											math : document.getElementById('cirans4').innerHTML,
+											obsh : document.getElementById('cirans5').innerHTML,
+											foreg : document.getElementById('cirans6').innerHTML,
+											inform : document.getElementById('cirans7').innerHTML,
+											biolog : document.getElementById('cirans8').innerHTML,
+											geog : document.getElementById('cirans9').innerHTML,
+											xim : document.getElementById('cirans10').innerHTML,
+											fiz : document.getElementById('cirans11').innerHTML,
+											lit : document.getElementById('cirans12').innerHTML,
+											hist : document.getElementById('cirans13').innerHTML,
+											dop : document.getElementById('cirans14').innerHTML
+										},				
+										success: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											document.getElementById('resultdiv0').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdiv0').innerHTML = '';
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											$('.error1-0').fadeIn(0);
+										}
+									});
+	
+}
+
+
+function showmoreinfof2(url,id){	
+document.getElementById('resultdivshowmoreinfo').innerHTML = '';
+$('.error1-7').fadeOut(0);
+$('.loader1-7').fadeIn(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowmoreinfof2.php", 
+										dataType: "html",
+
+										data: {
+											id: id
+										},				
+										success: function(response) {
+											$('.loader1-7').fadeOut(0);
+											document.getElementById('resultdivshowmoreinfo').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivshowmoreinfo').innerHTML = '';
+											$('.loader1-7').fadeOut(0);
+											$('.error1-7').fadeIn(0);
+										}
+									});
+	
+}
+
+
+function showmoreinfof3(url,id){	
+document.getElementById('resultdivshowmoreinfo3').innerHTML = '';
+$('.error1-8').fadeOut(0);
+$('.loader1-8').fadeIn(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowmoreinfof3.php", 
+										dataType: "html",
+
+										data: {
+											id: id
+										},				
+										success: function(response) {
+											$('.loader1-8').fadeOut(0);
+											document.getElementById('resultdivshowmoreinfo3').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivshowmoreinfo3').innerHTML = '';
+											$('.loader1-8').fadeOut(0);
+											$('.error1-8').fadeIn(0);
+										}
+									});
+	
+}
+
+
+function showmoreinfof4(url,id,specid){	
+document.getElementById('resultdivshowmoreinfo4').innerHTML = '';
+$('.error1-8').fadeOut(0);
+$('.loader1-8').fadeIn(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowmoreinfof4.php", 
+										dataType: "html",
+
+										data: {
+											id: id,
+											specid: specid
+										},				
+										success: function(response) {
+											$('.loader1-8').fadeOut(0);
+											document.getElementById('resultdivshowmoreinfo4').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivshowmoreinfo4').innerHTML = '';
+											$('.loader1-8').fadeOut(0);
+											$('.error1-8').fadeIn(0);
+										}
+									});
+	
+}
+
+
+function showmoreinfof5(url,id){	
+document.getElementById('resultdivshowmoreinfo5').innerHTML = '';
+$('.error1-8').fadeOut(0);
+$('.loader1-8').fadeIn(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowmoreinfof5.php", 
+										dataType: "html",
+
+										data: {
+											id: id
+										},				
+										success: function(response) {
+											$('.loader1-8').fadeOut(0);
+											document.getElementById('resultdivshowmoreinfo5').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivshowmoreinfo5').innerHTML = '';
+											$('.loader1-8').fadeOut(0);
+											$('.error1-8').fadeIn(0);
+										}
+									});
+	
+}
+
+
+function showcity(url,page1,page2,page3){
+	if(page1=='calculator'){
+		page3=$('input[name=citylist]').val();
+	}
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajcity.php", 
+										dataType: "html",
+
+										data: {
+											page1: page1,
+											page2: page2,
+											page3: page3,
+											city: $('input[name=city]').val()
+										},				
+										success: function(response) {
+											$('.loader1-2').fadeOut(0);
+											document.getElementById('resultdiv2').innerHTML = response;
+										},
+										error: function(response) {
+											$('.loader1-2').fadeOut(0);
+											$('.error1-2').fadeIn(0);
+										}
+									});
+	
+	
+}
+
+function shownap(url,page1,page2,page3){
+	if(page1=='calculator'){
+		page3=$('input[name=spec]').val();
+	}	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajnap.php", 
+										dataType: "html",
+
+										data: {
+											page1: page1,
+											page2: page2,
+											page3: page3,
+											nap: $('input[name=nap]').val()
+										},				
+										success: function(response) {
+											$('.loader1-1').fadeOut(0);
+											document.getElementById('resultdiv1').innerHTML = response;
+										},
+										error: function(response) {
+											$('.loader1-1').fadeOut(0);
+											$('.error1-1').fadeIn(0);
+										}
+									});
+	
+	
+}
+
+
+
+
+
+function showvuz1(url,page1,page2,more){
+
+var vuz=$('input[name=vuz]').val();
+
+if(more!='1'){
+document.getElementById('resultdiv0').innerHTML = '';
+$('.loader1-0').fadeIn(0);
+}
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajvuz1.php", 
+										dataType: "html",
+
+										data: {
+											vuz: vuz,
+											limit : document.getElementById('limit').innerHTML,
+											page1:page1,
+											page2:page2
+										},				
+										success: function(response) {
+											$('.loader1-0').fadeOut(0);
+											document.getElementById('resultdiv0').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdiv0').innerHTML = '';
+											$('.loader1-0').fadeOut(0);
+											$('.error1-0').fadeIn(0);
+										}
+									});
+
+
+	
+}
+
+
+function showvuz2(url,page1,page2,page3,page4){	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajvuz2.php", 
+										dataType: "html",
+
+										data: {
+											math : document.getElementById('cirans4').innerHTML,
+											obsh : document.getElementById('cirans5').innerHTML,
+											foreg : document.getElementById('cirans6').innerHTML,
+											inform : document.getElementById('cirans7').innerHTML,
+											biolog : document.getElementById('cirans8').innerHTML,
+											geog : document.getElementById('cirans9').innerHTML,
+											xim : document.getElementById('cirans10').innerHTML,
+											fiz : document.getElementById('cirans11').innerHTML,
+											lit : document.getElementById('cirans12').innerHTML,
+											hist : document.getElementById('cirans13').innerHTML,
+											dop : document.getElementById('cirans14').innerHTML,
+											limit : document.getElementById('limit').innerHTML,
+											page1:page1,
+											page2:page2,
+											page3:page3,
+											page4:page4
+										},				
+										success: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-1').fadeOut(0);
+											document.getElementById('resultdiv0').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdiv0').innerHTML = '';
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-1').fadeOut(0);
+											$('.error1-0').fadeIn(0);
+										}
+									});
+	
+}
+
+
+function morelimit(url,id,page1,page2){
+	$('.loader1-0').fadeIn(0);
+	var limit=(document.getElementById('limit').innerHTML)*1+25;
+	document.getElementById('limit').innerHTML=limit;
+	showvuz1(url,page1,page2,'1');
+}
+
+
+function morelimit2(url,vuzid){
+	$('.loader1-0-0').fadeIn(0);
+	var limit=(document.getElementById('limit').innerHTML)*1+25;
+	document.getElementById('limit').innerHTML=limit;
+	showsliv(url,vuzid);
+}
+
+function morelimit3(url){
+	$('.loader1-0').fadeIn(0);
+	var limit=(document.getElementById('limit').innerHTML)*1+50;
+	document.getElementById('limit').innerHTML=limit;
+	shownp(url);
+}
+
+function morelimit4(url){
+	$('.loader1-0-0').fadeIn(0);
+	var limit=(document.getElementById('limit').innerHTML)*1+80;
+	document.getElementById('limit').innerHTML=limit;
+	calculator(url,'1');
+}
+
+function morelimit6(url,page2,page3,idvuz){
+	document.getElementById('limit6').innerHTML=0;
+	showvuzlink(url,page2,page3,'0',idvuz);
+}
+
+function morelimit7(url,page1,page2,page3,page4){
+	$('.loader1-1').fadeIn(0);
+	var limit=(document.getElementById('limit').innerHTML)*1+20;
+	document.getElementById('limit').innerHTML=limit;
+	showvuz2(url,page1,page2,page3,page4);
+}
+
+function showspec(url,idvuz,what){	
+if(what=='1'){
+$('.loader1-0-0').fadeIn(0);
+}
+if(what=='0'){
+$('.loader1-0').fadeIn(0);
+}
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajspec.php", 
+										dataType: "html",
+
+										data: {
+											search: $('input[name=search]').val(),
+											bud : document.getElementById('cirans0').innerHTML,
+											egenab : $('input[name=egenab]').val(),
+											idvuz:idvuz,
+											what:what,
+											sort: $('select[name=sort]').val()
+										},				
+										success: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											document.getElementById('rezspec').innerHTML = response;
+											if(what=='1'){
+												$('body,html').animate({scrollTop: $('#firstopen').offset().top-0},1000);
+												}
+										},
+										error: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											document.getElementById('rezspec').innerHTML = '';
+
+										}
+									});
+	
+}
+
+function funcegein(ege,txtt,v1,v2){
+	closepopup();
+	$('input[name=egenab]').val(ege);
+	document.getElementById('txtine').innerHTML = txtt;
+	
+	
+$('.specsh').removeClass('specshactive');	
+if(ege!=''){
+$('#specsh'+ege).addClass('specshactive');
+$('.tablespecsh').css('color', 'black');
+$('.tablespecsh'+ege).css('color', 'white');
+}
+
+if(ege==''){
+$('.tablespecsh').css('color', 'black');	
+$('#specsh0').addClass('specshactive');	
+}
+
+
+showspec(v1,v2,'0');
+
+}
+
+
+function showdopinfo(url,id){	
+document.getElementById('resultdopinfo'+id).innerHTML = '<div class="loader1 loader-dop-'+id+' p20" style="display:block"><center><img src="'+url+'/img/loader.gif"><br><b class="font11">Пожалуйста, подождите. Идет загрузка...</b></center></div>';
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajdopinfo.php", 
+										dataType: "html",
+										data: {
+											id: id
+										},				
+										success: function(response) {
+											document.getElementById('resultdopinfo'+id).innerHTML = response;
+										},
+										error: function(response) {							
+											document.getElementById('resultdopinfo'+id).innerHTML = '<div class="more error" style="display:block;"><div class="p20"><center><img src="'+url+'/img/ghost2.png"><br><b class="font11">Oops... Что-то пошло не так. Возможно, пропал Интеренет :(</b></center></div></div>';
+setTimeout(function() {
+showdopinfo(url,id);
+}, 1000);	
+										}
+									});
+	
+}
+
+
+function showsliv(url,vuzid){	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajsliv.php", 
+										dataType: "html",
+
+										data: {
+											vuzid: vuzid,
+											limit : document.getElementById('limit').innerHTML,
+											sortby: $('select[name=sortby]').val(),
+											sortby2: $('select[name=sortby2]').val()
+										},				
+										success: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											document.getElementById('resultsliv').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultsliv').innerHTML = '';
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											$('.error1-0').fadeIn(0);
+										}
+									});
+}
+
+function like(url,id){
+
+
+var classlikedivactive=$('#likediv'+id).hasClass('likedivactive');
+if(!classlikedivactive){
+document.getElementById('likeval'+id).innerHTML=(document.getElementById('likeval'+id).innerHTML)*1+1;	
+$('#likediv'+id).addClass('likedivactive');	
+$('#likeimg'+id).attr("src", url+"/img/h2.png");
+}
+
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajlike.php", 
+										dataType: "html",
+
+										data: {
+											id:id
+										},				
+										success: function(response) {
+											document.getElementById('likeval'+id).innerHTML = response;
+										},
+										error: function(response) {
+
+										}
+									});
+	
+}
+
+function like2(url,id){
+
+
+var classlikedivactive=$('#likediv'+id).hasClass('likedivactive');
+if(!classlikedivactive){
+document.getElementById('likeval'+id).innerHTML=(document.getElementById('likeval'+id).innerHTML)*1+1;	
+$('#likediv'+id).addClass('likedivactive');	
+$('#likeimg'+id).attr("src", url+"/img/h2.png");
+}
+
+var classlikedivactivez=$('#likedivz'+id).hasClass('likedivactive');
+if(!classlikedivactivez){
+document.getElementById('likevalz'+id).innerHTML=(document.getElementById('likevalz'+id).innerHTML)*1+1;	
+$('#likedivz'+id).addClass('likedivactive');	
+$('#likeimgz'+id).attr("src", url+"/img/h2.png");
+}
+
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajlike2.php", 
+										dataType: "html",
+
+										data: {
+											id:id
+										},				
+										success: function(response) {
+											document.getElementById('likeval'+id).innerHTML = response;
+										},
+										error: function(response) {
+
+										}
+									});
+	
+}
+
+
+function like3(url,id){
+var classlikedivactive=$('#likediv'+id).hasClass('likedivactive');
+if(!classlikedivactive){
+document.getElementById('likeval'+id).innerHTML=(document.getElementById('likeval'+id).innerHTML)*1+1;	
+$('#likediv'+id).addClass('likedivactive');	
+$('#likeimg'+id).attr("src", url+"/img/h2.png");
+}
+
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajlike3.php", 
+										dataType: "html",
+
+										data: {
+											id:id
+										},				
+										success: function(response) {
+											document.getElementById('likeval'+id).innerHTML = response;
+										},
+										error: function(response) {
+
+										}
+									});
+	
+}
+
+function like4(url,id){
+var classlikedivactive=$('#likediv'+id).hasClass('likedivactive');
+if(!classlikedivactive){
+document.getElementById('likeval'+id).innerHTML=(document.getElementById('likeval'+id).innerHTML)*1+1;	
+$('#likediv'+id).addClass('likedivactive');	
+$('#likeimg'+id).attr("src", url+"/img/h2.png");
+}
+
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajlike4.php", 
+										dataType: "html",
+
+										data: {
+											id:id
+										},				
+										success: function(response) {
+											document.getElementById('likeval'+id).innerHTML = response;
+										},
+										error: function(response) {
+
+										}
+									});
+	
+}
+
+function showwarnings(url,id){	
+$('.loader1-'+id).fadeIn(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajwarnings.php", 
+										dataType: "html",
+
+										data: {
+											id:id
+										},				
+										success: function(response) {
+											$('.loader1-'+id).fadeOut(0);
+											document.getElementById('resultdivwarnings'+id).innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivwarnings'+id).innerHTML = '';
+											$('.loader1-'+id).fadeOut(0);
+											$('.error1-'+id).fadeIn(0);
+										}
+									});
+	
+}
+
+
+function sendwarning(url,id){
+
+var warning = $('textarea[name=warning'+id+']').val();
+
+if(warning!=''){
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajsendwarnings.php", 
+										dataType: "html",
+
+										data: {
+											id:id,
+											warning:warning
+										},				
+										success: function(response) {
+											$('#postsendwarning'+id).fadeIn(0);
+                                            $('#sendwarning'+id).fadeOut(0);
+										},
+										error: function(response) {
+
+										}
+									});
+
+}
+
+
+
+if(warning==''){
+setTimeout(function() {
+$('#textareawarning'+id).css('background', '#f1f1f1');
+}, 0);
+setTimeout(function() {
+$('#textareawarning'+id).css('background', 'none');
+}, 200);
+setTimeout(function() {
+$('#textareawarning'+id).css('background', '#f1f1f1');
+}, 400);
+
+setTimeout(function() {
+$('#textareawarning'+id).css('background', 'none');
+}, 600);
+setTimeout(function() {
+$('#textareawarning'+id).css('background', '#f1f1f1');
+}, 800);
+
+setTimeout(function() {
+$('#textareawarning'+id).css('background', 'none');
+}, 1000);
+}
+	
+}
+
+
+
+function sendwarning2(url,id){
+
+var warning = $('textarea[name=warning'+id+']').val();
+
+if(warning!=''){
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajsendwarnings2.php", 
+										dataType: "html",
+
+										data: {
+											id:id,
+											warning:warning
+										},				
+										success: function(response) {
+											$('#postsendwarning'+id).fadeIn(0);
+                                            $('#sendwarning'+id).fadeOut(0);
+										},
+										error: function(response) {
+
+										}
+									});
+
+}
+
+if(warning==''){
+setTimeout(function() {
+$('#textareawarning'+id).css('background', '#f1f1f1');
+}, 0);
+setTimeout(function() {
+$('#textareawarning'+id).css('background', 'none');
+}, 200);
+setTimeout(function() {
+$('#textareawarning'+id).css('background', '#f1f1f1');
+}, 400);
+
+setTimeout(function() {
+$('#textareawarning'+id).css('background', 'none');
+}, 600);
+setTimeout(function() {
+$('#textareawarning'+id).css('background', '#f1f1f1');
+}, 800);
+
+setTimeout(function() {
+$('#textareawarning'+id).css('background', 'none');
+}, 1000);
+}
+	
+}
+
+function calculator(url,limmore) {
+									jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajcalculator.php", 
+										dataType: "html",
+
+										data: {
+sumrus : $('input[name=ege0]').val(),
+summath : $('input[name=ege10]').val(),
+sumobsh : $('input[name=ege1]').val(),
+sumforeg : $('input[name=ege2]').val(),
+suminform : $('input[name=ege3]').val(),
+sumbiolog : $('input[name=ege4]').val(),
+sumgeog : $('input[name=ege5]').val(),
+sumxim : $('input[name=ege6]').val(),
+sumfiz : $('input[name=ege7]').val(),
+sumlit : $('input[name=ege8]').val(),
+sumhist : $('input[name=ege9]').val(),
+sort : $('select[name=sortby]').val(),
+spec : $('input[name=spec]').val(),
+city : $('input[name=citylist]').val(),
+dopex : document.getElementById('cirans0').innerHTML,
+medal : document.getElementById('cirans1').innerHTML,
+gto : document.getElementById('cirans2').innerHTML,
+volont : document.getElementById('cirans3').innerHTML,
+form1 : document.getElementById('cirans4').innerHTML,
+form2 : document.getElementById('cirans5').innerHTML,
+form3 : document.getElementById('cirans6').innerHTML,
+limit : document.getElementById('limit').innerHTML,
+limmore : limmore
+
+										},				
+										success: function(response) {
+											document.getElementById('resultdiv').innerHTML = response;
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											
+										},
+										error: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											$('.error1-0').fadeIn(0);
+										}
+									});
+									
+								
+}
+
+
+function removenap(url){
+	$('.removenap1').fadeOut(0);
+	$('.removenap2').fadeIn(0);
+}
+
+function go(to){
+$('body,html').animate({scrollTop: $('#go'+to).offset().top-0},1000);
+}
+
+
+function clearallnp(url){
+$('.specsh').removeClass('specshactive');	
+$('#specsh0').addClass('specshactive');
+$('input[name=spec]').val('');
+document.getElementById('nabnp').innerHTML = '';
+document.getElementById('shownaptype1').innerHTML='<b>Любое направление подготовки</b><br>Выбрать направление';
+tuchka(url);
+
+typeofcalc=document.getElementById('typeofcalc').innerHTML;
+												if(typeofcalc=='2'){
+													setTimeout(function() {
+												pricecalculator(url);
+												}, 100);
+											}
+
+}
+
+function removenp(url,id){
+	$('#np'+id).remove();
+	$('#specsh'+id).removeClass('specshactive'); 
+	document.getElementById('nptrue'+id).innerHTML=0;
+	var spec=$('input[name=spec]').val();
+	var spec=spec.replace(id+' ', '');
+	$('input[name=spec]').val(spec);
+	if(spec==''){
+	$('#specsh0').addClass('specshactive');
+	document.getElementById('shownaptype1').innerHTML='<b>Любое направление подготовки</b><br>Выбрать направление';
+	}
+	tuchka(url);
+typeofcalc=document.getElementById('typeofcalc').innerHTML;
+												if(typeofcalc=='2'){
+													setTimeout(function() {
+												pricecalculator(url);
+												}, 100);
+											}	
+	
+}
+
+function removenp2(url,id){
+	$('#np'+id).remove();
+	$('#np-2-'+id).remove();
+	$('#specsh'+id).removeClass('specshactive'); 
+	document.getElementById('nptrue'+id).innerHTML=0;
+	var spec=' '+$('input[name=spec]').val();
+	var spec=spec.replace('  ', ' ');
+	var spec=spec.replace(' '+id+' ', ' ');
+	$('input[name=spec]').val(spec);
+	if(spec==''){
+	$('#specsh0').addClass('specshactive');
+	document.getElementById('shownaptype1').innerHTML='Выбрать тэги';
+	}
+showvopros(url);
+}
+
+function addnp(url,id,name){
+var nptrue=document.getElementById('nptrue'+id).innerHTML;
+document.getElementById('shownaptype1').innerHTML='<b>Добавить направление подготовки</b>';
+if(nptrue=='0'){
+$('#specsh0').removeClass('specshactive'); 
+$('#specsh'+id).addClass('specshactive'); 
+var spec=$('input[name=spec]').val();
+spec=spec+id+' ';
+$('input[name=spec]').val(spec);
+document.getElementById('nptrue'+id).innerHTML=1;
+$('.nabnp').append('<table cellpadding="0" cellspacing="0" class="button1 removenap1" id="np'+id+'" onclick="removenp(\''+url+'\',\''+id+'\')"><tr><td><span class="font2"><b>'+name+'</b></span></td><td><img src="'+url+'/img/cancel.png" class="img1"></td></tr></table>');	
+tuchka(url);
+}
+if(nptrue=='1'){
+	removenp(url,id);
+}
+
+typeofcalc=document.getElementById('typeofcalc').innerHTML;
+												if(typeofcalc=='2'){
+													setTimeout(function() {
+												pricecalculator(url);
+												}, 100);
+											}
+}
+
+function addnp2(url,id,name,type){
+var nptrue=document.getElementById('nptrue'+id).innerHTML;
+document.getElementById('shownaptype1').innerHTML='Добавить тэг';
+if(nptrue=='0'){
+$('#specsh0').removeClass('specshactive'); 
+$('#specsh'+id).addClass('specshactive'); 
+var spec=' '+$('input[name=spec]').val();
+var spec=spec.replace('  ', ' ');
+spec=spec+id+' ';
+$('input[name=spec]').val(spec);
+document.getElementById('nptrue'+id).innerHTML=1;
+$('.nabnp').append('<table cellpadding="0" cellspacing="0" class="button1 removenap1" id="np'+id+'" onclick="removenp2(\''+url+'\',\''+id+'\')"><tr><td><span class="font1">'+type+'<br><b>'+name+'</b></span></td><td><img src="'+url+'/img/cancel.png" class="img1"></td></tr></table>');	
+$('.nabnp2').append('<table cellpadding="0" cellspacing="0" class="button1 removenap1" id="np-2-'+id+'" onclick="removenp2(\''+url+'\',\''+id+'\')"><tr><td><span class="font1">'+type+'<br><b>'+name+'</b></span></td><td><img src="'+url+'/img/cancel.png" class="img1"></td></tr></table>');	
+}
+if(nptrue=='1'){
+	removenp2(url,id);
+}
+showvopros(url);
+}
+
+
+function tuchka(url) {
+									jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajtuchka.php", 
+										dataType: "html",
+
+										data: {
+                                        spec : $('input[name=spec]').val()
+										},				
+										success: function(response) {
+											document.getElementById('tuch').innerHTML = response;	
+										}
+									});
+}
+
+function clearallcity(url){
+$('.specsh').removeClass('specshactive');	
+$('#specshcity0').addClass('specshactive');
+$('input[name=citylist]').val('');
+document.getElementById('nabcity').innerHTML = '';
+document.getElementById('shownaptype2').innerHTML='<b>Вся Россия</b><br>Выбрать субъект РФ';
+typeofcalc=document.getElementById('typeofcalc').innerHTML;
+												if(typeofcalc=='2'){
+													setTimeout(function() {
+												pricecalculator(url);
+												}, 100);
+											}
+}
+
+function removecity(url,id){
+	$('#city'+id).remove();
+	$('#specshcity'+id).removeClass('specshactive'); 
+	document.getElementById('citytrue'+id).innerHTML=0;
+	var city=$('input[name=citylist]').val();
+	var city=city.replace(id+' ', '');
+	$('input[name=citylist]').val(city);
+	if(city==''){
+	document.getElementById('shownaptype2').innerHTML='<b>Вся Россия</b><br>Выбрать субъект РФ';
+	$('#specshcity0').addClass('specshactive');
+	}
+	typeofcalc=document.getElementById('typeofcalc').innerHTML;
+												if(typeofcalc=='2'){
+													setTimeout(function() {
+												pricecalculator(url);
+												}, 100);
+											}
+
+}
+
+function addcity(url,id,name,namelat){
+document.getElementById('shownaptype2').innerHTML='<b>Добавить субъект РФ</b>';
+var citytrue=document.getElementById('citytrue'+id).innerHTML;
+if(citytrue=='0'){
+$('#specshcity0').removeClass('specshactive'); 
+$('#specshcity'+id).addClass('specshactive'); 
+var city=$('input[name=citylist]').val();
+city=city+id+' ';
+$('input[name=citylist]').val(city);
+document.getElementById('citytrue'+id).innerHTML=1;
+$('.nabcity').append('<table cellpadding="0" cellspacing="0" class="button1 removenap1" id="city'+id+'" onclick="removecity(\''+url+'\',\''+id+'\')"><tr><td><img src="'+url+'/img/herb/'+namelat+'.png" class="img3"></td><td><span class="font2"><b>'+name+'</b></span></td><td><img src="'+url+'/img/cancel.png" class="img1"></td></tr></table>');	
+
+}
+
+if(citytrue=='1'){
+	removecity(url,id);
+}
+
+typeofcalc=document.getElementById('typeofcalc').innerHTML;
+												if(typeofcalc=='2'){
+													setTimeout(function() {
+												pricecalculator(url);
+												}, 100);
+											}
+}
+
+function vera(url,id,type){
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajvera.php", 
+										dataType: "html",
+
+										data: {
+											id:id,
+											type:type
+										},				
+										success: function(response) {
+											$('#doverieform'+id).fadeOut(0);
+											document.getElementById('vera'+id).innerHTML = response;
+										},
+										error: function(response) {
+
+										}
+									});
+}
+
+function bookmark(url,id){
+	
+$('#bookmark'+id).toggleClass('bookmarkactive');
+	
+var bookmarkval=document.getElementById('bookmarkval'+id).innerHTML;
+
+if(bookmarkval=='0'){
+document.getElementById('bookmarkval'+id).innerHTML=1;	
+}
+if(bookmarkval=='1'){
+document.getElementById('bookmarkval'+id).innerHTML=0;	
+}
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajbookmark.php", 
+										dataType: "html",
+
+										data: {
+											id: id
+										}
+									});
+	
+}
+
+function sendcode(url,page){
+
+	
+regmail = $('input[name=mail]').val();
+regname = $('input[name=username]').val();
+$('.regmail').css('background', 'transparent');
+$('.regname').css('background', 'transparent');
+
+if(regmail==''){
+setTimeout(function() {
+$('.regmail').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.regmail').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.regmail').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.regmail').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.regmail').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.regmail').css('background', '#F8EBEB');
+}, 1000);	
+}
+
+if(regname==''){
+setTimeout(function() {
+$('.regname').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.regname').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.regname').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.regname').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.regname').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.regname').css('background', '#F8EBEB');
+}, 1000);	
+}
+
+
+if(regname!='' && regmail!=''){
+$('.submit1').fadeOut(0); 
+$('.loading1').fadeIn(0);
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajcheckuser.php", 
+										dataType: "html",
+										data: {
+											regmail: regmail,
+											regname: regname,
+											page:page
+										},				
+										success: function(response) {	
+											$('.loading1').fadeOut(0);
+											$('.submit1').fadeIn(0); 
+											document.getElementById('popupregistr').innerHTML = response;
+											
+										},
+										error: function(response) {
+											$('.loading1').fadeOut(0);
+											$('.submit1').fadeIn(0); 
+											}
+									});
+
+}
+
+}
+
+
+
+
+
+function submitcode(url,page){
+usercode = $('input[name=code]').val();
+
+if(usercode==''){
+setTimeout(function() {
+$('.usercode').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.usercode').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.usercode').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.usercode').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.usercode').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.usercode').css('background', '#F8EBEB');
+}, 1000);	
+}
+
+if(usercode!=''){
+$('.submit2').fadeOut(0); 
+$('.loading2').fadeIn(0);
+	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajcheckuser2.php", 
+										dataType: "html",
+										data: {
+											usercode: usercode,
+											page: page,
+											mail: $('input[name=regmail2]').val(),
+											nickname: $('input[name=regname2]').val()
+										},				
+										success: function(response) {
+											document.getElementById('popupregistr2').innerHTML = response;
+											$('.submit2').fadeIn(0); 
+											$('.loading2').fadeOut(0);
+										},
+										error: function(response) {
+										$('.submit2').fadeIn(0); 
+										$('.loading2').fadeOut(0);
+										document.getElementById('popupregistr2').innerHTML = 'ошибка';
+										}
+									});	
+	
+}
+}
+
+
+
+function registr(url,page){
+$('#popup3').fadeIn(0); 
+var w = $('.header').width();
+if(w<=1020){
+$('body').css('overflow','hidden');
+}
+	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajregistr.php", 
+										dataType: "html",
+										data: {
+											page:page
+										},				
+										success: function(response) {
+											document.getElementById('popupregistr').innerHTML = response;
+										},
+										error: function(response) {
+										
+										}
+									});	
+	
+
+}
+
+
+function remindpass(url){
+
+	
+userloginremind = $('input[name=userloginremind]').val();
+
+$('.userloginremind').css('background', 'transparent');
+
+
+if(userloginremind==''){
+setTimeout(function() {
+$('.userloginremind').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.userloginremind').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.userloginremind').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.userloginremind').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.userloginremind').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.userloginremind').css('background', '#F8EBEB');
+}, 1000);	
+}
+
+
+
+
+if(userloginremind!=''){
+$('.submit4').fadeOut(0); 
+$('.loading4').fadeIn(0);
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajremindpass.php", 
+										dataType: "html",
+										data: {
+											userloginremind: userloginremind
+										},				
+										success: function(response) {	
+											$('.loading4').fadeOut(0);
+											$('.submit4').fadeIn(0); 
+											document.getElementById('popupremindpass').innerHTML = response;
+											
+										},
+										error: function(response) {
+											$('.loading4').fadeOut(0);
+											$('.submit4').fadeIn(0); 
+											}
+									});
+
+}
+
+}
+
+function logining(url,page){
+
+	
+userlogin = $('input[name=userlogin]').val();
+userpass = $('input[name=userpass]').val();
+$('.userlogin').css('background', 'transparent');
+$('.userpass').css('background', 'transparent');
+
+if(userlogin==''){
+setTimeout(function() {
+$('.userlogin').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.userlogin').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.userlogin').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.userlogin').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.userlogin').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.userlogin').css('background', '#F8EBEB');
+}, 1000);	
+}
+
+if(userpass==''){
+setTimeout(function() {
+$('.userpass').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.userpass').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.userpass').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.userpass').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.userpass').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.userpass').css('background', '#F8EBEB');
+}, 1000);	
+}
+
+
+if(userpass!='' && userlogin!=''){
+$('.submit3').fadeOut(0); 
+$('.loading3').fadeIn(0);
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajlogining.php", 
+										dataType: "html",
+										data: {
+											userlogin: userlogin,
+											userpass: userpass,
+											page:page
+										},				
+										success: function(response) {	
+											$('.loading3').fadeOut(0);
+											$('.submit3').fadeIn(0); 
+											document.getElementById('popuplogining').innerHTML = response;
+											
+										},
+										error: function(response) {
+											$('.loading1').fadeOut(0);
+											$('.submit1').fadeIn(0); 
+											}
+									});
+
+}
+}
+
+
+
+function saveuserege(url){
+ege0 = $('input[name=ege0]').val();
+ege10 = $('input[name=ege10]').val();
+ege1 = $('input[name=ege1]').val();
+ege2 = $('input[name=ege2]').val();
+ege3 = $('input[name=ege3]').val();
+ege4 = $('input[name=ege4]').val();
+ege5 = $('input[name=ege5]').val();
+ege6 = $('input[name=ege6]').val();
+ege7 = $('input[name=ege7]').val();
+ege8 = $('input[name=ege8]').val();
+ege9 = $('input[name=ege9]').val();
+
+
+jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajsaveuserege.php", 
+										dataType: "html",
+
+										data: {
+rus : ege0,
+math : ege10,
+obsh : ege1,
+foreg : ege2,
+inform : ege3,
+biolog : ege4,
+geog : ege5,
+xim : ege6,
+fiz : ege7,
+lit : ege8,
+hist : ege9
+										},				
+										success: function(response) {
+$('.editprofege').fadeOut(0); 
+$('.editprofege1').fadeIn(0);	
+$('.egei').fadeOut(0); 
+
+$('body,html').animate({scrollTop: $('.editprofege1').offset().top-0},500);
+
+if(ege0!='0' && ege0!=''){
+	$('.egei0').fadeIn(0);
+    document.getElementById('egei0').innerHTML=ege0;	
+}
+
+
+if(ege10!='0' && ege10!=''){
+	$('.egei10').fadeIn(0);
+    document.getElementById('egei10').innerHTML=ege10;	
+}
+
+if(ege1!='0' && ege1!=''){
+	$('.egei1').fadeIn(0);
+    document.getElementById('egei1').innerHTML=ege1;	
+}
+
+if(ege2!='0' && ege2!=''){
+	$('.egei2').fadeIn(0);
+    document.getElementById('egei2').innerHTML=ege2;	
+}
+
+if(ege3!='0' && ege3!=''){
+	$('.egei3').fadeIn(0);
+    document.getElementById('egei3').innerHTML=ege3;	
+}
+
+if(ege4!='0' && ege4!=''){
+	$('.egei4').fadeIn(0);
+    document.getElementById('egei4').innerHTML=ege4;	
+}
+
+if(ege5!='0' && ege5!=''){
+	$('.egei5').fadeIn(0);
+    document.getElementById('egei5').innerHTML=ege5;	
+}
+
+if(ege6!='0' && ege6!=''){
+	$('.egei6').fadeIn(0);
+    document.getElementById('egei6').innerHTML=ege6;	
+}
+
+if(ege7!='0' && ege7!=''){
+	$('.egei7').fadeIn(0);
+    document.getElementById('egei7').innerHTML=ege7;	
+}
+
+if(ege8!='0' && ege8!=''){
+	$('.egei8').fadeIn(0);
+    document.getElementById('egei8').innerHTML=ege8;	
+}
+
+if(ege9!='0' && ege9!=''){
+	$('.egei9').fadeIn(0);
+    document.getElementById('egei9').innerHTML=ege9;	
+}
+											
+										},
+										error: function(response) {
+											
+										}
+									});
+
+
+}
+
+
+function cir6(id,url){
+
+$('.cir'+id).toggleClass('on');
+var cirans=document.getElementById('cirans'+id).innerHTML;
+if(cirans=='0'){
+document.getElementById('cirans'+id).innerHTML=1;	
+}
+if(cirans=='1'){
+document.getElementById('cirans'+id).innerHTML=0;	
+}
+
+
+jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajsaveuserdost.php", 
+										dataType: "html",
+
+										data: {
+dost : id,
+valtarget : document.getElementById('cirans'+id).innerHTML
+
+										},				
+										success: function(response) {
+
+											
+										},
+										error: function(response) {
+											
+										}
+									});
+
+}
+
+
+function pubvopros(url){
+var vopros = $('textarea[name=vopros]').val();
+
+if(vopros==''){
+setTimeout(function() {
+$('.vopros').css('background', 'transparent');
+}, 0);
+setTimeout(function() {
+$('.vopros').css('background', '#F8EBEB');
+}, 200);
+setTimeout(function() {
+$('.vopros').css('background', 'transparent');
+}, 400);
+
+setTimeout(function() {
+$('.vopros').css('background', '#F8EBEB');
+}, 600);
+setTimeout(function() {
+$('.vopros').css('background', 'transparent');
+}, 800);
+
+setTimeout(function() {
+$('.vopros').css('background', '#F8EBEB');
+}, 1000);	
+}
+if(vopros!=''){
+$('.loader1-2').fadeIn(0);
+$('#pubvopros1').fadeOut(0);
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajpubvopros.php", 
+										dataType: "html",
+
+										data: {
+											tags: $('input[name=spec]').val(),
+											anon: document.getElementById('cirans1').innerHTML,
+											vopros: $('textarea[name=vopros]').val()
+										},				
+										success: function(response) {
+											$('.loader1-2').fadeOut(0);
+											document.getElementById('pubvopros2').innerHTML = response;
+										},
+										error: function(response) {
+											$('.loader1-2').fadeOut(0);
+											$('#pubvopros1').fadeIn(0);
+										}
+									});
+}	
+	
+}
+
+function showtag(url,page1,page2,page3){
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajtag.php", 
+										dataType: "html",
+
+										data: {
+											page1: page1,
+											page2: page2,
+											page3: $('input[name=spec]').val(),
+											nap: $('input[name=nap]').val()
+										},				
+										success: function(response) {
+											$('.loader1-1').fadeOut(0);
+											document.getElementById('resultdiv1').innerHTML = response;
+										},
+										error: function(response) {
+											$('.loader1-1').fadeOut(0);
+											$('.error1-1').fadeIn(0);
+										}
+									});
+	
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+function showvopros(url){	
+var maintag ='';
+if(document.getElementById('maintag')){
+var maintag = document.getElementById('maintag').innerHTML;
+}
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajvopros.php", 
+										dataType: "html",
+
+										data: {
+											nap: $('input[name=spec]').val(),
+											limit : document.getElementById('limit').innerHTML,
+											maintag : maintag
+										},				
+										success: function(response) {
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											document.getElementById('resultsliv').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultsliv').innerHTML = '';
+											$('.loader1-0').fadeOut(0);
+											$('.loader1-0-0').fadeOut(0);
+											$('.error1-0').fadeIn(0);
+										}
+									});
+	
+}
+
+function morelimit5(url){
+	$('.loader1-0-0').fadeIn(0);
+	var limit=(document.getElementById('limit').innerHTML)*1+25;
+	document.getElementById('limit').innerHTML=limit;
+	showvopros(url);
+}
+
+
+function delcomment(url,id,type){
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajdelcomment.php", 
+										dataType: "html",
+
+										data: {
+											id:id,
+											type:type
+										},				
+										success: function(response) {
+											$('#commentpad'+id).remove(0);	
+										},
+										error: function(response) {
+
+										}
+									});
+
+}
+
+function delvopros(url,id,type,page){
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajdelvopros.php", 
+										dataType: "html",
+
+										data: {
+											id:id,
+											type:type
+										},				
+										success: function(response) {
+											if(page=='0'){
+											$('#voprosdiv'+id).remove(0);	
+											}
+											if(page=='1'){
+											location.reload();
+											}
+										},
+										error: function(response) {
+
+										}
+									});
+
+}
+
+function sendcomment(url,head1,head2,type){
+
+var answer = $('textarea[name=answer'+head2+']').val();
+
+if(answer!=''){
+	
+	$('.comment'+head2).fadeOut(0);
+	$('.loader1-'+head2).fadeIn(0);
+	$('.error1-'+head2).fadeOut(0);
+
+
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajsendcomment.php", 
+										dataType: "html",
+
+										data: {
+											head1:head1,
+											head2:head2,
+											type:type,
+											answer:answer
+										},				
+										success: function(response) {
+												if(head2!=='0'){
+													showdopcomment(url,head1,head2,type);
+												}
+												if(head2=='0'){
+													showcomment(url,head1,head2,type);
+												}
+										},
+										error: function(response) {
+												$('.error1-'+head2).fadeIn(0);
+												$('.loader1-'+head2).fadeOut(0);
+										}
+									});
+
+}
+}
+
+
+function showcomment(url,head1,head2,type){	
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowcomment.php", 
+										dataType: "html",
+
+										data: {
+											head1:head1,
+											head2:head2,
+											type:type
+										},				
+										success: function(response) {
+											document.getElementById('resultdivcomment').innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivcomment').innerHTML = '';
+										}
+									});
+	
+}
+
+function showdopcomment(url,head1,head2,type){	
+$('.loader2-'+head2).fadeIn(0);
+$('.error2-'+head2).fadeOut(0);
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowdopcomment.php", 
+										dataType: "html",
+
+										data: {
+											head1:head1,
+											head2:head2,
+											type:type
+										},				
+										success: function(response) {
+											$('.loader2-'+head2).fadeOut(0);
+											document.getElementById('resultdivdopcomment'+head2).innerHTML = response;
+										},
+										error: function(response) {
+											document.getElementById('resultdivdopcomment'+head2).innerHTML = '';
+											$('.loader2-'+head2).fadeOut(0);
+											$('.error2-'+head2).fadeIn(0);
+										}
+									});
+	
+}
+
+$('#i_file').change( function(event) {
+    var tmppath = URL.createObjectURL(event.target.files[0]);
+	$('.cardimg2').css('background', 'url('+URL.createObjectURL(event.target.files[0])+')');
+    $('.cardimg2').css('background-position-x', 'center');
+	$('.cardimg2').css('background-position-y', 'center');
+	$('.cardimg2').css('background-repeat', 'no-repeat');
+	$('.cardimg2').css('background-size', 'cover');
+  $('.imginavatar').fadeOut(0);
+
+
+
+});
+
+function saveuserdata(url){
+username = $('input[name=username]').val();
+userpass = $('input[name=userpass]').val();
+userstatus = $('select[name=userstatus]').val();
+uservupusk = $('select[name=uservupusk]').val();
+avatar = $('input[name=avatar]').val();
+
+if(avatar){
+$('.loader1').fadeIn(0);
+html2canvas(document.querySelector("#capture")).then(canvas => {
+var img = canvas.toDataURL("image/jpeg");
+										jQuery.ajax({
+										type:     "POST",
+										url:     "testsave.php", 
+										dataType: "html",
+
+										data: {
+											img: img											
+										},				
+										success: function(response) {
+$('.loader1').fadeOut(0);											
+										},
+										error: function(response) {
+										}
+									});
+	
+});	
+}
+	
+
+
+jQuery.ajax({	
+										type:     "POST",
+										url:     url+"/ajax/ajsaveuserdata.php", 
+										dataType: "html",
+
+										data: {
+username : username,
+userpass : userpass,
+userstatus : userstatus,
+uservupusk : uservupusk
+										},				
+										success: function(response) {
+$('.editprof2').fadeOut(0); 
+$('.editprof1').fadeIn(0);
+$('body,html').animate({scrollTop: $('.editprof').offset().top-0},500);
+
+if(userstatus=='0'){
+    document.getElementById('userstatus').innerHTML='Абитуриент';	
+}
+if(userstatus=='1'){
+    document.getElementById('userstatus').innerHTML='Родитель абитуриента';	
+}
+if(userstatus=='2'){
+    document.getElementById('userstatus').innerHTML='Студент';	
+}
+if(userstatus=='3'){
+    document.getElementById('userstatus').innerHTML='Другое';	
+}
+
+    document.getElementById('userpass').innerHTML=userpass;	
+    document.getElementById('username').innerHTML=username;	
+    document.getElementById('uservupusk').innerHTML=uservupusk;	
+
+											
+										},
+										error: function(response) {
+											
+										}
+									});
+
+
+}
+
+
+
+function saveuserdata2(url){
+username = $('input[name=username]').val();
+userpass = $('input[name=userpass]').val();
+userwork = $('input[name=userwork]').val();
+
+
+jQuery.ajax({	
+										type:     "POST",
+										url:     url+"/ajax/ajsaveuserdata2.php", 
+										dataType: "html",
+
+										data: {
+username : username,
+userpass : userpass,
+userwork : userwork
+										},				
+										success: function(response) {
+$('.editprof2').fadeOut(0); 
+$('.editprof1').fadeIn(0);
+$('body,html').animate({scrollTop: $('.editprof').offset().top-0},500);
+
+
+    document.getElementById('userpass').innerHTML=userpass;	
+    document.getElementById('username').innerHTML=username;	
+    document.getElementById('userwork').innerHTML=userwork;	
+
+											
+										},
+										error: function(response) {
+											
+										}
+									});
+
+
+}
+
+function showvuzlink(url,page2,page3,fromlim,idvuz){
+if(fromlim=='1'){
+$('.loader1-6').fadeIn(0);
+document.getElementById('resultdivshowvuzlink').innerHTML = '';
+}
+										jQuery.ajax({
+										type:     "POST",
+										url:     url+"/ajax/ajshowvuzlink.php", 
+										dataType: "html",
+
+										data: {
+vuzlinkname: $('input[name=vuzlinkname]').val(),
+page2:page2,
+page3:page3,
+idvuz:idvuz,
+limit:document.getElementById('limit6').innerHTML
+										},				
+										success: function(response) {
+											$('.loader1-6').fadeOut(0);
+											document.getElementById('resultdivshowvuzlink').innerHTML = response;
+										},
+										error: function(response) {
+											$('.loader1-6').fadeOut(0);
+											$('.error1-6').fadeIn(0);
+										}
+									});
+	
+	
+}
+
+

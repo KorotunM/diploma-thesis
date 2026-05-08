@@ -18,6 +18,7 @@ from libs.domain.university.models import (
     LocationInfo,
     RatingItem,
     ReviewSummary,
+    StatsInfo,
     UniversityCard,
 )
 from libs.observability import DomainMetricsCollector, get_domain_metrics
@@ -118,6 +119,7 @@ class UniversityCardProjectionService:
             description=self._string_fact_value(facts_by_field.get("description")),
             location=LocationInfo(
                 country=self._string_fact_value(facts_by_field.get("location.country_code")),
+                region=self._string_fact_value(facts_by_field.get("location.region")),
                 city=self._string_fact_value(facts_by_field.get("location.city")),
             ),
             contacts=ContactsInfo(
@@ -136,6 +138,11 @@ class UniversityCardProjectionService:
             ),
             programs=self._programs(fact_result.facts),
             tuition=[],
+            stats=StatsInfo(
+                avg_passing_score=self._float_fact_value(facts_by_field.get("stats.avg_passing_score")),
+                budget_places=self._int_fact_value(facts_by_field.get("stats.budget_places")),
+                programs_count=self._int_fact_value(facts_by_field.get("stats.programs_count")),
+            ),
             ratings=self._ratings(fact_result.facts),
             dormitory={},
             reviews=ReviewSummary(

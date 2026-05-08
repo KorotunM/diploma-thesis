@@ -32,6 +32,7 @@ class UniversitySearchDocProjectionService:
         canonical_name = self._clean_text(card.canonical_name.value)
         aliases = self._aliases(card.aliases)
         website_url = self._clean_text(card.contacts.website)
+        logo_url = self._clean_text(card.contacts.logo_url)
         website_domain = self._website_domain(website_url)
         country_code = self._clean_text(card.location.country)
         city_name = self._clean_text(card.location.city)
@@ -40,6 +41,7 @@ class UniversitySearchDocProjectionService:
             "canonical_name": canonical_name,
             "aliases": aliases,
             "website_url": website_url,
+            "logo_url": logo_url,
             "website_domain": website_domain,
             "country_code": country_code,
             "city_name": city_name,

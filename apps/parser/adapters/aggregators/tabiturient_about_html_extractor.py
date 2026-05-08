@@ -80,6 +80,11 @@ _CITY_REGION_SUFFIX_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_REGION_CAPTURE_PATTERN = re.compile(
+    r"\s+и\s+([А-ЯЁа-яё][А-ЯЁа-яё\s-]+(?:область|край|республика))\b",
+    re.IGNORECASE,
+)
+
 
 def _norm(text: str) -> str:
     return _WHITESPACE.sub(" ", text).strip()
@@ -198,7 +203,7 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
                       {"source_field": "tabiturient.itemprop.alternateName", "external_id": slug})
 
         # ── Logo ─────────────────────────────────────────────────────────────
-        logo_url = self._logo_url(parser.img_srcs)
+        logo_url = self._logo_url(parser.img_srcs, nodes)
         self._add(frags, context, artifact, "contacts.logo_url", logo_url,
                   "img[src*='/logovuz/']", 0.99,
                   {"source_field": "tabiturient.logo_img_src", "external_id": slug})
@@ -227,11 +232,31 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
                       "span.flagship", 0.87,
                       {"source_field": "tabiturient.about.is_flagship", "external_id": slug})
 
-        # ── City ─────────────────────────────────────────────────────────────
-        city = self._city(nodes, full_text)
+        # ── City + Region ────────────────────────────────────────────────────
+        city, region = self._city_and_region(nodes, full_text)
         self._add(frags, context, artifact, "location.city", city,
-                  "span.city", 0.78,
+                  "a[href*='/city/']", 0.82,
                   {"source_field": "tabiturient.about.city", "external_id": slug})
+        self._add(frags, context, artifact, "location.region", region,
+                  "a[href*='/city/']", 0.80,
+                  {"source_field": "tabiturient.about.region", "external_id": slug})
+
+        # ── Stats (from header table) ─────────────────────────────────────────
+        avg_score = self._avg_score(full_text)
+        if avg_score is not None:
+            self._add(frags, context, artifact, "stats.avg_passing_score", avg_score,
+                      "span.font2", 0.85,
+                      {"source_field": "tabiturient.about.avg_passing_score", "external_id": slug})
+        budget_places = self._budget_places(full_text)
+        if budget_places is not None:
+            self._add(frags, context, artifact, "stats.budget_places", budget_places,
+                      "span.font2", 0.85,
+                      {"source_field": "tabiturient.about.budget_places", "external_id": slug})
+        programs_count = self._programs_count(full_text)
+        if programs_count is not None:
+            self._add(frags, context, artifact, "stats.programs_count", programs_count,
+                      "span.font2", 0.80,
+                      {"source_field": "tabiturient.about.programs_count", "external_id": slug})
 
         # ── Tabiturient user rating ──────────────────────────────────────────
         rating = self._rating(full_text)
@@ -278,7 +303,7 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
         node = next((n for n in nodes if n.attrs.get("itemprop") == prop), None)
         return node.locator() if node else None
 
-    def _logo_url(self, img_srcs: list[str]) -> str | None:
+    def _logo_url(self, img_srcs: list[str], nodes: list[_Node]) -> str | None:
         for src in img_srcs:
             if "/logovuz/" in src.lower():
                 if src.startswith("//"):
@@ -287,6 +312,12 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
                     return self._BASE_URL + src
                 if src.startswith("http"):
                     return src
+        # Fallback: <span itemprop="logo"> text content
+        for node in nodes:
+            if node.attrs.get("itemprop") == "logo":
+                url = node.text.strip()
+                if url.startswith("http") and "/logovuz/" in url:
+                    return url
         return None
 
     @staticmethod
@@ -350,30 +381,32 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
         return None
 
     @staticmethod
-    def _city(nodes: list[_Node], full_text: str) -> str | None:
-        # Look for itemprop=addressLocality / addressRegion, but skip non-city link text
+    def _city_and_region(nodes: list[_Node], full_text: str) -> tuple[str | None, str | None]:
+        # schema.org itemprop attributes
         for node in nodes:
-            if node.attrs.get("itemprop") not in {"addressLocality", "addressRegion"}:
-                continue
-            text = TabiturientAboutHtmlExtractor._clean_city(node.text)
-            if text:
-                return text
+            prop = node.attrs.get("itemprop")
+            if prop == "addressLocality":
+                city = TabiturientAboutHtmlExtractor._clean_city(node.text)
+                return city, None
+            if prop == "addressRegion":
+                return None, _norm(node.text) or None
 
-        # Tabiturient often stores the locality as a city link instead of schema.org address.
+        # Tabiturient city link: href contains /city/
         for node in nodes:
             if "/city/" not in node.attr("href"):
                 continue
-            text = TabiturientAboutHtmlExtractor._clean_city(node.text)
-            if text:
-                return text
+            raw = _norm(node.text)
+            city = TabiturientAboutHtmlExtractor._clean_city(raw)
+            region_match = _REGION_CAPTURE_PATTERN.search(raw)
+            region = region_match.group(1).strip() if region_match else None
+            return city, region
 
-        # Fallback: regex on full text. Filter every candidate, otherwise "рейтинг вузов"
-        # is incorrectly parsed as city "вузов".
+        # Fallback: regex on full text
         for match in _CITY_PATTERN.finditer(full_text):
-            text = TabiturientAboutHtmlExtractor._clean_city(match.group(1))
-            if text:
-                return text
-        return None
+            city = TabiturientAboutHtmlExtractor._clean_city(match.group(1))
+            if city:
+                return city, None
+        return None, None
 
     @staticmethod
     def _clean_city(text: str) -> str | None:
@@ -400,6 +433,28 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
     @staticmethod
     def _rating_count(full_text: str) -> int | None:
         m = _RATING_COUNT_PATTERN.search(full_text)
+        if m:
+            return _parse_int(m.group(1))
+        return None
+
+    @staticmethod
+    def _avg_score(full_text: str) -> float | None:
+        m = _AVG_SCORE_PATTERN.search(full_text)
+        if not m:
+            return None
+        raw = m.group(1) or m.group(2)
+        return _parse_float(raw) if raw else None
+
+    @staticmethod
+    def _budget_places(full_text: str) -> int | None:
+        m = _BUDGET_PLACES_PATTERN.search(full_text)
+        if m:
+            return _parse_int(m.group(1))
+        return None
+
+    @staticmethod
+    def _programs_count(full_text: str) -> int | None:
+        m = _PROGRAMS_COUNT_PATTERN.search(full_text)
         if m:
             return _parse_int(m.group(1))
         return None

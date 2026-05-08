@@ -5,6 +5,7 @@ export interface BackendSearchItem {
   city: string | null;
   country_code: string | null;
   website: string | null;
+  logo_url: string | null;
   aliases: string[];
   score: number;
   match_signals: string[];
@@ -66,6 +67,7 @@ export interface UniversityCardDto {
   description: string | null;
   location: {
     country: string | null;
+    region: string | null;
     city: string | null;
     address?: string | null;
     geo?: Record<string, number> | null;
@@ -84,6 +86,11 @@ export interface UniversityCardDto {
   };
   programs: Array<Record<string, unknown>>;
   tuition: Array<Record<string, unknown>>;
+  stats: {
+    avg_passing_score: number | null;
+    budget_places: number | null;
+    programs_count: number | null;
+  };
   ratings: Array<{
     provider: string;
     year: number;

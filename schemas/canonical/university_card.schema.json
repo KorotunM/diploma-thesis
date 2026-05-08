@@ -13,6 +13,7 @@
     "institutional",
     "programs",
     "tuition",
+    "stats",
     "ratings",
     "dormitory",
     "reviews",
@@ -38,11 +39,13 @@
       "type": "array",
       "items": { "type": "string" }
     },
+    "description": { "type": ["string", "null"] },
     "location": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "country": { "type": ["string", "null"] },
+        "region": { "type": ["string", "null"] },
         "city": { "type": ["string", "null"] },
         "address": { "type": ["string", "null"] },
         "geo": {
@@ -56,6 +59,7 @@
       "additionalProperties": false,
       "properties": {
         "website": { "type": ["string", "null"] },
+        "logo_url": { "type": ["string", "null"] },
         "emails": { "type": "array", "items": { "type": "string" } },
         "phones": { "type": "array", "items": { "type": "string" } }
       }
@@ -65,11 +69,22 @@
       "additionalProperties": false,
       "properties": {
         "type": { "type": ["string", "null"] },
-        "founded_year": { "type": ["integer", "null"] }
+        "founded_year": { "type": ["integer", "null"] },
+        "category": { "type": ["string", "null"] },
+        "is_flagship": { "type": ["boolean", "null"] }
       }
     },
     "programs": { "type": "array", "items": { "type": "object" } },
     "tuition": { "type": "array", "items": { "type": "object" } },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "avg_passing_score": { "type": ["number", "null"] },
+        "budget_places": { "type": ["integer", "null"] },
+        "programs_count": { "type": ["integer", "null"] }
+      }
+    },
     "ratings": {
       "type": "array",
       "items": {
@@ -88,9 +103,10 @@
     "reviews": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["summary", "items"],
       "properties": {
         "summary": { "type": ["string", "null"] },
+        "rating": { "type": ["number", "null"] },
+        "rating_count": { "type": ["integer", "null"] },
         "items": { "type": "array", "items": { "type": "object" } }
       }
     },

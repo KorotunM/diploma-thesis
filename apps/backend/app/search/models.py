@@ -14,6 +14,7 @@ class UniversitySearchHitRecord(BaseModel):
     card_version: int
     canonical_name: str
     website_url: str | None = None
+    logo_url: str | None = None
     website_domain: str | None = None
     country_code: str | None = None
     city_name: str | None = None
@@ -35,6 +36,7 @@ class UniversitySearchResultItem(BaseModel):
     city: str | None = None
     country_code: str | None = None
     website: str | None = None
+    logo_url: str | None = None
     aliases: list[str] = Field(default_factory=list)
     score: float
     match_signals: list[str] = Field(default_factory=list)

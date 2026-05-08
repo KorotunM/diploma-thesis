@@ -296,31 +296,37 @@ class TabiturientUniversityHtmlExtractor(AggregatorFragmentExtractor):
 
     @staticmethod
     def _extract_reviews(html: str) -> list[dict[str, Any]]:
-        """
-        Extract reviews from raw HTML using date-string anchors.
-        Each Russian date found marks a review; surrounding text is the body.
-        """
         reviews: list[dict[str, Any]] = []
         date_positions = list(_DATE_PATTERN.finditer(html))
         if not date_positions:
             return reviews
 
-        for date_match in date_positions:
-            window_start = max(0, date_match.start() - 3000)
-            context_before = html[window_start:date_match.start()]
-
+        for i, date_match in enumerate(date_positions):
             date_str = (
                 f"{date_match.group(1)} {date_match.group(2)} {date_match.group(3)}"
             )
 
-            author_match = _AUTHOR_TYPE_PATTERN.search(context_before[-800:])
+            # Author type is typically just before the date (~400 chars window)
+            before_start = max(0, date_match.start() - 400)
+            context_before = html[before_start:date_match.start()]
+            author_match = _AUTHOR_TYPE_PATTERN.search(context_before)
             author_type: str | None = (
                 normalize_text(author_match.group(0)) if author_match else None
             )
 
-            clean = re.sub(r"<[^>]+>", " ", context_before)
+            # Review text comes AFTER the date, up to the next date or 3000 chars
+            after_end = (
+                date_positions[i + 1].start()
+                if i + 1 < len(date_positions)
+                else len(html)
+            )
+            after_end = min(after_end, date_match.end() + 3000)
+            context_after = html[date_match.end():after_end]
+
+            clean = re.sub(r"<[^>]+>", " ", context_after)
             review_text = normalize_text(clean)
-            review_text = review_text[-1500:].strip() if len(review_text) > 1500 else review_text.strip()
+            if len(review_text) > 1500:
+                review_text = review_text[:1500]
 
             if len(review_text) < 50:
                 continue

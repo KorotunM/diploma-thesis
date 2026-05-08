@@ -73,6 +73,7 @@ class UniversitySearchService:
             city=hit.city_name,
             country_code=hit.country_code,
             website=hit.website_url,
+            logo_url=hit.logo_url,
             aliases=hit.aliases,
             score=round(hit.combined_score, 6),
             match_signals=self._match_signals(hit),

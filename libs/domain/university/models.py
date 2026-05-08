@@ -29,9 +29,18 @@ class LocationInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     country: str | None = None
+    region: str | None = None
     city: str | None = None
     address: str | None = None
     geo: dict[str, float] | None = None
+
+
+class StatsInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    avg_passing_score: float | None = None
+    budget_places: int | None = None
+    programs_count: int | None = None
 
 
 class ContactsInfo(BaseModel):
@@ -91,6 +100,7 @@ class UniversityCard(BaseModel):
     )
     programs: list[dict[str, Any]] = Field(default_factory=list)
     tuition: list[dict[str, Any]] = Field(default_factory=list)
+    stats: StatsInfo = Field(default_factory=StatsInfo)
     ratings: list[RatingItem] = Field(default_factory=list)
     dormitory: dict[str, Any] = Field(default_factory=dict)
     reviews: ReviewSummary = Field(default_factory=ReviewSummary)

@@ -300,7 +300,21 @@ export function SearchPage() {
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter") openUniversityCard(item.university_id); }}
               >
-                <div className="uni-card__logo">{item.canonical_name.charAt(0)}</div>
+                <div className="uni-card__logo">
+                  {item.logo_url ? (
+                    <img
+                      src={item.logo_url}
+                      alt={item.canonical_name}
+                      style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 6 }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        (e.currentTarget.parentElement as HTMLElement).textContent = item.canonical_name.charAt(0);
+                      }}
+                    />
+                  ) : (
+                    item.canonical_name.charAt(0)
+                  )}
+                </div>
 
                 <div className="uni-card__info">
                   <p className="uni-card__name">{item.canonical_name}</p>
