@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 
 import { useUniversitySearch } from "../features/search";
+import { useAuth } from "../shared/auth";
+import { describeRequestError } from "../shared/http";
+import { useFrontendRuntime } from "../shared/runtime";
 import { ViewState } from "../shared/ui/view-state";
 
 const DIRECTIONS = [
@@ -79,7 +82,9 @@ function EgePanel({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export function SearchPage() {
+export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
+  const { backendApi } = useFrontendRuntime();
+  const { user } = useAuth();
   const {
     query,
     setQuery,
@@ -87,6 +92,7 @@ export function SearchPage() {
     setCity,
     page,
     setPage,
+    pageSize,
     resetFilters,
     snapshot,
     error,

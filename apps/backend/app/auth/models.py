@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
@@ -39,6 +41,7 @@ class AuthResponse(BaseModel):
     user_id: str
     email: str
     display_name: str | None
+    created_at: datetime
 
 
 class CurrentUserResponse(BaseModel):
@@ -47,3 +50,4 @@ class CurrentUserResponse(BaseModel):
     user_id: str
     email: str
     display_name: str | None
+    created_at: datetime

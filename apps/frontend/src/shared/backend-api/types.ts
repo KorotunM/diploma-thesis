@@ -128,12 +128,14 @@ export interface AuthResponseDto {
   user_id: string;
   email: string;
   display_name: string | null;
+  created_at: string;
 }
 
 export interface CurrentUserDto {
   user_id: string;
   email: string;
   display_name: string | null;
+  created_at: string;
 }
 
 // ── Favorites / Comparison ────────────────────────────────────────────
@@ -141,6 +143,12 @@ export interface CurrentUserDto {
 export interface FavoriteItemDto {
   university_id: string;
   created_at: string;
+  card_version: number | null;
+  canonical_name: string | null;
+  city: string | null;
+  country_code: string | null;
+  website: string | null;
+  logo_url: string | null;
 }
 
 export interface FavoritesResponseDto {
@@ -154,6 +162,31 @@ export interface ComparisonItemDto {
 
 export interface ComparisonResponseDto {
   items: ComparisonItemDto[];
+}
+
+export interface SavedSearchCreateDto {
+  name?: string | null;
+  query: string;
+  city?: string | null;
+  country?: string | null;
+  source_type?: string | null;
+  page_size?: number;
+}
+
+export interface SavedSearchItemDto {
+  saved_search_id: string;
+  name: string;
+  query: string;
+  city: string | null;
+  country: string | null;
+  source_type: string | null;
+  page_size: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedSearchesResponseDto {
+  items: SavedSearchItemDto[];
 }
 
 // ── Provenance (kept for evidence drawer) ─────────────────────────────

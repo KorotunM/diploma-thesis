@@ -35,6 +35,9 @@ from apps.backend.app.search import UniversitySearchResponse, UniversitySearchSe
 from apps.backend.app.user import (
     ComparisonResponse,
     FavoritesResponse,
+    SavedSearchCreateRequest,
+    SavedSearchItem,
+    SavedSearchesResponse,
     UserService,
 )
 from libs.observability import create_service_app
@@ -243,3 +246,36 @@ def remove_comparison(
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> None:
     service.remove_comparison(user_id, university_id)
+
+
+# --- Saved searches ---------------------------------------------------------
+
+@app.get("/api/v1/me/saved-searches", response_model=SavedSearchesResponse, tags=["user"])
+def get_saved_searches(
+    user_id: UUID = Depends(get_required_user_id),
+    service: UserService = USER_SERVICE_DEPENDENCY,
+) -> SavedSearchesResponse:
+    return service.list_saved_searches(user_id)
+
+
+@app.post(
+    "/api/v1/me/saved-searches",
+    response_model=SavedSearchItem,
+    status_code=201,
+    tags=["user"],
+)
+def create_saved_search(
+    body: SavedSearchCreateRequest,
+    user_id: UUID = Depends(get_required_user_id),
+    service: UserService = USER_SERVICE_DEPENDENCY,
+) -> SavedSearchItem:
+    return service.create_saved_search(user_id, body)
+
+
+@app.delete("/api/v1/me/saved-searches/{saved_search_id}", status_code=204, tags=["user"])
+def delete_saved_search(
+    saved_search_id: UUID,
+    user_id: UUID = Depends(get_required_user_id),
+    service: UserService = USER_SERVICE_DEPENDENCY,
+) -> None:
+    service.delete_saved_search(user_id, saved_search_id)

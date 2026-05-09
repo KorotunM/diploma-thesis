@@ -87,6 +87,7 @@ export function AuthProvider({
           user_id: data.user_id,
           email: data.email,
           display_name: data.display_name,
+          created_at: data.created_at,
         });
       } finally {
         setLoading(false);
@@ -113,6 +114,7 @@ export function AuthProvider({
           user_id: data.user_id,
           email: data.email,
           display_name: data.display_name,
+          created_at: data.created_at,
         });
       } finally {
         setLoading(false);

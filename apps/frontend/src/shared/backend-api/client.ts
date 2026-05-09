@@ -9,6 +9,9 @@ import type {
   ComparisonResponseDto,
   CurrentUserDto,
   FavoritesResponseDto,
+  SavedSearchCreateDto,
+  SavedSearchItemDto,
+  SavedSearchesResponseDto,
   UniversityCardDto,
   UniversityProvenanceDto,
 } from "./types";
@@ -132,6 +135,26 @@ export class BackendApiClient {
   async removeComparison(universityId: string, options?: JsonHttpRequestOptions): Promise<void> {
     await this.http.delete<void>(
       `/api/v1/me/comparisons/${encodeURIComponent(universityId)}`,
+      options,
+    );
+  }
+
+  // --- Saved searches -------------------------------------------------
+
+  async getSavedSearches(options?: JsonHttpRequestOptions): Promise<SavedSearchesResponseDto> {
+    return this.http.get<SavedSearchesResponseDto>("/api/v1/me/saved-searches", options);
+  }
+
+  async createSavedSearch(
+    body: SavedSearchCreateDto,
+    options?: JsonHttpRequestOptions,
+  ): Promise<SavedSearchItemDto> {
+    return this.http.post<SavedSearchItemDto>("/api/v1/me/saved-searches", body, options);
+  }
+
+  async deleteSavedSearch(savedSearchId: string, options?: JsonHttpRequestOptions): Promise<void> {
+    await this.http.delete<void>(
+      `/api/v1/me/saved-searches/${encodeURIComponent(savedSearchId)}`,
       options,
     );
   }

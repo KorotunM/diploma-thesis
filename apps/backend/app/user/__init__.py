@@ -1,4 +1,12 @@
-from .models import ComparisonItem, ComparisonResponse, FavoriteItem, FavoritesResponse
+from .models import (
+    ComparisonItem,
+    ComparisonResponse,
+    FavoriteItem,
+    FavoritesResponse,
+    SavedSearchCreateRequest,
+    SavedSearchItem,
+    SavedSearchesResponse,
+)
 from .repository import UserRepository
 from .service import UserService
 
@@ -7,6 +15,9 @@ __all__ = [
     "ComparisonResponse",
     "FavoriteItem",
     "FavoritesResponse",
+    "SavedSearchCreateRequest",
+    "SavedSearchItem",
+    "SavedSearchesResponse",
     "UserRepository",
     "UserService",
 ]
