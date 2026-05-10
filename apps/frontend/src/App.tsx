@@ -2,19 +2,22 @@ import { useEffect, useState } from "react";
 
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { ComparisonPage } from "./pages/ComparisonPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { SearchWorkspacePage } from "./pages/SearchWorkspacePage";
 import { UniversityDetailPage } from "./pages/UniversityDetailPage";
+import { AiChatWidget } from "./components/AiChatWidget";
 import { LoginModal } from "./components/LoginModal";
 import { useAuth } from "./shared/auth";
 import logoSvg from "./assets/logo.svg";
 
-type AppView = "search" | "university" | "admin" | "comparison";
+type AppView = "search" | "university" | "admin" | "comparison" | "profile";
 
-const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin", "comparison"];
+const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin", "comparison", "profile"];
 
 const NAV_LINKS: Array<{ id: AppView | null; label: string; soon?: boolean }> = [
   { id: "search", label: "Поиск вуза" },
   { id: "comparison", label: "Сравнение" },
+  { id: "profile", label: "Кабинет" },
   { id: null, label: "Специальности", soon: true },
   { id: null, label: "Калькулятор", soon: true },
   { id: null, label: "Рейтинги", soon: true },
@@ -57,7 +60,7 @@ export default function App() {
 
   const handleLoginClick = () => {
     if (user) {
-      if (isAdmin) navigateTo("admin");
+      navigateTo("profile");
     } else {
       setShowLogin(true);
     }
@@ -136,20 +139,22 @@ export default function App() {
       </header>
 
       <main className="app__main">
-        {activeView === "search" && <SearchWorkspacePage />}
+        {activeView === "search" && <SearchWorkspacePage onShowLogin={() => setShowLogin(true)} />}
         {activeView === "university" && (
           <UniversityDetailPage onShowLogin={() => setShowLogin(true)} />
         )}
         {activeView === "comparison" && (
           <ComparisonPage onShowLogin={() => setShowLogin(true)} />
         )}
+        {activeView === "profile" && <ProfilePage onShowLogin={() => setShowLogin(true)} />}
         {activeView === "admin" && isAdmin && <AdminDashboard onLogout={handleLogout} />}
-        {activeView === "admin" && !isAdmin && <SearchWorkspacePage />}
+        {activeView === "admin" && !isAdmin && <SearchWorkspacePage onShowLogin={() => setShowLogin(true)} />}
       </main>
 
       {showLogin && (
         <LoginModal onClose={() => setShowLogin(false)} onSuccess={handleLoginSuccess} />
       )}
+      <AiChatWidget />
     </div>
   );
 }

@@ -83,14 +83,14 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
           )}
 
           <label className="field">
-            <span className="field__label">Email</span>
+            <span className="field__label">{mode === "login" ? "Email или логин" : "Email"}</span>
             <input
               className="field__control"
-              type="email"
+              type={mode === "login" ? "text" : "email"}
               autoComplete={mode === "login" ? "username" : "email"}
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(null); }}
-              placeholder="you@example.com"
+              placeholder={mode === "login" ? "you@example.com или admin" : "you@example.com"}
               required
             />
           </label>
@@ -105,7 +105,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
               onChange={(e) => { setPassword(e.target.value); setError(null); }}
               placeholder="••••••"
               required
-              minLength={6}
+              minLength={mode === "login" ? 1 : 6}
             />
           </label>
 

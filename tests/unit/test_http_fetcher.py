@@ -7,6 +7,7 @@ import pytest
 from libs.source_sdk import FetchContext
 from libs.source_sdk.fetchers import (
     HttpFetcher,
+    TransientFetchError,
     UnsupportedContentTypeError,
     build_mock_http_client_factory,
     content_media_type,
@@ -105,3 +106,23 @@ async def test_http_fetcher_rejects_disallowed_content_type() -> None:
 
     assert exc_info.value.content_type == "image/png"
     assert exc_info.value.allowed_content_types == ["text/html", "application/json"]
+
+
+@pytest.mark.asyncio
+async def test_http_fetcher_wraps_network_timeout_as_transient_fetch_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("timed out", request=request)
+
+    fetcher = HttpFetcher(client_factory=build_mock_http_client_factory(handler))
+    context = FetchContext(
+        crawl_run_id=uuid4(),
+        source_key="msu-official",
+        endpoint_url="https://example.edu/slow",
+    )
+
+    with pytest.raises(TransientFetchError) as exc_info:
+        await fetcher.fetch(context)
+
+    assert exc_info.value.source_key == "msu-official"
+    assert exc_info.value.endpoint_url == "https://example.edu/slow"
+    assert isinstance(exc_info.value.__cause__, httpx.ConnectTimeout)

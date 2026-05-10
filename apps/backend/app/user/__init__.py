@@ -4,8 +4,8 @@ from .models import (
     FavoriteItem,
     FavoritesResponse,
     SavedSearchCreateRequest,
-    SavedSearchItem,
     SavedSearchesResponse,
+    SavedSearchItem,
 )
 from .repository import UserRepository
 from .service import UserService

@@ -103,6 +103,12 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   const [showEge, setShowEge] = useState(false);
   const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set());
   const [egeScores, setEgeScores] = useState<EgeScores>({});
+  const [savingSearch, setSavingSearch] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
 
   useEffect(() => {
     if (!showEge) return;
@@ -117,6 +123,27 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   const handleSearch = () => setQuery(localQuery);
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
   const handleDirectionClick = (direction: string) => { setLocalQuery(direction); setQuery(direction); };
+
+  const handleSaveSearch = async () => {
+    if (!user) {
+      onShowLogin?.();
+      return;
+    }
+    setSavingSearch(true);
+    setSaveMessage(null);
+    try {
+      await backendApi.createSavedSearch({
+        query,
+        city: city || null,
+        page_size: pageSize,
+      });
+      setSaveMessage("Поиск сохранён");
+    } catch (e: unknown) {
+      setSaveMessage(describeRequestError(e));
+    } finally {
+      setSavingSearch(false);
+    }
+  };
 
   const handleEgeToggle = (id: string) => {
     setEgeChecked((prev) => {
@@ -257,6 +284,16 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
       {/* Results */}
       <div className="search-page">
         <div className="section-header">
+          {hasQueryState && (
+            <button
+              className="section-header__link"
+              type="button"
+              disabled={savingSearch}
+              onClick={handleSaveSearch}
+            >
+              Сохранить поиск
+            </button>
+          )}
           <h2 className="section-header__title">
             {hasQueryState ? "Результаты поиска" : "Популярные вузы"}
           </h2>
@@ -273,6 +310,8 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
             </button>
           )}
         </div>
+
+        {saveMessage && <p className="search-page__save-message">{saveMessage}</p>}
 
         {error && !loading && (
           <ViewState

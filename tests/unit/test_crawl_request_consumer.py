@@ -21,7 +21,7 @@ from apps.parser.app.parsed_documents import (
 )
 from apps.parser.app.raw_artifacts import RawArtifactPersistenceService, RawArtifactRepository
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
-from libs.source_sdk import FetchContext, FetchedArtifact
+from libs.source_sdk import FetchContext, FetchedArtifact, TransientFetchError
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "parser_ingestion"
 
@@ -126,6 +126,19 @@ class FakeFetcher:
         )
 
 
+class FailingTransientFetcher:
+    def __init__(self) -> None:
+        self.calls: list[FetchContext] = []
+
+    async def fetch(self, context: FetchContext) -> FetchedArtifact:
+        self.calls.append(context)
+        raise TransientFetchError(
+            "connect timeout",
+            source_key=context.source_key,
+            endpoint_url=context.endpoint_url,
+        )
+
+
 class FakeRawStore:
     def __init__(self) -> None:
         self.calls: list[tuple[FetchContext, FetchedArtifact]] = []
@@ -178,6 +191,20 @@ class FakeParseCompletedPublisher:
                 "routing_key": "high" if queue_name == "normalize.high" else "bulk",
             },
         )()
+
+
+class FakeRetryPublisher:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def publish(self, payload, *, queue_name: str, headers: dict | None = None):
+        self.calls.append(
+            {
+                "payload": payload,
+                "queue_name": queue_name,
+                "headers": headers,
+            }
+        )
 
 
 def build_event(crawl_run_id=None) -> CrawlRequestEvent:
@@ -316,6 +343,51 @@ def test_crawl_request_consumer_validates_body_and_runs_processing_service() -> 
     assert result.source_key == "msu-official"
     assert result.raw_artifact.storage_bucket == "raw-html"
     assert session.commit_count == 1
+
+
+def test_crawl_request_consumer_schedules_retry_for_transient_fetch_failure() -> None:
+    fetcher = FailingTransientFetcher()
+    raw_store = FakeRawStore()
+    session = FakeRawArtifactSession()
+    retry_publisher = FakeRetryPublisher()
+    service = build_processing_service(fetcher=fetcher, raw_store=raw_store, session=session)
+    consumer = CrawlRequestConsumer(
+        service=service,
+        retry_publisher=retry_publisher,
+        queue_name="parser.high",
+        max_transient_retries=3,
+    )
+    event = build_event()
+    message = type("Message", (), {"headers": {}})()
+
+    result = consumer.handle_message(event.model_dump(mode="json"), message)
+
+    assert result is None
+    assert len(retry_publisher.calls) == 1
+    assert retry_publisher.calls[0]["queue_name"] == "parser.high.retry"
+    assert retry_publisher.calls[0]["payload"]["event_name"] == "crawl.request.v1"
+    assert retry_publisher.calls[0]["headers"]["x-parser-transient-retry-count"] == 1
+
+
+def test_crawl_request_consumer_raises_transient_fetch_failure_after_retry_limit() -> None:
+    fetcher = FailingTransientFetcher()
+    raw_store = FakeRawStore()
+    session = FakeRawArtifactSession()
+    retry_publisher = FakeRetryPublisher()
+    service = build_processing_service(fetcher=fetcher, raw_store=raw_store, session=session)
+    consumer = CrawlRequestConsumer(
+        service=service,
+        retry_publisher=retry_publisher,
+        queue_name="parser.high",
+        max_transient_retries=1,
+    )
+    event = build_event()
+    message = type("Message", (), {"headers": {"x-parser-transient-retry-count": 1}})()
+
+    with pytest.raises(TransientFetchError):
+        consumer.handle_message(event.model_dump(mode="json"), message)
+
+    assert retry_publisher.calls == []
 
 
 def test_build_crawl_request_consumer_uses_declared_parser_queue() -> None:

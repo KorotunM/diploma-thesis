@@ -2,6 +2,11 @@ export { BackendApiClient } from "./client";
 export type { BackendApiClientOptions } from "./client";
 export type {
   AdmissionProgramDto,
+  AiChatAdvancedFiltersDto,
+  AiChatFiltersDto,
+  AiChatMessageDto,
+  AiChatRequestDto,
+  AiChatResponseDto,
   AuthResponseDto,
   BackendSearchFiltersDto,
   BackendSearchItem,

@@ -148,6 +148,7 @@ venv.bak/
 !infra/env/**/
 !infra/env/**/*.env
 !infra/env/**/*.md
+infra/env/local/secrets.env
 
 # Spyder project settings
 .spyderproject

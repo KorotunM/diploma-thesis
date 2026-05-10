@@ -147,7 +147,7 @@ class UniversitySearchRepository:
             card_version=row["card_version"],
             canonical_name=row["canonical_name"],
             website_url=row["website_url"],
-            logo_url=row["logo_url"],
+            logo_url=row.get("logo_url"),
             website_domain=row["website_domain"],
             country_code=row["country_code"],
             city_name=row["city_name"],

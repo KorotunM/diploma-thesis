@@ -11,6 +11,7 @@ from .base_adapter import (
     RawFetcher,
     SourceAdapter,
 )
+from .fetchers import FetchError, TransientFetchError
 from .stores import MinIORawArtifactStore, RawArtifactContentError
 
 __all__ = [
@@ -24,6 +25,8 @@ __all__ = [
     "ParserExecutionStatus",
     "RawArtifactStore",
     "RawFetcher",
+    "FetchError",
+    "TransientFetchError",
     "MinIORawArtifactStore",
     "RawArtifactContentError",
     "SourceAdapter",

@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 
+from apps.backend.app.ai import AiChatProviderError, AiChatRequest, AiChatResponse, AiChatService
 from apps.backend.app.auth import (
     AuthResponse,
     AuthService,
@@ -17,6 +18,7 @@ from apps.backend.app.cards import (
     UniversityCardResponse,
 )
 from apps.backend.app.dependencies import (
+    get_ai_chat_service,
     get_auth_service,
     get_bearer_token,
     get_optional_user_id,
@@ -36,11 +38,13 @@ from apps.backend.app.user import (
     ComparisonResponse,
     FavoritesResponse,
     SavedSearchCreateRequest,
-    SavedSearchItem,
     SavedSearchesResponse,
+    SavedSearchItem,
+    UserRepository,
     UserService,
 )
 from libs.observability import create_service_app
+from libs.storage import get_postgres_session_factory
 
 app = create_service_app(
     service_name="backend",
@@ -51,7 +55,10 @@ CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
 PROVENANCE_READ_SERVICE_DEPENDENCY = Depends(get_university_provenance_read_service)
 SEARCH_SERVICE_DEPENDENCY = Depends(get_university_search_service)
 AUTH_SERVICE_DEPENDENCY = Depends(get_auth_service)
+AI_CHAT_SERVICE_DEPENDENCY = Depends(get_ai_chat_service)
 USER_SERVICE_DEPENDENCY = Depends(get_user_service)
+OPTIONAL_USER_ID_DEPENDENCY = Depends(get_optional_user_id)
+REQUIRED_USER_ID_DEPENDENCY = Depends(get_required_user_id)
 
 
 @app.get("/", tags=["backend"])
@@ -60,6 +67,7 @@ def backend_overview() -> dict[str, object]:
         "service": "backend",
         "public_endpoints": [
             "/api/v1/search",
+            "/api/v1/ai/chat",
             "/api/v1/universities/{university_id}",
             "/api/v1/auth/register",
             "/api/v1/auth/login",
@@ -91,6 +99,22 @@ def search_universities(
 
 # ── University card ────────────────────────────────────────────────────────────
 
+# --- AI chat ---------------------------------------------------------------
+
+@app.post("/api/v1/ai/chat", response_model=AiChatResponse, tags=["ai"])
+def ai_chat(
+    body: AiChatRequest,
+    service: AiChatService = AI_CHAT_SERVICE_DEPENDENCY,
+) -> AiChatResponse:
+    try:
+        return service.build_filter_plan(body)
+    except AiChatProviderError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+
 @app.get(
     "/api/v1/universities/{university_id}",
     response_model=UniversityCardResponse,
@@ -99,8 +123,7 @@ def search_universities(
 def get_university_card(
     university_id: UUID,
     service: UniversityCardReadService = CARD_READ_SERVICE_DEPENDENCY,
-    user_id: UUID | None = Depends(get_optional_user_id),
-    user_service: UserService = USER_SERVICE_DEPENDENCY,
+    user_id: UUID | None = OPTIONAL_USER_ID_DEPENDENCY,
 ) -> UniversityCardResponse:
     try:
         card = service.get_latest_card(university_id)
@@ -111,8 +134,14 @@ def get_university_card(
         ) from exc
 
     if user_id is not None:
-        card.is_favorite = user_service.is_favorite(user_id, university_id)
-        card.is_compared = user_service.is_compared(user_id, university_id)
+        session_factory = get_postgres_session_factory(service_name="backend")
+        session = session_factory()
+        try:
+            user_service = UserService(UserRepository(session))
+            card.is_favorite = user_service.is_favorite(user_id, university_id)
+            card.is_compared = user_service.is_compared(user_id, university_id)
+        finally:
+            session.close()
 
     return card
 
@@ -194,7 +223,7 @@ def get_me(
 
 @app.get("/api/v1/me/favorites", response_model=FavoritesResponse, tags=["user"])
 def get_favorites(
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> FavoritesResponse:
     return service.get_favorites(user_id)
@@ -203,7 +232,7 @@ def get_favorites(
 @app.post("/api/v1/me/favorites/{university_id}", status_code=201, tags=["user"])
 def add_favorite(
     university_id: UUID,
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> dict:
     service.add_favorite(user_id, university_id)
@@ -213,7 +242,7 @@ def add_favorite(
 @app.delete("/api/v1/me/favorites/{university_id}", status_code=204, tags=["user"])
 def remove_favorite(
     university_id: UUID,
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> None:
     service.remove_favorite(user_id, university_id)
@@ -223,7 +252,7 @@ def remove_favorite(
 
 @app.get("/api/v1/me/comparisons", response_model=ComparisonResponse, tags=["user"])
 def get_comparisons(
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> ComparisonResponse:
     return service.get_comparisons(user_id)
@@ -232,7 +261,7 @@ def get_comparisons(
 @app.post("/api/v1/me/comparisons/{university_id}", status_code=201, tags=["user"])
 def add_comparison(
     university_id: UUID,
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> dict:
     service.add_comparison(user_id, university_id)
@@ -242,7 +271,7 @@ def add_comparison(
 @app.delete("/api/v1/me/comparisons/{university_id}", status_code=204, tags=["user"])
 def remove_comparison(
     university_id: UUID,
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> None:
     service.remove_comparison(user_id, university_id)
@@ -252,7 +281,7 @@ def remove_comparison(
 
 @app.get("/api/v1/me/saved-searches", response_model=SavedSearchesResponse, tags=["user"])
 def get_saved_searches(
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> SavedSearchesResponse:
     return service.list_saved_searches(user_id)
@@ -266,7 +295,7 @@ def get_saved_searches(
 )
 def create_saved_search(
     body: SavedSearchCreateRequest,
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> SavedSearchItem:
     return service.create_saved_search(user_id, body)
@@ -275,7 +304,7 @@ def create_saved_search(
 @app.delete("/api/v1/me/saved-searches/{saved_search_id}", status_code=204, tags=["user"])
 def delete_saved_search(
     saved_search_id: UUID,
-    user_id: UUID = Depends(get_required_user_id),
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
     service: UserService = USER_SERVICE_DEPENDENCY,
 ) -> None:
     service.delete_saved_search(user_id, saved_search_id)

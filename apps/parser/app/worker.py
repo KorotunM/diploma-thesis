@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from contextlib import ExitStack
 import logging
 import os
+from contextlib import ExitStack
 
 from libs.storage import (
+    RabbitMQPublisher,
+    get_platform_settings,
     get_postgres_session_factory,
     get_rabbitmq_connection,
     run_resilient_worker_loop,
@@ -15,7 +17,6 @@ from .dependencies import (
     create_crawl_request_processing_service,
     create_parser_rabbitmq_consumer,
 )
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,13 +50,26 @@ def _env_float(name: str, default: float) -> float:
     return parsed if parsed > 0 else default
 
 
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError:
+        return default
+    return parsed if parsed >= 0 else default
+
+
 def _run_parser_consumer_session(
     *,
     prefetch_count: int | None,
     requeue_on_error: bool,
 ) -> None:
     connection = get_rabbitmq_connection(service_name="parser")
+    settings = get_platform_settings(service_name="parser")
     rabbitmq_consumer = create_parser_rabbitmq_consumer(connection=connection)
+    retry_publisher = RabbitMQPublisher(connection, settings.rabbitmq)
     session_factory = get_postgres_session_factory(service_name="parser")
     service = SessionScopedCrawlRequestProcessingService(session_factory)
     consumers = build_crawl_request_consumers(
@@ -63,6 +77,8 @@ def _run_parser_consumer_session(
         service=service,
         prefetch_count=prefetch_count,
         requeue_on_error=requeue_on_error,
+        retry_publisher=retry_publisher,
+        max_transient_retries=_env_int("PARSER_FETCH_MAX_TRANSIENT_RETRIES", 3),
     )
 
     with connection:

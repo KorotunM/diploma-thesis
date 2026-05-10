@@ -8,8 +8,8 @@ from .models import (
     FavoriteItem,
     FavoritesResponse,
     SavedSearchCreateRequest,
-    SavedSearchItem,
     SavedSearchesResponse,
+    SavedSearchItem,
 )
 from .repository import UserRepository
 

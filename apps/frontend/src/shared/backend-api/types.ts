@@ -191,6 +191,48 @@ export interface SavedSearchesResponseDto {
 
 // ── Provenance (kept for evidence drawer) ─────────────────────────────
 
+// --- AI chat -----------------------------------------------------------
+
+export interface AiChatAdvancedFiltersDto {
+  min_rating: number | null;
+  min_budget_places: number | null;
+  max_passing_score: number | null;
+  dormitory: boolean | null;
+  university_type: string | null;
+  program_query: string | null;
+}
+
+export interface AiChatFiltersDto {
+  query: string | null;
+  city: string | null;
+  country: string | null;
+  source_type: string | null;
+  direction: string | null;
+  study_form: string | null;
+  budget_type: string | null;
+  min_ege_score: number | null;
+  advanced: AiChatAdvancedFiltersDto;
+}
+
+export interface AiChatMessageDto {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AiChatRequestDto {
+  message: string;
+  history?: AiChatMessageDto[];
+}
+
+export interface AiChatResponseDto {
+  intent: "search" | "clarify" | "general";
+  message_to_user: string;
+  filters: AiChatFiltersDto;
+  missing_fields: string[];
+  confidence: number;
+  model_used: string | null;
+}
+
 export interface DeliveryProjectionTraceDto {
   university_id: string;
   card_version: number;

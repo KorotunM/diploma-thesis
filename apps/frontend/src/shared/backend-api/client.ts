@@ -4,6 +4,8 @@ import { PlatformServiceClient } from "../platform-api";
 import type { HealthResponseDto } from "../platform-api";
 
 import type {
+  AiChatRequestDto,
+  AiChatResponseDto,
   AuthResponseDto,
   BackendSearchResponse,
   ComparisonResponseDto,
@@ -157,5 +159,14 @@ export class BackendApiClient {
       `/api/v1/me/saved-searches/${encodeURIComponent(savedSearchId)}`,
       options,
     );
+  }
+
+  // --- AI chat ---------------------------------------------------------
+
+  async aiChat(
+    body: AiChatRequestDto,
+    options?: JsonHttpRequestOptions,
+  ): Promise<AiChatResponseDto> {
+    return this.http.post<AiChatResponseDto>("/api/v1/ai/chat", body, options);
   }
 }

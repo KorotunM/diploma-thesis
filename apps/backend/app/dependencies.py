@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from fastapi import Depends, Header
 from uuid import UUID
+
+from fastapi import Depends, Header
 
 from libs.storage import get_postgres_session_factory
 
+from .ai import AiChatService
 from .auth import AuthRepository, AuthService
 from .cards import UniversityCardReadRepository, UniversityCardReadService
 from .provenance import UniversityProvenanceReadService, UniversityProvenanceRepository
@@ -50,18 +52,26 @@ def get_user_service(session=BACKEND_SESSION_DEPENDENCY) -> UserService:
     return UserService(UserRepository(session))
 
 
+def get_ai_chat_service() -> AiChatService:
+    return AiChatService()
+
+
 def get_optional_user_id(
     authorization: str | None = Header(default=None),
-    session=BACKEND_SESSION_DEPENDENCY,
 ) -> UUID | None:
     if not authorization or not authorization.startswith("Bearer "):
         return None
     token = authorization.removeprefix("Bearer ").strip()
     if not token:
         return None
-    auth_repo = AuthRepository(session)
-    user = auth_repo.find_user_by_token(token)
-    return user.user_id if user else None
+    session_factory = get_postgres_session_factory(service_name="backend")
+    session = session_factory()
+    try:
+        auth_repo = AuthRepository(session)
+        user = auth_repo.find_user_by_token(token)
+        return user.user_id if user else None
+    finally:
+        session.close()
 
 
 def get_required_user_id(
@@ -76,7 +86,10 @@ def get_required_user_id(
     auth_repo = AuthRepository(session)
     user = auth_repo.find_user_by_token(token)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token.",
+        )
     return user.user_id
 
 

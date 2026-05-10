@@ -37,6 +37,17 @@ class UnsupportedContentTypeError(ValueError):
         self.allowed_content_types = allowed_content_types
 
 
+class FetchError(RuntimeError):
+    def __init__(self, message: str, *, source_key: str, endpoint_url: str) -> None:
+        super().__init__(message)
+        self.source_key = source_key
+        self.endpoint_url = endpoint_url
+
+
+class TransientFetchError(FetchError):
+    pass
+
+
 class HttpFetcher:
     def __init__(
         self,
@@ -66,7 +77,17 @@ class HttpFetcher:
             timeout=timeout,
             headers=request_headers,
         ) as client:
-            response = await client.get(context.endpoint_url)
+            try:
+                response = await client.get(context.endpoint_url)
+            except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                raise TransientFetchError(
+                    (
+                        f"Transient fetch failure for {context.source_key} "
+                        f"at {context.endpoint_url}: {type(exc).__name__}"
+                    ),
+                    source_key=context.source_key,
+                    endpoint_url=context.endpoint_url,
+                ) from exc
 
         response_headers = normalize_response_headers(response.headers)
         content_type = response_headers.get("content-type", "application/octet-stream")
