@@ -21,6 +21,8 @@ export type {
   FavoritesResponseDto,
   FieldAttributionDto,
   LocationSuggestResponseDto,
+  RankingItemDto,
+  RankingsResponseDto,
   ParsedDocumentTraceDto,
   RawArtifactTraceDto,
   ResolvedFactTraceDto,

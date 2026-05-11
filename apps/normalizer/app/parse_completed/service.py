@@ -14,6 +14,7 @@ from apps.normalizer.app.cards import UniversityCardProjectionService
 from apps.normalizer.app.card_updated import CardUpdatedEmitter
 from apps.normalizer.app.claims import ClaimBuildResult, ClaimBuildService, ClaimEvidenceRecord, ClaimRecord
 from apps.normalizer.app.facts import ResolvedFactGenerationService
+from apps.normalizer.app.ranking_history import RankingHistoryService
 from apps.normalizer.app.universities import UniversityBootstrapError, UniversityBootstrapService
 
 from .models import ParseCompletedProcessingResult
@@ -59,6 +60,7 @@ class ParseCompletedProcessingService:
         resolved_fact_generation_service: ResolvedFactGenerationService,
         university_card_projection_service: UniversityCardProjectionService,
         card_updated_emitter: CardUpdatedEmitter | None = None,
+        ranking_history_service: RankingHistoryService | None = None,
         normalizer_version: str = "normalizer.0.1.0",
     ) -> None:
         self._claim_build_service = claim_build_service
@@ -66,6 +68,7 @@ class ParseCompletedProcessingService:
         self._resolved_fact_generation_service = resolved_fact_generation_service
         self._university_card_projection_service = university_card_projection_service
         self._card_updated_emitter = card_updated_emitter
+        self._ranking_history_service = ranking_history_service
         self._normalizer_version = normalizer_version
 
     def process(
@@ -91,6 +94,11 @@ class ParseCompletedProcessingService:
                     exc,
                 )
                 continue
+            if self._ranking_history_service is not None:
+                self._ranking_history_service.write_from_bootstrap(
+                    bootstrap_result,
+                    source_key=event.payload.source_key,
+                )
             fact_result = self._resolved_fact_generation_service.generate_for_bootstrap(
                 bootstrap_result
             )

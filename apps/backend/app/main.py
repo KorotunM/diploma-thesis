@@ -23,6 +23,7 @@ from apps.backend.app.dependencies import (
     get_bearer_token,
     get_location_suggest_service,
     get_optional_user_id,
+    get_rankings_service,
     get_required_user_id,
     get_university_card_read_service,
     get_university_provenance_read_service,
@@ -35,6 +36,7 @@ from apps.backend.app.provenance import (
     UniversityProvenanceTrace,
 )
 from apps.backend.app.locations import LocationSuggestResponse, LocationSuggestService
+from apps.backend.app.rankings import RankingsResponse, RankingsService
 from apps.backend.app.search import UniversitySearchResponse, UniversitySearchService
 from apps.backend.app.user import (
     ComparisonResponse,
@@ -54,6 +56,7 @@ app = create_service_app(
 )
 
 LOCATION_SUGGEST_SERVICE_DEPENDENCY = Depends(get_location_suggest_service)
+RANKINGS_SERVICE_DEPENDENCY = Depends(get_rankings_service)
 CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
 PROVENANCE_READ_SERVICE_DEPENDENCY = Depends(get_university_provenance_read_service)
 SEARCH_SERVICE_DEPENDENCY = Depends(get_university_search_service)
@@ -113,9 +116,23 @@ def suggest_regions(
 @app.get("/api/v1/cities", response_model=LocationSuggestResponse, tags=["locations"])
 def suggest_cities(
     q: str = "",
+    region: str = "",
     service: LocationSuggestService = LOCATION_SUGGEST_SERVICE_DEPENDENCY,
 ) -> LocationSuggestResponse:
+    if region and not q:
+        return service.suggest_cities_by_region(region)
     return service.suggest_cities(q)
+
+
+# ── Rankings ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/v1/rankings", response_model=RankingsResponse, tags=["rankings"])
+def get_rankings(
+    page: int = 1,
+    page_size: int = 20,
+    service: RankingsService = RANKINGS_SERVICE_DEPENDENCY,
+) -> RankingsResponse:
+    return service.get_rankings(page=page, page_size=page_size)
 
 
 # ── University card ────────────────────────────────────────────────────────────

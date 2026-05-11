@@ -1,0 +1,250 @@
+@use "../variables" as *;
+
+// ── Hero overrides ─────────────────────────────────────────────────
+.ratings-hero {
+  padding-bottom: 52px;
+}
+
+.ratings-hero__inner {
+  max-width: 900px;
+}
+
+.ratings-hero__eyebrow {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 8px;
+}
+
+.ratings-hero__title {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: $color-hero-text;
+  margin: 0 0 20px;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.ratings-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.ratings-hero__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+}
+
+.ratings-hero__meta-icon {
+  font-size: 0.95rem;
+}
+
+.ratings-hero__meta-sep {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 1.1rem;
+}
+
+.ratings-hero__desc {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.6;
+}
+
+// ── Page container ─────────────────────────────────────────────────
+.ratings-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+}
+
+// ── Rank list ──────────────────────────────────────────────────────
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  overflow: hidden;
+  background: $color-surface;
+}
+
+// ── Rank row ───────────────────────────────────────────────────────
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid $color-border;
+  cursor: pointer;
+  transition: background 0.12s;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+.rank-row__pos-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 36px;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.rank-row__pos {
+  font-size: 1rem;
+  font-weight: 800;
+  color: $color-text-muted;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+// Logo
+.rank-row__logo {
+  width: 44px;
+  height: 44px;
+  border-radius: $radius-sm;
+  object-fit: contain;
+  flex-shrink: 0;
+
+  &--fallback {
+    background: linear-gradient(135deg, $color-brand-light, rgba(37, 99, 235, 0.08));
+    border: 1px solid rgba(37, 99, 235, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: $color-brand;
+    text-transform: uppercase;
+  }
+}
+
+// Info block
+.rank-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-row__name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: $color-text;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-row__location {
+  font-size: 0.78rem;
+  color: $color-text-muted;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Right block: score + category
+.rank-row__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rank-row__score {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: $color-text;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rank-row__category {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.5;
+
+  &--aplus  { background: #dcfce7; color: #15803d; }
+  &--a      { background: #bbf7d0; color: #166534; }
+  &--bplus  { background: #fef9c3; color: #854d0e; }
+  &--b      { background: #fef3c7; color: #92400e; }
+  &--c      { background: #f3f4f6; color: #6b7280; }
+}
+
+// Trend badge
+.rank-row__trend {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+
+  &--up   { color: #16a34a; }
+  &--down { color: #dc2626; }
+}
+
+// ── Pagination ─────────────────────────────────────────────────────
+.ratings-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0 0;
+}
+
+.ratings-page__page-btn {
+  padding: 8px 20px;
+  background: $color-surface;
+  border: 1px solid $color-border-strong;
+  border-radius: $radius-sm;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: $color-brand;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+
+  &:hover {
+    background: $color-brand-light;
+    border-color: $color-brand;
+  }
+}
+
+.ratings-page__page-info {
+  font-size: 0.88rem;
+  color: $color-text-muted;
+  font-weight: 500;
+}
+
+// ── Responsive ─────────────────────────────────────────────────────
+@media (max-width: $breakpoint-small) {
+  .ratings-hero__title {
+    font-size: 1.8rem;
+  }
+
+  .rank-row {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .rank-row__right {
+    display: none;
+  }
+}

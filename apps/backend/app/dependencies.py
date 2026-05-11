@@ -11,6 +11,7 @@ from .auth import AuthRepository, AuthService
 from .cards import UniversityCardReadRepository, UniversityCardReadService
 from .provenance import UniversityProvenanceReadService, UniversityProvenanceRepository
 from .locations import LocationSuggestRepository, LocationSuggestService
+from .rankings import RankingsRepository, RankingsService
 from .search import UniversitySearchRepository, UniversitySearchService
 from .user import UserRepository, UserService
 
@@ -49,6 +50,12 @@ def get_location_suggest_service(
     session=BACKEND_SESSION_DEPENDENCY,
 ) -> LocationSuggestService:
     return LocationSuggestService(LocationSuggestRepository(session))
+
+
+def get_rankings_service(
+    session=BACKEND_SESSION_DEPENDENCY,
+) -> RankingsService:
+    return RankingsService(RankingsRepository(session))
 
 
 def get_auth_service(session=BACKEND_SESSION_DEPENDENCY) -> AuthService:

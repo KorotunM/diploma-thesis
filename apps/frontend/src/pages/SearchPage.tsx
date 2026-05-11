@@ -4,7 +4,7 @@ import { useUniversitySearch } from "../features/search";
 import { useAuth } from "../shared/auth";
 import { describeRequestError } from "../shared/http";
 import { useFrontendRuntime } from "../shared/runtime";
-import { LocationAutocomplete } from "../shared/ui/LocationAutocomplete";
+import { GeoPickerDropdown } from "../shared/ui/GeoPickerDropdown";
 import { ViewState } from "../shared/ui/view-state";
 
 const DIRECTIONS = [
@@ -102,6 +102,8 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     loading,
   } = useUniversitySearch();
 
+  const hasGeoFilter = region.trim().length > 0 || city.trim().length > 0;
+
   const [localQuery, setLocalQuery] = useState(query);
   const [showEge, setShowEge] = useState(false);
   const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set());
@@ -121,7 +123,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   }, [showEge]);
 
   const hasResults = (snapshot?.items.length ?? 0) > 0;
-  const hasQueryState = query.trim().length > 0 || city.trim().length > 0 || region.trim().length > 0;
+  const hasQueryState = query.trim().length > 0 || hasGeoFilter;
 
   const handleSearch = () => setQuery(localQuery);
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
@@ -186,13 +188,13 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
 
           <div className="hero__filters">
             <div className="hero__filter-wrap">
-              <span className="hero__filter-label">Регион</span>
-              <LocationAutocomplete
-                mode="region"
-                value={region}
-                onChange={setRegion}
+              <span className="hero__filter-label">Город / регион</span>
+              <GeoPickerDropdown
+                region={region}
+                city={city}
+                onChangeRegion={setRegion}
+                onChangeCity={setCity}
                 className="hero__filter"
-                placeholder="Вся Россия"
               />
             </div>
             <div className="hero__filter-wrap">

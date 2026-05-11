@@ -1,0 +1,194 @@
+@use "../variables" as *;
+
+.geo-picker {
+  position: relative;
+}
+
+// ── Trigger button ──────────────────────────────────────────────────
+.geo-picker__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: $radius-sm;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.13);
+  }
+
+  &--active {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+.geo-picker__value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geo-picker__arrow {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.geo-picker__clear {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0 2px;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// ── Dropdown panel ──────────────────────────────────────────────────
+.geo-picker__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 260px;
+  max-width: 320px;
+  max-height: 380px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
+  z-index: 200;
+}
+
+.geo-picker__loading,
+.geo-picker__empty {
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  color: $color-text-muted;
+}
+
+// ── Region group ────────────────────────────────────────────────────
+.geo-picker__region-group {
+  border-bottom: 1px solid $color-border;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+// ── Shared row state ────────────────────────────────────────────────
+.geo-picker__row--selected {
+  background: $color-brand-light;
+}
+
+// ── Region row ──────────────────────────────────────────────────────
+.geo-picker__region-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 10px 10px;
+  cursor: default;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &.geo-picker__row--selected:hover {
+    background: $color-brand-light;
+  }
+}
+
+.geo-picker__chevron {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  font-size: 0.85rem;
+  color: $color-text-muted;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+
+  &:hover {
+    color: $color-brand;
+  }
+}
+
+.geo-picker__region-name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: $color-text;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    color: $color-brand;
+  }
+}
+
+// ── City row ────────────────────────────────────────────────────────
+.geo-picker__city-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 8px 36px;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &.geo-picker__row--selected:hover {
+    background: $color-brand-light;
+  }
+}
+
+.geo-picker__city-name {
+  font-size: 0.85rem;
+  color: $color-text-muted;
+}
+
+// ── Checkbox indicator ──────────────────────────────────────────────
+.geo-picker__check {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid $color-border-strong;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s;
+
+  &--on {
+    background: $color-brand;
+    border-color: $color-brand;
+    position: relative;
+
+    &::after {
+      content: "✓";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: #fff;
+      font-weight: 700;
+    }
+  }
+}

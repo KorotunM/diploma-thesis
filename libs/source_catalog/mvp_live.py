@@ -124,7 +124,7 @@ def build_live_mvp_source_catalog() -> tuple[SourceBlueprint, ...]:
                     parser_profile="ranking.tabiturient.globalrating_html",
                     role="ranking_snapshot",
                     content_kind="html",
-                    implementation_status="planned",
+                    implementation_status="implemented",
                     target_fields=(
                         "canonical_name",
                         "contacts.website",

@@ -66,11 +66,11 @@ class UniversitySearchRepository:
 
         if city:
             params["city"] = city
-            extra_filters.append("lower(search_doc.city_name) = lower(:city)")
+            extra_filters.append("lower(search_doc.city_name) LIKE lower(:city) || '%'")
 
         if region:
             params["region"] = region
-            extra_filters.append("lower(search_doc.region_name) = lower(:region)")
+            extra_filters.append("lower(search_doc.region_name) LIKE lower(:region) || '%'")
 
         if country_code:
             params["country_code"] = country_code

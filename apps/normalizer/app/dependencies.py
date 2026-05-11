@@ -12,6 +12,7 @@ from .card_updated import CardUpdatedEmitter
 from .claims import ClaimBuildRepository, ClaimBuildService
 from .facts import ResolvedFactGenerationService, ResolvedFactRepository
 from .parse_completed import ParseCompletedProcessingService
+from .ranking_history import RankingHistoryRepository, RankingHistoryService
 from .resolution import FieldResolutionPolicyMatrix
 from .review_required import ReviewRequiredEmitter
 from .search_docs import (
@@ -82,6 +83,10 @@ def create_university_card_projection_service(session) -> UniversityCardProjecti
     )
 
 
+def create_ranking_history_service(session) -> RankingHistoryService:
+    return RankingHistoryService(RankingHistoryRepository(session))
+
+
 def create_parse_completed_processing_service(
     session,
 ) -> ParseCompletedProcessingService:
@@ -93,6 +98,7 @@ def create_parse_completed_processing_service(
             session
         ),
         card_updated_emitter=create_card_updated_emitter(),
+        ranking_history_service=create_ranking_history_service(session),
     )
 
 

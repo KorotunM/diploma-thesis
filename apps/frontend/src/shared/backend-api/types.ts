@@ -23,6 +23,27 @@ export interface LocationSuggestResponseDto {
   items: string[];
 }
 
+export interface RankingItemDto {
+  rank: number;
+  trend: "up" | "down" | "neutral";
+  trend_delta: number;
+  university_id: string;
+  canonical_name: string;
+  logo_url: string | null;
+  city: string | null;
+  region: string | null;
+  composite_score: number;
+  category: string;
+}
+
+export interface RankingsResponseDto {
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+  items: RankingItemDto[];
+}
+
 export interface BackendSearchResponse {
   query: string;
   total: number;

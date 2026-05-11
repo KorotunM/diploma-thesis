@@ -12,6 +12,7 @@ import type {
   CurrentUserDto,
   FavoritesResponseDto,
   LocationSuggestResponseDto,
+  RankingsResponseDto,
   SavedSearchCreateDto,
   SavedSearchItemDto,
   SavedSearchesResponseDto,
@@ -72,6 +73,18 @@ export class BackendApiClient {
   ): Promise<LocationSuggestResponseDto> {
     const search = new URLSearchParams({ q });
     return this.http.get<LocationSuggestResponseDto>(`/api/v1/cities?${search}`, options);
+  }
+
+  async getCitiesByRegion(
+    region: string,
+    options?: JsonHttpRequestOptions,
+  ): Promise<LocationSuggestResponseDto> {
+    const search = new URLSearchParams({ region });
+    return this.http.get<LocationSuggestResponseDto>(`/api/v1/cities?${search}`, options);
+  }
+
+  async getAllRegions(options?: JsonHttpRequestOptions): Promise<LocationSuggestResponseDto> {
+    return this.http.get<LocationSuggestResponseDto>("/api/v1/regions", options);
   }
 
   async getUniversityCard(
@@ -178,6 +191,19 @@ export class BackendApiClient {
       `/api/v1/me/saved-searches/${encodeURIComponent(savedSearchId)}`,
       options,
     );
+  }
+
+  // --- Rankings --------------------------------------------------------
+
+  async getRankings(
+    params: { page?: number; pageSize?: number } = {},
+    options?: JsonHttpRequestOptions,
+  ): Promise<RankingsResponseDto> {
+    const search = new URLSearchParams();
+    if (params.page && params.page > 1) search.set("page", String(params.page));
+    if (params.pageSize) search.set("page_size", String(params.pageSize));
+    const suffix = search.size > 0 ? `?${search.toString()}` : "";
+    return this.http.get<RankingsResponseDto>(`/api/v1/rankings${suffix}`, options);
   }
 
   // --- AI chat ---------------------------------------------------------

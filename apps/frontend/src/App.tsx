@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { ComparisonPage } from "./pages/ComparisonPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { RatingsPage } from "./pages/RatingsPage";
 import { SearchWorkspacePage } from "./pages/SearchWorkspacePage";
 import { UniversityDetailPage } from "./pages/UniversityDetailPage";
 import { AiChatWidget } from "./components/AiChatWidget";
@@ -10,9 +11,9 @@ import { LoginModal } from "./components/LoginModal";
 import { useAuth } from "./shared/auth";
 import logoSvg from "./assets/logo.svg";
 
-type AppView = "search" | "university" | "admin" | "comparison" | "profile";
+type AppView = "search" | "university" | "admin" | "comparison" | "profile" | "ratings";
 
-const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin", "comparison", "profile"];
+const ALL_VIEW_IDS: AppView[] = ["search", "university", "admin", "comparison", "profile", "ratings"];
 
 const NAV_LINKS: Array<{ id: AppView | null; label: string; soon?: boolean }> = [
   { id: "search", label: "Поиск вуза" },
@@ -20,7 +21,7 @@ const NAV_LINKS: Array<{ id: AppView | null; label: string; soon?: boolean }> = 
   { id: "profile", label: "Кабинет" },
   { id: null, label: "Специальности", soon: true },
   { id: null, label: "Калькулятор", soon: true },
-  { id: null, label: "Рейтинги", soon: true },
+  { id: "ratings", label: "Рейтинги" },
 ];
 
 function readViewFromLocation(): AppView {
@@ -147,6 +148,7 @@ export default function App() {
           <ComparisonPage onShowLogin={() => setShowLogin(true)} />
         )}
         {activeView === "profile" && <ProfilePage onShowLogin={() => setShowLogin(true)} />}
+        {activeView === "ratings" && <RatingsPage />}
         {activeView === "admin" && isAdmin && <AdminDashboard onLogout={handleLogout} />}
         {activeView === "admin" && !isAdmin && <SearchWorkspacePage onShowLogin={() => setShowLogin(true)} />}
       </main>
