@@ -10,6 +10,7 @@ from .ai import AiChatService
 from .auth import AuthRepository, AuthService
 from .cards import UniversityCardReadRepository, UniversityCardReadService
 from .provenance import UniversityProvenanceReadService, UniversityProvenanceRepository
+from .locations import LocationSuggestRepository, LocationSuggestService
 from .search import UniversitySearchRepository, UniversitySearchService
 from .user import UserRepository, UserService
 
@@ -42,6 +43,12 @@ def get_university_search_service(
     session=BACKEND_SESSION_DEPENDENCY,
 ) -> UniversitySearchService:
     return UniversitySearchService(UniversitySearchRepository(session))
+
+
+def get_location_suggest_service(
+    session=BACKEND_SESSION_DEPENDENCY,
+) -> LocationSuggestService:
+    return LocationSuggestService(LocationSuggestRepository(session))
 
 
 def get_auth_service(session=BACKEND_SESSION_DEPENDENCY) -> AuthService:

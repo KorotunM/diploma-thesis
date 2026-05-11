@@ -18,6 +18,7 @@ class UniversitySearchDocRecord(BaseModel):
     website_domain: str | None = None
     country_code: str | None = None
     city_name: str | None = None
+    region_name: str | None = None
     aliases: list[str] = Field(default_factory=list)
     search_document: dict[str, Any] = Field(default_factory=dict)
     generated_at: datetime

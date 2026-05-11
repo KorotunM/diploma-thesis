@@ -23,6 +23,7 @@ export function useUniversitySearch() {
   const [state, setState] = useState<SearchQueryState>(readSearchQueryStateFromLocation);
   const deferredQuery = useDeferredValue(state.query.trim());
   const deferredCity = useDeferredValue(state.city.trim());
+  const deferredRegion = useDeferredValue(state.region.trim());
   const deferredCountry = useDeferredValue(state.country.trim());
   const deferredSourceType = useDeferredValue(state.sourceType.trim());
   const deferredPage = useDeferredValue(state.page);
@@ -64,6 +65,7 @@ export function useUniversitySearch() {
       state: {
         query: deferredQuery,
         city: deferredCity,
+        region: deferredRegion,
         country: deferredCountry,
         sourceType: deferredSourceType,
         page: deferredPage,
@@ -101,6 +103,7 @@ export function useUniversitySearch() {
     };
   }, [
     deferredCity,
+    deferredRegion,
     deferredCountry,
     deferredPage,
     deferredPageSize,
@@ -121,6 +124,14 @@ export function useUniversitySearch() {
     setState((current) => ({
       ...current,
       city,
+      page: 1,
+    }));
+  };
+
+  const setRegion = (region: string) => {
+    setState((current) => ({
+      ...current,
+      region,
       page: 1,
     }));
   };
@@ -160,6 +171,7 @@ export function useUniversitySearch() {
     setState((current) => ({
       ...current,
       city: "",
+      region: "",
       country: "",
       sourceType: "",
       page: 1,
@@ -171,6 +183,8 @@ export function useUniversitySearch() {
     setQuery,
     city: state.city,
     setCity,
+    region: state.region,
+    setRegion,
     country: state.country,
     setCountry,
     sourceType: state.sourceType,

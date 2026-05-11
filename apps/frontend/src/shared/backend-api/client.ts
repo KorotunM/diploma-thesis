@@ -11,6 +11,7 @@ import type {
   ComparisonResponseDto,
   CurrentUserDto,
   FavoritesResponseDto,
+  LocationSuggestResponseDto,
   SavedSearchCreateDto,
   SavedSearchItemDto,
   SavedSearchesResponseDto,
@@ -37,6 +38,7 @@ export class BackendApiClient {
     params: {
       query?: string;
       city?: string;
+      region?: string;
       country?: string;
       sourceType?: string;
       page?: number;
@@ -47,12 +49,29 @@ export class BackendApiClient {
     const search = new URLSearchParams();
     if (params.query) search.set("query", params.query);
     if (params.city) search.set("city", params.city);
+    if (params.region) search.set("region", params.region);
     if (params.country) search.set("country", params.country);
     if (params.sourceType) search.set("source_type", params.sourceType);
     if (params.page && params.page > 1) search.set("page", String(params.page));
     if (params.pageSize) search.set("page_size", String(params.pageSize));
     const suffix = search.size > 0 ? `?${search.toString()}` : "";
     return this.http.get<BackendSearchResponse>(`/api/v1/search${suffix}`, options);
+  }
+
+  async suggestRegions(
+    q: string,
+    options?: JsonHttpRequestOptions,
+  ): Promise<LocationSuggestResponseDto> {
+    const search = new URLSearchParams({ q });
+    return this.http.get<LocationSuggestResponseDto>(`/api/v1/regions?${search}`, options);
+  }
+
+  async suggestCities(
+    q: string,
+    options?: JsonHttpRequestOptions,
+  ): Promise<LocationSuggestResponseDto> {
+    const search = new URLSearchParams({ q });
+    return this.http.get<LocationSuggestResponseDto>(`/api/v1/cities?${search}`, options);
   }
 
   async getUniversityCard(

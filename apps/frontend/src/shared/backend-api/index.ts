@@ -20,6 +20,7 @@ export type {
   FavoriteItemDto,
   FavoritesResponseDto,
   FieldAttributionDto,
+  LocationSuggestResponseDto,
   ParsedDocumentTraceDto,
   RawArtifactTraceDto,
   ResolvedFactTraceDto,

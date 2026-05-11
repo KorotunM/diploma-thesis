@@ -3,6 +3,7 @@ export interface BackendSearchItem {
   card_version: number;
   canonical_name: string;
   city: string | null;
+  region: string | null;
   country_code: string | null;
   website: string | null;
   logo_url: string | null;
@@ -13,8 +14,13 @@ export interface BackendSearchItem {
 
 export interface BackendSearchFiltersDto {
   city: string | null;
+  region: string | null;
   country: string | null;
   source_type: string | null;
+}
+
+export interface LocationSuggestResponseDto {
+  items: string[];
 }
 
 export interface BackendSearchResponse {

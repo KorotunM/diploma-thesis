@@ -4,6 +4,7 @@ import { useUniversitySearch } from "../features/search";
 import { useAuth } from "../shared/auth";
 import { describeRequestError } from "../shared/http";
 import { useFrontendRuntime } from "../shared/runtime";
+import { LocationAutocomplete } from "../shared/ui/LocationAutocomplete";
 import { ViewState } from "../shared/ui/view-state";
 
 const DIRECTIONS = [
@@ -90,6 +91,8 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     setQuery,
     city,
     setCity,
+    region,
+    setRegion,
     page,
     setPage,
     pageSize,
@@ -118,7 +121,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   }, [showEge]);
 
   const hasResults = (snapshot?.items.length ?? 0) > 0;
-  const hasQueryState = query.trim().length > 0 || city.trim().length > 0;
+  const hasQueryState = query.trim().length > 0 || city.trim().length > 0 || region.trim().length > 0;
 
   const handleSearch = () => setQuery(localQuery);
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
@@ -183,21 +186,12 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
 
           <div className="hero__filters">
             <div className="hero__filter-wrap">
-              <span className="hero__filter-label">Направление подготовки</span>
-              <select className="hero__filter" defaultValue="">
-                <option value="">Любое направление</option>
-                {DIRECTIONS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div className="hero__filter-wrap">
               <span className="hero__filter-label">Регион</span>
-              <input
+              <LocationAutocomplete
+                mode="region"
+                value={region}
+                onChange={setRegion}
                 className="hero__filter"
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
                 placeholder="Вся Россия"
               />
             </div>

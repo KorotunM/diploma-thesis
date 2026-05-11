@@ -24,6 +24,7 @@ class UniversitySearchRepository:
         query: str | None,
         normalized_query: str | None,
         city: str | None,
+        region: str | None,
         country_code: str | None,
         source_type: str | None,
         limit: int,
@@ -67,6 +68,10 @@ class UniversitySearchRepository:
             params["city"] = city
             extra_filters.append("lower(search_doc.city_name) = lower(:city)")
 
+        if region:
+            params["region"] = region
+            extra_filters.append("lower(search_doc.region_name) = lower(:region)")
+
         if country_code:
             params["country_code"] = country_code
             extra_filters.append("upper(search_doc.country_code) = upper(:country_code)")
@@ -100,6 +105,7 @@ class UniversitySearchRepository:
                         search_doc.website_domain,
                         search_doc.country_code,
                         search_doc.city_name,
+                        search_doc.region_name,
                         search_doc.aliases,
                         search_doc.metadata,
                         search_doc.generated_at,
@@ -119,6 +125,7 @@ class UniversitySearchRepository:
                     website_domain,
                     country_code,
                     city_name,
+                    region_name,
                     aliases,
                     metadata,
                     generated_at,
@@ -151,6 +158,7 @@ class UniversitySearchRepository:
             website_domain=row["website_domain"],
             country_code=row["country_code"],
             city_name=row["city_name"],
+            region_name=row["region_name"],
             aliases=list(row["aliases"] or []),
             generated_at=row["generated_at"],
             text_rank=float(row["text_rank"]),

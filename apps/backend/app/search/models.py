@@ -18,6 +18,7 @@ class UniversitySearchHitRecord(BaseModel):
     website_domain: str | None = None
     country_code: str | None = None
     city_name: str | None = None
+    region_name: str | None = None
     aliases: list[str] = Field(default_factory=list)
     generated_at: datetime
     text_rank: float = 0.0
@@ -34,6 +35,7 @@ class UniversitySearchResultItem(BaseModel):
     card_version: int
     canonical_name: str
     city: str | None = None
+    region: str | None = None
     country_code: str | None = None
     website: str | None = None
     logo_url: str | None = None
@@ -46,6 +48,7 @@ class UniversitySearchFilters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     city: str | None = None
+    region: str | None = None
     country: str | None = None
     source_type: str | None = None
 

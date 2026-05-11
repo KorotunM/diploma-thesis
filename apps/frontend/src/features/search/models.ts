@@ -6,6 +6,7 @@ import type {
 export interface SearchQueryState {
   query: string;
   city: string;
+  region: string;
   country: string;
   sourceType: string;
   page: number;

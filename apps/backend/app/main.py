@@ -21,6 +21,7 @@ from apps.backend.app.dependencies import (
     get_ai_chat_service,
     get_auth_service,
     get_bearer_token,
+    get_location_suggest_service,
     get_optional_user_id,
     get_required_user_id,
     get_university_card_read_service,
@@ -33,6 +34,7 @@ from apps.backend.app.provenance import (
     UniversityProvenanceReadService,
     UniversityProvenanceTrace,
 )
+from apps.backend.app.locations import LocationSuggestResponse, LocationSuggestService
 from apps.backend.app.search import UniversitySearchResponse, UniversitySearchService
 from apps.backend.app.user import (
     ComparisonResponse,
@@ -51,6 +53,7 @@ app = create_service_app(
     description="Serves delivery projections and provenance traces to the UI.",
 )
 
+LOCATION_SUGGEST_SERVICE_DEPENDENCY = Depends(get_location_suggest_service)
 CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
 PROVENANCE_READ_SERVICE_DEPENDENCY = Depends(get_university_provenance_read_service)
 SEARCH_SERVICE_DEPENDENCY = Depends(get_university_search_service)
@@ -81,6 +84,7 @@ def backend_overview() -> dict[str, object]:
 def search_universities(
     query: str = "",
     city: str | None = None,
+    region: str | None = None,
     country: str | None = None,
     source_type: str | None = None,
     page: int = 1,
@@ -90,11 +94,28 @@ def search_universities(
     return service.search(
         query,
         city=city,
+        region=region,
         country=country,
         source_type=source_type,
         page=page,
         page_size=page_size,
     )
+
+
+@app.get("/api/v1/regions", response_model=LocationSuggestResponse, tags=["locations"])
+def suggest_regions(
+    q: str = "",
+    service: LocationSuggestService = LOCATION_SUGGEST_SERVICE_DEPENDENCY,
+) -> LocationSuggestResponse:
+    return service.suggest_regions(q)
+
+
+@app.get("/api/v1/cities", response_model=LocationSuggestResponse, tags=["locations"])
+def suggest_cities(
+    q: str = "",
+    service: LocationSuggestService = LOCATION_SUGGEST_SERVICE_DEPENDENCY,
+) -> LocationSuggestResponse:
+    return service.suggest_cities(q)
 
 
 # ── University card ────────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ class UniversitySearchService:
         query: str,
         *,
         city: str | None = None,
+        region: str | None = None,
         country: str | None = None,
         source_type: str | None = None,
         page: int = DEFAULT_SEARCH_PAGE,
@@ -32,6 +33,7 @@ class UniversitySearchService:
     ) -> UniversitySearchResponse:
         cleaned_query = self._clean_query(query)
         cleaned_city = self._clean_query(city) if city is not None else None
+        cleaned_region = self._clean_query(region) if region is not None else None
         cleaned_country = self._clean_country(country)
         cleaned_source_type = self._clean_source_type(source_type)
         resolved_page = max(DEFAULT_SEARCH_PAGE, page)
@@ -41,6 +43,7 @@ class UniversitySearchService:
             query=cleaned_query,
             normalized_query=cleaned_query.casefold() if cleaned_query else None,
             city=cleaned_city,
+            region=cleaned_region,
             country_code=cleaned_country,
             source_type=cleaned_source_type,
             limit=resolved_page_size,
@@ -56,6 +59,7 @@ class UniversitySearchService:
             has_more=(offset + len(items)) < total,
             filters=UniversitySearchFilters(
                 city=cleaned_city,
+                region=cleaned_region,
                 country=cleaned_country,
                 source_type=cleaned_source_type,
             ),
@@ -71,6 +75,7 @@ class UniversitySearchService:
             card_version=hit.card_version,
             canonical_name=hit.canonical_name,
             city=hit.city_name,
+            region=hit.region_name,
             country_code=hit.country_code,
             website=hit.website_url,
             logo_url=hit.logo_url,

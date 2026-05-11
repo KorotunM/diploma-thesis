@@ -8,6 +8,7 @@ export function readSearchQueryStateFromLocation(): SearchQueryState {
   return {
     query: params.get("query")?.trim() ?? "",
     city: params.get("city")?.trim() ?? "",
+    region: params.get("region")?.trim() ?? "",
     country: params.get("country")?.trim() ?? "",
     sourceType: params.get("source_type")?.trim() ?? "",
     page: positiveInt(params.get("page")) ?? DEFAULT_PAGE,
@@ -19,6 +20,7 @@ export function writeSearchQueryStateToLocation(state: SearchQueryState): void {
   const url = new URL(window.location.href);
   writeParam(url.searchParams, "query", state.query);
   writeParam(url.searchParams, "city", state.city);
+  writeParam(url.searchParams, "region", state.region);
   writeParam(url.searchParams, "country", state.country);
   writeParam(url.searchParams, "source_type", state.sourceType);
   writePositiveInt(url.searchParams, "page", state.page, DEFAULT_PAGE);

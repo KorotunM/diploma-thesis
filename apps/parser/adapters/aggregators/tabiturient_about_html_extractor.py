@@ -391,21 +391,19 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
             if prop == "addressRegion":
                 return None, _norm(node.text) or None
 
-        # Tabiturient city link: href contains /city/
+        # Tabiturient /city/ link contains region text (e.g. "Москва и Московская область"),
+        # not an explicit city — treat the whole value as region only.
         for node in nodes:
             if "/city/" not in node.attr("href"):
                 continue
             raw = _norm(node.text)
-            city = TabiturientAboutHtmlExtractor._clean_city(raw)
             region_match = _REGION_CAPTURE_PATTERN.search(raw)
-            region = region_match.group(1).strip() if region_match else None
-            return city, region
+            if region_match:
+                region = region_match.group(1).strip()
+            else:
+                region = _CITY_REGION_SUFFIX_PATTERN.sub("", raw).strip() or None
+            return None, region
 
-        # Fallback: regex on full text
-        for match in _CITY_PATTERN.finditer(full_text):
-            city = TabiturientAboutHtmlExtractor._clean_city(match.group(1))
-            if city:
-                return city, None
         return None, None
 
     @staticmethod

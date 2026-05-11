@@ -11,6 +11,7 @@ export async function searchUniversities(options: {
     {
       query: options.state.query,
       city: options.state.city,
+      region: options.state.region,
       country: options.state.country,
       sourceType: options.state.sourceType,
       page: options.state.page,

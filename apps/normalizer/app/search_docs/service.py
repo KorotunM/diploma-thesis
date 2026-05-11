@@ -36,6 +36,7 @@ class UniversitySearchDocProjectionService:
         website_domain = self._website_domain(website_url)
         country_code = self._clean_text(card.location.country)
         city_name = self._clean_text(card.location.city)
+        region_name = self._clean_text(card.location.region)
         source_keys = sorted({source.source_key for source in card.sources})
         search_document = {
             "canonical_name": canonical_name,
@@ -62,6 +63,7 @@ class UniversitySearchDocProjectionService:
             website_domain=website_domain,
             country_code=country_code,
             city_name=city_name,
+            region_name=region_name,
             aliases=aliases,
             search_document=search_document,
             generated_at=card.version.generated_at,
