@@ -26,6 +26,7 @@ export function useUniversitySearch() {
   const deferredRegion = useDeferredValue(state.region.trim());
   const deferredCountry = useDeferredValue(state.country.trim());
   const deferredSourceType = useDeferredValue(state.sourceType.trim());
+  const deferredEgeSubjects = useDeferredValue(state.egeSubjects);
   const deferredPage = useDeferredValue(state.page);
   const deferredPageSize = useDeferredValue(state.pageSize);
   const [snapshot, setSnapshot] = useState<UniversitySearchSnapshot | null>(null);
@@ -68,6 +69,7 @@ export function useUniversitySearch() {
         region: deferredRegion,
         country: deferredCountry,
         sourceType: deferredSourceType,
+        egeSubjects: deferredEgeSubjects,
         page: deferredPage,
         pageSize: deferredPageSize,
       },
@@ -105,6 +107,7 @@ export function useUniversitySearch() {
     deferredCity,
     deferredRegion,
     deferredCountry,
+    deferredEgeSubjects,
     deferredPage,
     deferredPageSize,
     deferredQuery,
@@ -167,6 +170,14 @@ export function useUniversitySearch() {
     }));
   };
 
+  const setEgeSubjects = (egeSubjects: string[]) => {
+    setState((current) => ({
+      ...current,
+      egeSubjects,
+      page: 1,
+    }));
+  };
+
   const resetFilters = () => {
     setState((current) => ({
       ...current,
@@ -174,6 +185,7 @@ export function useUniversitySearch() {
       region: "",
       country: "",
       sourceType: "",
+      egeSubjects: [],
       page: 1,
     }));
   };
@@ -189,6 +201,8 @@ export function useUniversitySearch() {
     setCountry,
     sourceType: state.sourceType,
     setSourceType,
+    egeSubjects: state.egeSubjects,
+    setEgeSubjects,
     page: state.page,
     setPage,
     pageSize: state.pageSize,

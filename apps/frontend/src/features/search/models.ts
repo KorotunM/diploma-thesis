@@ -9,6 +9,7 @@ export interface SearchQueryState {
   region: string;
   country: string;
   sourceType: string;
+  egeSubjects: string[];
   page: number;
   pageSize: number;
 }

@@ -17,6 +17,8 @@ export type {
   ComparisonResponseDto,
   CurrentUserDto,
   DeliveryProjectionTraceDto,
+  EgeSubjectDto,
+  EgeSubjectsResponseDto,
   FavoriteItemDto,
   FavoritesResponseDto,
   FieldAttributionDto,

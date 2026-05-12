@@ -459,6 +459,7 @@ class ResolvedFactGenerationService:
                         "study_form": self._optional_string(value.get("study_form")),
                         "level": self._optional_string(value.get("level")),
                         "year": self._optional_int(value.get("year")),
+                        "ege_subjects": self._optional_string_list(value.get("ege_subjects")),
                     },
                     value_type="program_item",
                     fact_score=claim.parser_confidence,
@@ -707,6 +708,7 @@ class ResolvedFactGenerationService:
                 "budget_places": budget_places_claim.value,
                 "passing_score": passing_score_claim.value,
                 "year": year_claim.value,
+                "ege_subjects": self._ege_subjects_from_claims(selected_program_claims),
             },
             value_type="program_item",
             fact_score=min(claim.parser_confidence for claim in selected_program_claims),
@@ -824,4 +826,24 @@ class ResolvedFactGenerationService:
         value = claim.metadata.get(key)
         if isinstance(value, int):
             return value
+        return None
+
+    @staticmethod
+    def _optional_string_list(value: object) -> list[str] | None:
+        if not isinstance(value, list):
+            return None
+        result = [str(v).strip() for v in value if isinstance(v, str) and str(v).strip()]
+        return result or None
+
+    @staticmethod
+    def _ege_subjects_from_claims(claims: list[ClaimRecord]) -> list[str] | None:
+        for claim in claims:
+            fragment_metadata = claim.metadata.get("fragment_metadata")
+            if isinstance(fragment_metadata, dict):
+                subjects = fragment_metadata.get("program_ege_subjects")
+                if isinstance(subjects, list) and subjects:
+                    return [str(s) for s in subjects if isinstance(s, str)]
+            subjects = claim.metadata.get("program_ege_subjects")
+            if isinstance(subjects, list) and subjects:
+                return [str(s) for s in subjects if isinstance(s, str)]
         return None

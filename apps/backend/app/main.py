@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 
 from apps.backend.app.ai import AiChatProviderError, AiChatRequest, AiChatResponse, AiChatService
 from apps.backend.app.auth import (
@@ -21,6 +21,7 @@ from apps.backend.app.dependencies import (
     get_ai_chat_service,
     get_auth_service,
     get_bearer_token,
+    get_ege_subject_repository,
     get_location_suggest_service,
     get_optional_user_id,
     get_rankings_service,
@@ -30,6 +31,7 @@ from apps.backend.app.dependencies import (
     get_university_search_service,
     get_user_service,
 )
+from apps.backend.app.subjects import EgeSubjectRepository
 from apps.backend.app.provenance import (
     UniversityProvenanceNotFoundError,
     UniversityProvenanceReadService,
@@ -83,6 +85,17 @@ def backend_overview() -> dict[str, object]:
 
 # ── Search ─────────────────────────────────────────────────────────────────────
 
+EGE_SUBJECTS_REPOSITORY_DEPENDENCY = Depends(get_ege_subject_repository)
+
+
+@app.get("/api/v1/subjects", tags=["search"])
+def get_ege_subjects(
+    repo: EgeSubjectRepository = EGE_SUBJECTS_REPOSITORY_DEPENDENCY,
+) -> dict:
+    subjects = repo.list_all()
+    return {"subjects": [{"id": s.code, "label": s.label} for s in subjects]}
+
+
 @app.get("/api/v1/search", response_model=UniversitySearchResponse, tags=["search"])
 def search_universities(
     query: str = "",
@@ -90,6 +103,7 @@ def search_universities(
     region: str | None = None,
     country: str | None = None,
     source_type: str | None = None,
+    ege_subjects: list[str] | None = Query(default=None),
     page: int = 1,
     page_size: int = 20,
     service: UniversitySearchService = SEARCH_SERVICE_DEPENDENCY,
@@ -100,6 +114,7 @@ def search_universities(
         region=region,
         country=country,
         source_type=source_type,
+        ege_subjects=ege_subjects,
         page=page,
         page_size=page_size,
     )

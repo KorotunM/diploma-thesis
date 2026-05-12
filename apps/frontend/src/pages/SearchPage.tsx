@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { useUniversitySearch } from "../features/search";
 import { useAuth } from "../shared/auth";
+import type { EgeSubjectDto } from "../shared/backend-api";
 import { describeRequestError } from "../shared/http";
 import { useFrontendRuntime } from "../shared/runtime";
 import { GeoPickerDropdown } from "../shared/ui/GeoPickerDropdown";
@@ -16,30 +17,18 @@ const DIRECTIONS = [
   "Гуманитарные науки",
 ];
 
-const EGE_SUBJECTS = [
-  { id: "math",        label: "Математика" },
-  { id: "russian",     label: "Русский" },
-  { id: "physics",     label: "Физика" },
-  { id: "social",      label: "Обществознание" },
-  { id: "history",     label: "История" },
-  { id: "biology",     label: "Биология" },
-  { id: "informatics", label: "Информатика" },
-  { id: "chemistry",   label: "Химия" },
-  { id: "literature",  label: "Литература" },
-  { id: "geography",   label: "География" },
-  { id: "foreign",     label: "Иностранные языки" },
-];
-
 type EgeScores = Record<string, string>;
 
 // ── EGE panel ─────────────────────────────────────────────────────────────────
 
 function EgePanel({
+  subjects,
   scores,
   checked,
   onToggle,
   onScore,
 }: {
+  subjects: EgeSubjectDto[];
   scores: EgeScores;
   checked: Set<string>;
   onToggle: (id: string) => void;
@@ -47,7 +36,7 @@ function EgePanel({
 }) {
   return (
     <div className="ege-panel__grid">
-        {EGE_SUBJECTS.map((s) => {
+        {subjects.map((s) => {
           const active = checked.has(s.id);
           return (
             <div
@@ -96,6 +85,8 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     page,
     setPage,
     pageSize,
+    egeSubjects,
+    setEgeSubjects,
     resetFilters,
     snapshot,
     error,
@@ -106,8 +97,13 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
 
   const [localQuery, setLocalQuery] = useState(query);
   const [showEge, setShowEge] = useState(false);
-  const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set());
+  const [egeSubjectsList, setEgeSubjectsList] = useState<EgeSubjectDto[]>([]);
+  const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set(egeSubjects));
   const [egeScores, setEgeScores] = useState<EgeScores>({});
+
+  useEffect(() => {
+    backendApi.getEgeSubjects().then((res) => setEgeSubjectsList(res.subjects)).catch(() => {});
+  }, [backendApi]);
   const [savingSearch, setSavingSearch] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
@@ -154,6 +150,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     setEgeChecked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
+      setEgeSubjects([...next]);
       return next;
     });
   };
@@ -260,6 +257,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
                 Отметьте предметы и укажите баллы — подберём подходящие программы.
               </p>
               <EgePanel
+                subjects={egeSubjectsList}
                 scores={egeScores}
                 checked={egeChecked}
                 onToggle={handleEgeToggle}

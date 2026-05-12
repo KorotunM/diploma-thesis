@@ -66,6 +66,7 @@ class AdmissionProgramResponse(BaseModel):
     study_form: str | None = None
     level: str | None = None
     year: int | None = None
+    ege_subjects: list[str] = Field(default_factory=list)
     confidence: float | None = None
     sources: list[dict[str, Any]] = Field(default_factory=list)
     field_attribution: UniversityCardFieldAttribution | None = None

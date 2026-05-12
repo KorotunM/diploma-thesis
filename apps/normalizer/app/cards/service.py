@@ -293,6 +293,7 @@ class UniversityCardProjectionService:
                     "study_form": fact.value.get("study_form"),
                     "level": fact.value.get("level"),
                     "year": fact.value.get("year"),
+                    "ege_subjects": fact.value.get("ege_subjects") or [],
                     "confidence": fact.fact_score,
                     "sources": [
                         source.model_dump(mode="python")

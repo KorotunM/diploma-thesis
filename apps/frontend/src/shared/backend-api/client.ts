@@ -10,6 +10,7 @@ import type {
   BackendSearchResponse,
   ComparisonResponseDto,
   CurrentUserDto,
+  EgeSubjectsResponseDto,
   FavoritesResponseDto,
   LocationSuggestResponseDto,
   RankingsResponseDto,
@@ -35,6 +36,10 @@ export class BackendApiClient {
     return this.platformClient.getHealth(options);
   }
 
+  async getEgeSubjects(options?: JsonHttpRequestOptions): Promise<EgeSubjectsResponseDto> {
+    return this.http.get<EgeSubjectsResponseDto>("/api/v1/subjects", options);
+  }
+
   async searchUniversities(
     params: {
       query?: string;
@@ -42,6 +47,7 @@ export class BackendApiClient {
       region?: string;
       country?: string;
       sourceType?: string;
+      egeSubjects?: string[];
       page?: number;
       pageSize?: number;
     } = {},
@@ -53,6 +59,9 @@ export class BackendApiClient {
     if (params.region) search.set("region", params.region);
     if (params.country) search.set("country", params.country);
     if (params.sourceType) search.set("source_type", params.sourceType);
+    if (params.egeSubjects && params.egeSubjects.length > 0) {
+      for (const s of params.egeSubjects) search.append("ege_subjects", s);
+    }
     if (params.page && params.page > 1) search.set("page", String(params.page));
     if (params.pageSize) search.set("page_size", String(params.pageSize));
     const suffix = search.size > 0 ? `?${search.toString()}` : "";

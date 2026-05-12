@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import Any
 
@@ -27,6 +28,7 @@ class UniversitySearchRepository:
         region: str | None,
         country_code: str | None,
         source_type: str | None,
+        ege_subjects: list[str] | None,
         limit: int,
         offset: int,
     ) -> list[UniversitySearchHitRecord]:
@@ -86,6 +88,13 @@ class UniversitySearchRepository:
                 "   ) AS snapshot"
                 "   WHERE lower(COALESCE(snapshot ->> 'source_type', '')) = lower(:source_type)"
                 " ))"
+            )
+
+        if ege_subjects:
+            params["ege_subjects_json"] = json.dumps(ege_subjects, ensure_ascii=False)
+            extra_filters.append(
+                "COALESCE(search_doc.search_document->'program_ege_subjects', '[]'::jsonb)"
+                " @> CAST(:ege_subjects_json AS jsonb)"
             )
 
         where_clause = f"({query_predicate})"

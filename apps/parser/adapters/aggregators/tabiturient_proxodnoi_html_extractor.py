@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
 
+from libs.domain.ege import ege_subjects_for_okso
 from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 
 from .base import AggregatorFragmentExtractor
@@ -335,6 +336,7 @@ class TabiturientProxodnoiHtmlExtractor(AggregatorFragmentExtractor):
                 "study_form": prog.study_form,
                 "level": prog.level,
                 "year": 2025,
+                "ege_subjects": ege_subjects_for_okso(prog.code or ""),
             }
             field_name = _program_field_name(prog, i)
             frags.append(

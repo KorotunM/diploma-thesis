@@ -17,6 +17,16 @@ export interface BackendSearchFiltersDto {
   region: string | null;
   country: string | null;
   source_type: string | null;
+  ege_subjects: string[];
+}
+
+export interface EgeSubjectDto {
+  id: string;
+  label: string;
+}
+
+export interface EgeSubjectsResponseDto {
+  subjects: EgeSubjectDto[];
 }
 
 export interface LocationSuggestResponseDto {
@@ -76,6 +86,7 @@ export interface AdmissionProgramDto {
   study_form: string | null;
   level: string | null;
   year: number | null;
+  ege_subjects: string[];
   confidence: number | null;
   sources: Array<Record<string, unknown>>;
   field_attribution: Record<string, unknown> | null;

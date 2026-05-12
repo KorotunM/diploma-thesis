@@ -38,6 +38,7 @@ class UniversitySearchDocProjectionService:
         city_name = self._clean_text(card.location.city)
         region_name = self._clean_text(card.location.region)
         source_keys = sorted({source.source_key for source in card.sources})
+        program_ege_subjects = self._all_ege_subjects(card.programs)
         search_document = {
             "canonical_name": canonical_name,
             "aliases": aliases,
@@ -48,6 +49,7 @@ class UniversitySearchDocProjectionService:
             "city_name": city_name,
             "ratings": [item.model_dump(mode="json") for item in card.ratings],
             "source_keys": source_keys,
+            "program_ege_subjects": program_ege_subjects,
         }
         metadata = {
             "projection_kind": "delivery.university_search_doc",
@@ -111,6 +113,19 @@ class UniversitySearchDocProjectionService:
                 continue
             deduped.setdefault(cleaned.casefold(), cleaned)
         return [deduped[key] for key in sorted(deduped)]
+
+    @staticmethod
+    def _all_ege_subjects(programs: list) -> list[str]:
+        seen: set[str] = set()
+        result: list[str] = []
+        for program in programs:
+            if not isinstance(program, dict):
+                continue
+            for subject in program.get("ege_subjects") or []:
+                if isinstance(subject, str) and subject not in seen:
+                    seen.add(subject)
+                    result.append(subject)
+        return sorted(result)
 
     @staticmethod
     def _website_domain(website_url: str | None) -> str | None:

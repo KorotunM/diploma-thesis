@@ -14,6 +14,7 @@ export async function searchUniversities(options: {
       region: options.state.region,
       country: options.state.country,
       sourceType: options.state.sourceType,
+      egeSubjects: options.state.egeSubjects.length > 0 ? options.state.egeSubjects : undefined,
       page: options.state.page,
       pageSize: options.state.pageSize,
     },

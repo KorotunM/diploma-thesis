@@ -28,6 +28,7 @@ class UniversitySearchService:
         region: str | None = None,
         country: str | None = None,
         source_type: str | None = None,
+        ege_subjects: list[str] | None = None,
         page: int = DEFAULT_SEARCH_PAGE,
         page_size: int = DEFAULT_SEARCH_LIMIT,
     ) -> UniversitySearchResponse:
@@ -36,6 +37,7 @@ class UniversitySearchService:
         cleaned_region = self._clean_query(region) if region is not None else None
         cleaned_country = self._clean_country(country)
         cleaned_source_type = self._clean_source_type(source_type)
+        cleaned_ege_subjects = self._clean_ege_subjects(ege_subjects)
         resolved_page = max(DEFAULT_SEARCH_PAGE, page)
         resolved_page_size = max(1, min(page_size, MAX_SEARCH_LIMIT))
         offset = (resolved_page - 1) * resolved_page_size
@@ -46,6 +48,7 @@ class UniversitySearchService:
             region=cleaned_region,
             country_code=cleaned_country,
             source_type=cleaned_source_type,
+            ege_subjects=cleaned_ege_subjects or None,
             limit=resolved_page_size,
             offset=offset,
         )
@@ -62,6 +65,7 @@ class UniversitySearchService:
                 region=cleaned_region,
                 country=cleaned_country,
                 source_type=cleaned_source_type,
+                ege_subjects=cleaned_ege_subjects,
             ),
             items=items,
         )
@@ -111,3 +115,16 @@ class UniversitySearchService:
             return None
         cleaned = WHITESPACE_RE.sub(" ", source_type).strip().lower()
         return cleaned or None
+
+    @staticmethod
+    def _clean_ege_subjects(subjects: list[str] | None) -> list[str]:
+        if not subjects:
+            return []
+        seen: set[str] = set()
+        result: list[str] = []
+        for s in subjects:
+            cleaned = WHITESPACE_RE.sub("", s).strip().lower()
+            if cleaned and cleaned not in seen:
+                seen.add(cleaned)
+                result.append(cleaned)
+        return result

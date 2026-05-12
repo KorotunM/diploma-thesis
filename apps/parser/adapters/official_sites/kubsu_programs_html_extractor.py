@@ -6,6 +6,7 @@ from html import unescape
 from typing import Any
 from urllib.parse import urlparse
 
+from libs.domain.ege import ege_subjects_for_okso
 from libs.source_sdk import ExtractedFragment, FetchContext, FetchedArtifact
 
 from .base import OfficialSiteFragmentExtractor
@@ -35,6 +36,7 @@ class ProgramRow:
     budget_places: int
     passing_score: int
     year: int
+    ege_subjects: list[str]
 
 
 @dataclass(frozen=True)
@@ -258,6 +260,7 @@ class KubSUProgramsHtmlExtractor(OfficialSiteFragmentExtractor):
             budget_places=budget_places,
             passing_score=passing_score,
             year=year,
+            ege_subjects=ege_subjects_for_okso(code),
         )
 
     @staticmethod
@@ -279,6 +282,7 @@ class KubSUProgramsHtmlExtractor(OfficialSiteFragmentExtractor):
             "program_code": row.code,
             "program_name": row.name,
             "program_year": row.year,
+            "program_ege_subjects": row.ege_subjects,
             "source_field": source_field,
         }
 

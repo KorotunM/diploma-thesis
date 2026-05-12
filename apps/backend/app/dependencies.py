@@ -13,6 +13,7 @@ from .provenance import UniversityProvenanceReadService, UniversityProvenanceRep
 from .locations import LocationSuggestRepository, LocationSuggestService
 from .rankings import RankingsRepository, RankingsService
 from .search import UniversitySearchRepository, UniversitySearchService
+from .subjects import EgeSubjectRepository
 from .user import UserRepository, UserService
 
 
@@ -64,6 +65,12 @@ def get_auth_service(session=BACKEND_SESSION_DEPENDENCY) -> AuthService:
 
 def get_user_service(session=BACKEND_SESSION_DEPENDENCY) -> UserService:
     return UserService(UserRepository(session))
+
+
+def get_ege_subject_repository(
+    session=BACKEND_SESSION_DEPENDENCY,
+) -> EgeSubjectRepository:
+    return EgeSubjectRepository(session)
 
 
 def get_ai_chat_service() -> AiChatService:

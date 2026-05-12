@@ -11,6 +11,7 @@ export function readSearchQueryStateFromLocation(): SearchQueryState {
     region: params.get("region")?.trim() ?? "",
     country: params.get("country")?.trim() ?? "",
     sourceType: params.get("source_type")?.trim() ?? "",
+    egeSubjects: params.getAll("ege_subjects").filter(Boolean),
     page: positiveInt(params.get("page")) ?? DEFAULT_PAGE,
     pageSize: positiveInt(params.get("page_size")) ?? DEFAULT_PAGE_SIZE,
   };
@@ -23,6 +24,8 @@ export function writeSearchQueryStateToLocation(state: SearchQueryState): void {
   writeParam(url.searchParams, "region", state.region);
   writeParam(url.searchParams, "country", state.country);
   writeParam(url.searchParams, "source_type", state.sourceType);
+  url.searchParams.delete("ege_subjects");
+  for (const s of state.egeSubjects) url.searchParams.append("ege_subjects", s);
   writePositiveInt(url.searchParams, "page", state.page, DEFAULT_PAGE);
   writePositiveInt(url.searchParams, "page_size", state.pageSize, DEFAULT_PAGE_SIZE);
   window.history.replaceState({}, "", url);

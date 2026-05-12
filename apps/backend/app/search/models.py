@@ -51,6 +51,7 @@ class UniversitySearchFilters(BaseModel):
     region: str | None = None
     country: str | None = None
     source_type: str | None = None
+    ege_subjects: list[str] = Field(default_factory=list)
 
 
 class UniversitySearchResponse(BaseModel):

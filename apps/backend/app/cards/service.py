@@ -216,6 +216,7 @@ class UniversityCardReadService:
                     study_form=self._string_value(program.get("study_form")),
                     level=self._string_value(program.get("level")),
                     year=self._int_value(program.get("year")),
+                    ege_subjects=self._string_list_value(program.get("ege_subjects")),
                     confidence=self._float_value(program.get("confidence")),
                     sources=self._list_of_dicts(program.get("sources")),
                     field_attribution=field_attribution[field_name],
@@ -246,3 +247,9 @@ class UniversityCardReadService:
         if not isinstance(value, list):
             return []
         return [item for item in value if isinstance(item, dict)]
+
+    @staticmethod
+    def _string_list_value(value: object) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [str(v) for v in value if isinstance(v, str) and str(v).strip()]
