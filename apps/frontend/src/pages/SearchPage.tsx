@@ -298,7 +298,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
             <button
               className="section-header__link"
               type="button"
-              onClick={() => { resetFilters(); setLocalQuery(""); }}
+              onClick={() => { resetFilters(); setQuery(""); setLocalQuery(""); setEgeChecked(new Set()); }}
             >
               Сбросить фильтры ✕
             </button>

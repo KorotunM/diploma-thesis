@@ -11,11 +11,11 @@ interface Props {
   className?: string;
 }
 
-interface RegionNode {
-  name: string;
-  cities: string[] | null; // null = not loaded yet
-  expanded: boolean;
-  loading: boolean;
+const DEBOUNCE_MS = 250;
+
+interface SuggestionItem {
+  label: string;
+  kind: "city" | "region";
 }
 
 export function GeoPickerDropdown({
@@ -28,29 +28,15 @@ export function GeoPickerDropdown({
 }: Props) {
   const { backendApi } = useFrontendRuntime();
   const [open, setOpen] = useState(false);
-  const [regions, setRegions] = useState<RegionNode[]>([]);
-  const [regionsLoaded, setRegionsLoaded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayValue = city || region || "";
 
-  // Load all regions once when dropdown is first opened
-  useEffect(() => {
-    if (!open || regionsLoaded) return;
-    backendApi.getAllRegions().then((res) => {
-      setRegions(
-        res.items.map((name) => ({
-          name,
-          cities: null,
-          expanded: false,
-          loading: false,
-        })),
-      );
-      setRegionsLoaded(true);
-    }).catch(() => setRegionsLoaded(true));
-  }, [open, regionsLoaded, backendApi]);
-
-  // Close on outside click
   useEffect(() => {
     const onOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -61,41 +47,54 @@ export function GeoPickerDropdown({
     return () => document.removeEventListener("mousedown", onOutside);
   }, []);
 
-  const toggleRegion = async (idx: number) => {
-    const node = regions[idx];
-    const willExpand = !node.expanded;
-
-    setRegions((prev) =>
-      prev.map((r, i) =>
-        i === idx ? { ...r, expanded: willExpand, loading: willExpand && r.cities === null } : r,
-      ),
-    );
-
-    if (willExpand && node.cities === null) {
-      try {
-        const res = await backendApi.getCitiesByRegion(node.name);
-        setRegions((prev) =>
-          prev.map((r, i) =>
-            i === idx ? { ...r, cities: res.items, loading: false } : r,
-          ),
-        );
-      } catch {
-        setRegions((prev) =>
-          prev.map((r, i) => (i === idx ? { ...r, cities: [], loading: false } : r)),
-        );
-      }
+  useEffect(() => {
+    if (open) {
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    } else {
+      setSearchQuery("");
+      setSuggestions([]);
     }
-  };
+  }, [open]);
 
-  const selectRegion = (name: string) => {
-    onChangeRegion(name);
-    onChangeCity("");
-    setOpen(false);
-  };
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const q = searchQuery.trim();
+    if (!q) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const [citiesRes, regionsRes] = await Promise.all([
+          backendApi.suggestCities(q),
+          backendApi.suggestRegions(q),
+        ]);
+        const regionNames = new Set(regionsRes.items);
+        const regionItems: SuggestionItem[] = regionsRes.items.slice(0, 5).map((r) => ({ label: r, kind: "region" }));
+        const cityItems: SuggestionItem[] = citiesRes.items.filter((c) => !regionNames.has(c)).slice(0, 15).map((c) => ({ label: c, kind: "city" }));
+        setSuggestions([...regionItems, ...cityItems]);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, backendApi]);
 
-  const selectCity = (cityName: string, regionName: string) => {
-    onChangeCity(cityName);
-    onChangeRegion(regionName);
+  const selectItem = (item: SuggestionItem) => {
+    if (item.kind === "region") {
+      onChangeRegion(item.label);
+      onChangeCity("");
+    } else {
+      onChangeCity(item.label);
+      onChangeRegion("");
+    }
     setOpen(false);
   };
 
@@ -130,52 +129,57 @@ export function GeoPickerDropdown({
 
       {open && (
         <div className="geo-picker__dropdown">
-          {!regionsLoaded && (
-            <div className="geo-picker__loading">Загружаем регионы…</div>
-          )}
-          {regionsLoaded && regions.length === 0 && (
-            <div className="geo-picker__empty">Нет данных</div>
-          )}
-          {regions.map((node, idx) => (
-            <div key={node.name} className="geo-picker__region-group">
-              <div
-                className={`geo-picker__region-row${region === node.name && !city ? " geo-picker__row--selected" : ""}`}
-              >
-                <button
-                  type="button"
-                  className="geo-picker__chevron"
-                  onClick={() => toggleRegion(idx)}
-                  aria-label={node.expanded ? "Свернуть" : "Развернуть"}
-                >
-                  {node.loading ? "…" : node.expanded ? "∨" : "›"}
-                </button>
-                <span
-                  className="geo-picker__region-name"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => selectRegion(node.name)}
-                  onKeyDown={(e) => { if (e.key === "Enter") selectRegion(node.name); }}
-                >
-                  {node.name}
-                </span>
-                <span
-                  className={`geo-picker__check${region === node.name && !city ? " geo-picker__check--on" : ""}`}
-                />
-              </div>
+          <div className="geo-picker__search-wrap">
+            <input
+              ref={inputRef}
+              className="geo-picker__search-input"
+              type="text"
+              placeholder="Город или регион..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setOpen(false);
+                if (e.key === "Enter" && suggestions.length > 0) selectItem(suggestions[0]!);
+              }}
+            />
+          </div>
 
-              {node.expanded && node.cities !== null && node.cities.map((c) => (
-                <div
-                  key={c}
-                  className={`geo-picker__city-row${city === c ? " geo-picker__row--selected" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => selectCity(c, node.name)}
-                  onKeyDown={(e) => { if (e.key === "Enter") selectCity(c, node.name); }}
-                >
-                  <span className="geo-picker__city-name">{c}</span>
-                  <span className={`geo-picker__check${city === c ? " geo-picker__check--on" : ""}`} />
-                </div>
-              ))}
+          {displayValue && (
+            <div
+              className="geo-picker__clear-option"
+              role="button"
+              tabIndex={0}
+              onClick={clear}
+              onKeyDown={(e) => { if (e.key === "Enter") clear(); }}
+            >
+              <span className="geo-picker__clear-icon">✕</span>
+              Вся Россия (сбросить)
+            </div>
+          )}
+
+          {loading && (
+            <div className="geo-picker__loading">Поиск…</div>
+          )}
+
+          {!loading && searchQuery.trim() && suggestions.length === 0 && (
+            <div className="geo-picker__empty">Нет совпадений</div>
+          )}
+
+          {!searchQuery.trim() && !loading && (
+            <div className="geo-picker__hint">Введите название города или региона</div>
+          )}
+
+          {suggestions.map((item) => (
+            <div
+              key={`${item.kind}:${item.label}`}
+              className={`geo-picker__suggestion-row geo-picker__suggestion-row--${item.kind}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => selectItem(item)}
+              onKeyDown={(e) => { if (e.key === "Enter") selectItem(item); }}
+            >
+              {item.kind === "region" && <span className="geo-picker__suggestion-badge">регион</span>}
+              {item.label}
             </div>
           ))}
         </div>

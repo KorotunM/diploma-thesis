@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiChatFiltersDto, AiChatMessageDto } from "../shared/backend-api";
 import { describeRequestError } from "../shared/http";
 import { useFrontendRuntime } from "../shared/runtime";
-import aiChatLogo from "../assets/ai-chat-logo.png";
 
 type ChatRole = "user" | "assistant";
 
@@ -123,7 +122,8 @@ export function AiChatWidget() {
             aria-label="Открыть ИИ-помощник"
             onClick={() => setOpen(true)}
           >
-            <img src={aiChatLogo} alt="" />
+            <span className="ai-chat__launcher-icon" aria-hidden>✦</span>
+            <span className="ai-chat__launcher-text">ИИ</span>
           </button>
         </div>
       )}
@@ -131,7 +131,7 @@ export function AiChatWidget() {
       {open && (
         <section className="ai-chat__panel" aria-label="ИИ-помощник">
           <header className="ai-chat__header">
-            <img className="ai-chat__logo" src={aiChatLogo} alt="" />
+            <div className="ai-chat__logo" aria-hidden>✦</div>
             <div className="ai-chat__title-wrap">
               <h2 className="ai-chat__title">ИИ-помощник</h2>
               <p className="ai-chat__subtitle">Помогу подобрать вуз, программу и ответить на вопросы</p>
@@ -153,7 +153,7 @@ export function AiChatWidget() {
                 className={`ai-chat__message ai-chat__message--${message.role}`}
               >
                 {message.role === "assistant" && (
-                  <img className="ai-chat__message-logo" src={aiChatLogo} alt="" />
+                  <div className="ai-chat__message-logo" aria-hidden>✦</div>
                 )}
                 <div className="ai-chat__bubble">
                   <p>{message.content}</p>
@@ -175,7 +175,7 @@ export function AiChatWidget() {
             ))}
             {sending && (
               <article className="ai-chat__message ai-chat__message--assistant">
-                <img className="ai-chat__message-logo" src={aiChatLogo} alt="" />
+                <div className="ai-chat__message-logo" aria-hidden>✦</div>
                 <div className="ai-chat__bubble ai-chat__bubble--typing">
                   Подбираю фильтры...
                 </div>

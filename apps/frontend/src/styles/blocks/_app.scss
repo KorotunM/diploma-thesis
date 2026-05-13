@@ -128,11 +128,15 @@
   color: $color-text;
 }
 
+.app__user-wrap {
+  position: relative;
+}
+
 .app__user-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px 6px 6px;
+  padding: 6px 10px 6px 6px;
   border: 1px solid $color-border;
   border-radius: 999px;
   background: transparent;
@@ -140,11 +144,16 @@
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
-}
+  transition: background 0.15s, border-color 0.15s;
 
-.app__user-btn:hover {
-  background: $color-page-bg;
+  &:hover {
+    background: $color-page-bg;
+  }
+
+  &--active {
+    background: $color-page-bg;
+    border-color: $color-border-strong;
+  }
 }
 
 .app__user-avatar {
@@ -158,6 +167,68 @@
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+.app__user-chevron {
+  font-size: 0.55rem;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
+// ── User dropdown menu ─────────────────────────────────────────────
+.app__user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.app__user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: $color-text;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+
+  &:hover {
+    background: $color-page-bg;
+  }
+
+  &--danger {
+    color: #dc2626;
+
+    &:hover {
+      background: #fef2f2;
+    }
+  }
+}
+
+.app__user-menu-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.app__user-menu-divider {
+  height: 1px;
+  background: $color-border;
+  margin: 0;
 }
 
 .app__main {

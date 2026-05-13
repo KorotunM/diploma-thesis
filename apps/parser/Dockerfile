@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir ".[pa
 COPY apps ./apps
 COPY libs ./libs
 COPY schemas ./schemas
-COPY docs ./docs
 
 EXPOSE 8002
 CMD ["uvicorn", "apps.parser.app.main:app", "--host", "0.0.0.0", "--port", "8002"]

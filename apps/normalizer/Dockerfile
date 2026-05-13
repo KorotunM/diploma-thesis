@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .[wor
 COPY apps ./apps
 COPY libs ./libs
 COPY schemas ./schemas
-COPY docs ./docs
 
 EXPOSE 8003
 CMD ["uvicorn", "apps.normalizer.app.main:app", "--host", "0.0.0.0", "--port", "8003"]

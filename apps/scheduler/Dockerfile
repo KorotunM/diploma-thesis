@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .[wor
 COPY apps ./apps
 COPY libs ./libs
 COPY schemas ./schemas
-COPY docs ./docs
 COPY migrations ./migrations
 COPY scripts ./scripts
 COPY alembic.ini ./

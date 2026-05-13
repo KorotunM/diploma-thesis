@@ -97,7 +97,7 @@ export function RatingsPage() {
       <section className="hero ratings-hero">
         <div className="hero__inner ratings-hero__inner">
           <p className="ratings-hero__eyebrow">Глобальный сводный</p>
-          <h1 className="ratings-hero__title">РЕЙТИНГ ВУЗОВ РОССІИ 2026</h1>
+          <h1 className="ratings-hero__title">РЕЙТИНГ ВУЗОВ РОССИИ 2026</h1>
           <div className="ratings-hero__meta">
             <span className="ratings-hero__meta-item">
               <span className="ratings-hero__meta-icon">👁</span>
