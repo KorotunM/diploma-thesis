@@ -12,6 +12,11 @@
   display: grid;
   justify-items: end;
   gap: 10px;
+  transition: transform 0.15s;
+
+  &:hover {
+    transform: translateY(-3px);
+  }
 }
 
 .ai-chat__launcher-label {
@@ -63,25 +68,15 @@
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.ai-chat__launcher:hover {
-  transform: translateY(-3px);
+.ai-chat__launcher-wrap:hover .ai-chat__launcher {
   box-shadow: 0 14px 36px rgba(37, 99, 235, 0.52), 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
 }
 
 .ai-chat__launcher-icon {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 2.4rem;
   line-height: 1;
   display: block;
-}
-
-.ai-chat__launcher-text {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  line-height: 1;
 }
 
 .ai-chat__logo {

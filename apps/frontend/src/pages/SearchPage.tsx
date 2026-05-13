@@ -106,6 +106,8 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   }, [backendApi]);
   const [savingSearch, setSavingSearch] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState("");
 
   useEffect(() => {
     setLocalQuery(query);
@@ -125,20 +127,38 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
   const handleDirectionClick = (direction: string) => { setLocalQuery(direction); setQuery(direction); };
 
-  const handleSaveSearch = async () => {
+  const handleOpenSaveModal = () => {
     if (!user) {
       onShowLogin?.();
       return;
     }
+    setSaveName(query.trim().slice(0, 25));
+    setSaveMessage(null);
+    setShowSaveModal(true);
+  };
+
+  const handleSaveSearch = async () => {
     setSavingSearch(true);
     setSaveMessage(null);
     try {
+      const existing = await backendApi.getSavedSearches();
+      const isDuplicate = existing.items.some(
+        (s) => s.query.trim() === query.trim() && (s.city ?? "") === (city ?? ""),
+      );
+      if (isDuplicate) {
+        setSaveMessage("Такой поиск уже сохранён");
+        setShowSaveModal(false);
+        setSavingSearch(false);
+        return;
+      }
       await backendApi.createSavedSearch({
+        name: saveName.trim() || query.trim().slice(0, 25),
         query,
         city: city || null,
         page_size: pageSize,
       });
-      setSaveMessage("Поиск сохранён");
+      setSaveMessage("Поиск сохранён ✓");
+      setShowSaveModal(false);
     } catch (e: unknown) {
       setSaveMessage(describeRequestError(e));
     } finally {
@@ -278,29 +298,27 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
       {/* Results */}
       <div className="search-page">
         <div className="section-header">
-          {hasQueryState && (
-            <button
-              className="section-header__link"
-              type="button"
-              disabled={savingSearch}
-              onClick={handleSaveSearch}
-            >
-              Сохранить поиск
-            </button>
-          )}
           <h2 className="section-header__title">
             {hasQueryState ? "Результаты поиска" : "Популярные вузы"}
           </h2>
           {snapshot && (
             <span className="section-header__count">{snapshot.total} вузов</span>
           )}
+          <button
+            className="section-header__link"
+            type="button"
+            onClick={() => { resetFilters(); setQuery(""); setLocalQuery(""); setEgeChecked(new Set()); setEgeSubjects([]); }}
+          >
+            Сбросить фильтры ✕
+          </button>
           {hasQueryState && (
             <button
-              className="section-header__link"
+              className="section-header__save-btn"
               type="button"
-              onClick={() => { resetFilters(); setQuery(""); setLocalQuery(""); setEgeChecked(new Set()); }}
+              disabled={savingSearch}
+              onClick={handleOpenSaveModal}
             >
-              Сбросить фильтры ✕
+              <span className="section-header__save-icon">☆</span> Сохранить поиск
             </button>
           )}
         </div>
@@ -419,6 +437,42 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
           </div>
         )}
       </div>
+
+      {/* Save search modal */}
+      {showSaveModal && (
+        <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
+          <div className="modal save-search-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">Сохранить поиск</h2>
+              <button className="modal__close" type="button" onClick={() => setShowSaveModal(false)}>✕</button>
+            </div>
+            <div className="modal__body">
+              <p className="save-search-modal__hint">
+                Дайте название этому поиску, чтобы легко найти его в профиле.
+              </p>
+              <input
+                className="save-search-modal__input"
+                type="text"
+                maxLength={25}
+                placeholder="Например: IT в Москве"
+                value={saveName}
+                autoFocus
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSaveSearch(); }}
+              />
+              <p className="save-search-modal__chars">{25 - saveName.length} символов осталось</p>
+              <button
+                className="modal__submit"
+                type="button"
+                disabled={savingSearch}
+                onClick={() => void handleSaveSearch()}
+              >
+                {savingSearch ? "Сохраняем..." : "Сохранить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

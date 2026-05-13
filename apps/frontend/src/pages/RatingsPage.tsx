@@ -100,11 +100,6 @@ export function RatingsPage() {
           <h1 className="ratings-hero__title">РЕЙТИНГ ВУЗОВ РОССИИ 2026</h1>
           <div className="ratings-hero__meta">
             <span className="ratings-hero__meta-item">
-              <span className="ratings-hero__meta-icon">👁</span>
-              {snapshot ? snapshot.total.toLocaleString("ru-RU") : "—"} вузов
-            </span>
-            <span className="ratings-hero__meta-sep">·</span>
-            <span className="ratings-hero__meta-item">
               <span className="ratings-hero__meta-icon">📅</span>
               {UPDATED_DATE}
             </span>

@@ -123,7 +123,6 @@ export function AiChatWidget() {
             onClick={() => setOpen(true)}
           >
             <span className="ai-chat__launcher-icon" aria-hidden>✦</span>
-            <span className="ai-chat__launcher-text">ИИ</span>
           </button>
         </div>
       )}

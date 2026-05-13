@@ -57,6 +57,70 @@
   margin-left: 0;
 }
 
+.section-header__save-btn {
+  order: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1.5px solid $color-brand;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $color-brand;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    background: $color-brand;
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.section-header__save-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+// ── Save search modal ─────────────────────────────────────────────
+.save-search-modal__hint {
+  font-size: 0.9rem;
+  color: $color-text-muted;
+  margin: 0 0 14px;
+}
+
+.save-search-modal__input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid $color-border-strong;
+  border-radius: $radius-sm;
+  font-size: 0.95rem;
+  color: $color-text;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    border-color: $color-brand;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+}
+
+.save-search-modal__chars {
+  margin: 6px 0 20px;
+  font-size: 0.75rem;
+  color: $color-text-muted;
+  text-align: right;
+}
+
 // ── University list ───────────────────────────────────────────────
 .uni-list {
   display: grid;
