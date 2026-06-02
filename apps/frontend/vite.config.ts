@@ -1,6 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const backendProxyTarget = process.env.VITE_BACKEND_PROXY_TARGET ?? "http://127.0.0.1:8004";
+const schedulerProxyTarget = process.env.VITE_SCHEDULER_PROXY_TARGET ?? "http://127.0.0.1:8001";
+const parserProxyTarget = process.env.VITE_PARSER_PROXY_TARGET ?? "http://127.0.0.1:8002";
+const normalizerProxyTarget = process.env.VITE_NORMALIZER_PROXY_TARGET ?? "http://127.0.0.1:8003";
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -8,22 +13,22 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/backend": {
-        target: "http://backend:8004",
+        target: backendProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/backend/, ""),
       },
       "/scheduler": {
-        target: "http://scheduler:8001",
+        target: schedulerProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/scheduler/, ""),
       },
       "/parser": {
-        target: "http://parser:8002",
+        target: parserProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/parser/, ""),
       },
       "/normalizer": {
-        target: "http://normalizer:8003",
+        target: normalizerProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/normalizer/, ""),
       },

@@ -7,6 +7,7 @@ const UPDATED_DATE = "1 июля 2025";
 function categoryColor(cat: string): string {
   if (cat === "А+") return "rank-row__category--aplus";
   if (cat === "А")  return "rank-row__category--a";
+  if (cat === "А-") return "rank-row__category--aminus";
   if (cat === "B+") return "rank-row__category--bplus";
   if (cat === "B")  return "rank-row__category--b";
   return "rank-row__category--c";

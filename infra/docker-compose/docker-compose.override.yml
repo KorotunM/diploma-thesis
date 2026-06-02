@@ -38,4 +38,9 @@ services:
     volumes:
       - ../../apps/frontend:/app
       - /app/node_modules
+    environment:
+      VITE_BACKEND_PROXY_TARGET: http://backend:8004
+      VITE_SCHEDULER_PROXY_TARGET: http://scheduler:8001
+      VITE_PARSER_PROXY_TARGET: http://parser:8002
+      VITE_NORMALIZER_PROXY_TARGET: http://normalizer:8003
     command: npm run dev -- --host 0.0.0.0 --port 5173

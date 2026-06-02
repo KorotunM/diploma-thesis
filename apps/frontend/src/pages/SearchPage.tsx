@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useUniversitySearch } from "../features/search";
+import type { SearchSortBy } from "../features/search";
 import { useAuth } from "../shared/auth";
 import type { EgeSubjectDto } from "../shared/backend-api";
 import { describeRequestError } from "../shared/http";
@@ -8,16 +9,31 @@ import { useFrontendRuntime } from "../shared/runtime";
 import { GeoPickerDropdown } from "../shared/ui/GeoPickerDropdown";
 import { ViewState } from "../shared/ui/view-state";
 
-const DIRECTIONS = [
-  "IT и цифровые технологии",
-  "Инженерия",
-  "Экономика",
-  "Медицина",
-  "Управление",
-  "Гуманитарные науки",
+const popularDirections = {
+  it: ["01.03.02", "02.03.02", "02.03.03", "09.03.01", "09.03.02", "09.03.03", "09.03.04", "10.03.01"],
+  engineering: ["08.03.01", "11.03.01", "11.03.02", "12.03.01", "13.03.01", "13.03.02", "15.03.01", "15.03.04", "15.03.06", "27.03.04"],
+  economy: ["38.03.01", "38.03.05", "38.03.06", "38.03.07"],
+  medicine: ["31.05.01", "31.05.02", "31.05.03", "32.05.01", "33.05.01", "34.03.01"],
+  management: ["38.03.02", "38.03.03", "38.03.04", "38.03.05", "27.03.05"],
+  humanities: ["37.03.01", "39.03.01", "39.03.02", "40.03.01", "41.03.01", "41.03.05", "42.03.01", "42.03.02", "44.03.01", "45.03.01", "45.03.02", "46.03.01"],
+} as const;
+
+const DIRECTIONS: Array<{ key: keyof typeof popularDirections; label: string }> = [
+  { key: "it", label: "IT и цифровые технологии" },
+  { key: "engineering", label: "Инженерия" },
+  { key: "economy", label: "Экономика" },
+  { key: "medicine", label: "Медицина" },
+  { key: "management", label: "Управление" },
+  { key: "humanities", label: "Гуманитарные науки" },
 ];
 
 type EgeScores = Record<string, string>;
+
+const SORT_OPTIONS: Array<{ value: SearchSortBy; label: string }> = [
+  { value: "rating", label: "По рейтингу" },
+  { value: "budget_places", label: "По бюджетным местам" },
+  { value: "avg_passing_score", label: "По проходному баллу" },
+];
 
 // ── EGE panel ─────────────────────────────────────────────────────────────────
 
@@ -87,6 +103,14 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     pageSize,
     egeSubjects,
     setEgeSubjects,
+    programCodes,
+    setProgramCodes,
+    dormitory,
+    setDormitory,
+    militaryDepartment,
+    setMilitaryDepartment,
+    sortBy,
+    setSortBy,
     resetFilters,
     snapshot,
     error,
@@ -97,6 +121,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
 
   const [localQuery, setLocalQuery] = useState(query);
   const [showEge, setShowEge] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [egeSubjectsList, setEgeSubjectsList] = useState<EgeSubjectDto[]>([]);
   const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set(egeSubjects));
   const [egeScores, setEgeScores] = useState<EgeScores>({});
@@ -120,12 +145,37 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [showEge]);
 
-  const hasResults = (snapshot?.items.length ?? 0) > 0;
-  const hasQueryState = query.trim().length > 0 || hasGeoFilter;
+  useEffect(() => {
+    if (!showSortMenu) return;
+    const onClick = () => setShowSortMenu(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowSortMenu(false); };
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showSortMenu]);
 
-  const handleSearch = () => setQuery(localQuery);
+  const hasResults = (snapshot?.items.length ?? 0) > 0;
+  const hasQueryState =
+    query.trim().length > 0 ||
+    hasGeoFilter ||
+    egeSubjects.length > 0 ||
+    programCodes.length > 0 ||
+    dormitory ||
+    militaryDepartment;
+
+  const handleSearch = () => {
+    setProgramCodes(resolvePopularDirectionCodes(localQuery));
+    setQuery(localQuery);
+  };
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
-  const handleDirectionClick = (direction: string) => { setLocalQuery(direction); setQuery(direction); };
+  const handleDirectionClick = (direction: { key: keyof typeof popularDirections; label: string }) => {
+    setLocalQuery(direction.label);
+    setProgramCodes([...popularDirections[direction.key]]);
+    setQuery(direction.label);
+  };
 
   const handleOpenSaveModal = () => {
     if (!user) {
@@ -194,7 +244,10 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
               className="hero__search-input"
               type="search"
               value={localQuery}
-              onChange={(e) => setLocalQuery(e.target.value)}
+              onChange={(e) => {
+                setLocalQuery(e.target.value);
+                setProgramCodes([]);
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Введите название вуза, города или направления..."
             />
@@ -211,25 +264,26 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
                 city={city}
                 onChangeRegion={setRegion}
                 onChangeCity={setCity}
-                className="hero__filter"
               />
             </div>
-            <div className="hero__filter-wrap">
-              <span className="hero__filter-label">Форма обучения</span>
-              <select className="hero__filter" defaultValue="full">
-                <option value="full">Очная</option>
-                <option value="part">Заочная</option>
-                <option value="mixed">Очно-заочная</option>
-              </select>
-            </div>
-            <div className="hero__filter-wrap">
-              <span className="hero__filter-label">Бюджет/платно</span>
-              <select className="hero__filter" defaultValue="">
-                <option value="">Любой вариант</option>
-                <option value="budget">Бюджет</option>
-                <option value="paid">Платно</option>
-              </select>
-            </div>
+            <label className={`hero__check-filter${dormitory ? " hero__check-filter--active" : ""}`}>
+              <input
+                type="checkbox"
+                checked={dormitory}
+                onChange={(event) => setDormitory(event.target.checked)}
+              />
+              <span className="hero__check-box" aria-hidden>{dormitory ? "✓" : ""}</span>
+              <span>Общежитие</span>
+            </label>
+            <label className={`hero__check-filter${militaryDepartment ? " hero__check-filter--active" : ""}`}>
+              <input
+                type="checkbox"
+                checked={militaryDepartment}
+                onChange={(event) => setMilitaryDepartment(event.target.checked)}
+              />
+              <span className="hero__check-box" aria-hidden>{militaryDepartment ? "✓" : ""}</span>
+              <span>Военная кафедра</span>
+            </label>
             <div className="hero__filter-wrap">
               <span className="hero__filter-label">Баллы ЕГЭ</span>
               <button
@@ -247,12 +301,12 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
             <span className="hero__directions-label">Популярные направления</span>
             {DIRECTIONS.map((d) => (
               <button
-                key={d}
+                key={d.key}
                 className="hero__direction-chip"
                 type="button"
                 onClick={() => handleDirectionClick(d)}
               >
-                {d}
+                {d.label}
               </button>
             ))}
           </div>
@@ -304,6 +358,39 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
           {snapshot && (
             <span className="section-header__count">{snapshot.total} вузов</span>
           )}
+          <div className="sort-dropdown" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="sort-dropdown__button"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={showSortMenu}
+              onClick={() => setShowSortMenu((value) => !value)}
+            >
+              <span>{SORT_OPTIONS.find((option) => option.value === sortBy)?.label}</span>
+              <span className={`sort-dropdown__chevron${showSortMenu ? " sort-dropdown__chevron--open" : ""}`}>
+                ▾
+              </span>
+            </button>
+            {showSortMenu && (
+              <div className="sort-dropdown__menu" role="listbox">
+                {SORT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`sort-dropdown__option${sortBy === option.value ? " sort-dropdown__option--active" : ""}`}
+                    type="button"
+                    role="option"
+                    aria-selected={sortBy === option.value}
+                    onClick={() => {
+                      setSortBy(option.value);
+                      setShowSortMenu(false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             className="section-header__link"
             type="button"
@@ -391,17 +478,17 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
 
                 <div className="uni-card__stats">
                   <div className="uni-card__stat">
-                    <span className="uni-card__stat-value uni-card__stat-value--rating">
-                      ★ {item.score.toFixed(1)}
+                    <span className={`uni-card__stat-value uni-card__category ${categoryClass(item.rating_category)}`}>
+                      {formatRatingCategory(item.rating_category)}
                     </span>
-                    <span className="uni-card__stat-label">Рейтинг</span>
+                    <span className="uni-card__stat-label">Категория</span>
                   </div>
                   <div className="uni-card__stat">
-                    <span className="uni-card__stat-value">—</span>
+                    <span className="uni-card__stat-value">{formatIntegerMetric(item.budget_places)}</span>
                     <span className="uni-card__stat-label">Бюджетных мест</span>
                   </div>
                   <div className="uni-card__stat">
-                    <span className="uni-card__stat-value">—</span>
+                    <span className="uni-card__stat-value">{formatDecimalMetric(item.avg_passing_score)}</span>
                     <span className="uni-card__stat-label">Проходной балл</span>
                   </div>
                 </div>
@@ -475,6 +562,44 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
       )}
     </>
   );
+}
+
+function formatRatingCategory(value: string | null): string {
+  return value?.trim() || "—";
+}
+
+function categoryClass(value: string | null): string {
+  const normalized = normalizeCategory(value);
+  return normalized ? `uni-card__category--${normalized}` : "uni-card__category--empty";
+}
+
+function normalizeCategory(value: string | null): string | null {
+  const normalized = value?.trim().toUpperCase().replace("А", "A");
+  if (normalized === "A+") return "aplus";
+  if (normalized === "A") return "a";
+  if (normalized === "A-") return "aminus";
+  if (normalized === "B+") return "bplus";
+  if (normalized === "B") return "b";
+  if (normalized === "C") return "c";
+  return null;
+}
+
+function formatIntegerMetric(value: number | null): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toLocaleString("ru-RU")
+    : "—";
+}
+
+function formatDecimalMetric(value: number | null): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toLocaleString("ru-RU", { maximumFractionDigits: 1 })
+    : "—";
+}
+
+function resolvePopularDirectionCodes(value: string): string[] {
+  const normalized = value.trim().toLowerCase();
+  const match = DIRECTIONS.find((direction) => direction.label.toLowerCase() === normalized);
+  return match ? [...popularDirections[match.key]] : [];
 }
 
 function openUniversityCard(universityId: string): void {

@@ -216,7 +216,17 @@ export function AiChatWidget() {
 
 function applyFiltersToSearch(filters: AiChatFiltersDto): void {
   const url = new URL(window.location.href);
-  writeParam(url.searchParams, "query", filters.query || filters.direction || filters.advanced.program_query);
+
+  // Build a meaningful text query from available structured fields.
+  // Only query and city are actually applied by the backend search engine.
+  // budget_type, dormitory, study_form are extracted for display purposes only.
+  const queryText =
+    filters.query?.trim() ||
+    filters.direction?.trim() ||
+    filters.advanced?.program_query?.trim() ||
+    null;
+
+  writeParam(url.searchParams, "query", queryText);
   writeParam(url.searchParams, "city", filters.city);
   writeParam(url.searchParams, "country", filters.country);
   writeParam(url.searchParams, "source_type", filters.source_type);

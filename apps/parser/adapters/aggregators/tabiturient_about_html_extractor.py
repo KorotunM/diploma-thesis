@@ -67,9 +67,11 @@ _DESCRIPTION_SKIP_PATTERN = re.compile(
     r"проходн|бюджетн|стоимость обучения|отзывы|рейтинг вузов|быстрый поиск|"
     r"вопрос\s*:|ответ\s*:|вопросы студентов|вопросы абитуриентов|"
     r"кто может посоветовать|куда поступить|пожалуйста,\s*подождите|oops|загрузить еще раз"
+    r"|следуйте инструкциям бота|команд[ау]\s*/(?:login|start)|/(?:login|start)\b"
     r")",
     re.IGNORECASE,
 )
+_DESCRIPTION_TITLE_PATTERN = re.compile(r"\bописание\s+от\s+вуза\b", re.IGNORECASE)
 _PROGRAM_CODE_PATTERN = re.compile(r"\b\d{2}\.\d{2}\.\d{2}\b")
 _DESCRIPTION_HINT_PATTERN = re.compile(
     r"(?:является|основан|университет|институт|академи|студент|обуча|наук)",
@@ -322,40 +324,42 @@ class TabiturientAboutHtmlExtractor(AggregatorFragmentExtractor):
 
     @staticmethod
     def _description(nodes: list[_Node]) -> str | None:
-        candidates: list[tuple[float, str]] = []
-        for node in nodes:
-            if node.tag not in {"p", "div", "span"}:
-                continue
-            text = node.text
-            # Minimum length and should look like a description (Cyrillic, sentence-like)
-            if len(text) < 120 or len(text) > 3000:
-                continue
-            if not re.search(r"[А-ЯЁа-яё]{5,}", text):
-                continue
-            if _PROGRAM_CODE_PATTERN.search(text):
-                continue
-            # Skip nav/menu/program-list blocks. The about page contains large divs with
-            # admission programs; storing them as description pollutes the card.
-            if _DESCRIPTION_SKIP_PATTERN.search(text):
-                continue
-            if "{" in text and "}" in text:
-                continue
-            if "http://" in text or "https://" in text:
+        for index, node in enumerate(nodes):
+            if not _DESCRIPTION_TITLE_PATTERN.search(node.text):
                 continue
 
-            css_class = node.attr("class").lower()
-            score = min(len(text), 1500) / 1500
-            if "font2" in css_class:
-                score += 1.5
-            if node.attrs.get("itemprop") == "description":
-                score += 0.4
-            if _DESCRIPTION_HINT_PATTERN.search(text):
-                score += 0.6
-            score += min(text.count("."), 4) * 0.1
-            candidates.append((score, text))
-        if not candidates:
+            inline_text = _DESCRIPTION_TITLE_PATTERN.sub("", node.text, count=1)
+            inline_text = _norm(inline_text.strip(" :-—–"))
+            if description := TabiturientAboutHtmlExtractor._valid_description_text(inline_text):
+                return description
+
+            for candidate in nodes[index + 1 : index + 8]:
+                if candidate.tag not in {"p", "div", "span"}:
+                    continue
+                if description := TabiturientAboutHtmlExtractor._valid_description_text(
+                    candidate.text
+                ):
+                    return description
+        return None
+
+    @staticmethod
+    def _valid_description_text(text: str) -> str | None:
+        text = _norm(text)
+        if len(text) < 80 or len(text) > 3000:
             return None
-        return max(candidates, key=lambda item: item[0])[1]
+        if _DESCRIPTION_TITLE_PATTERN.fullmatch(text):
+            return None
+        if not re.search(r"[А-ЯЁа-яё]{5,}", text):
+            return None
+        if _PROGRAM_CODE_PATTERN.search(text):
+            return None
+        if _DESCRIPTION_SKIP_PATTERN.search(text):
+            return None
+        if "{" in text and "}" in text:
+            return None
+        if "http://" in text or "https://" in text:
+            return None
+        return text
 
     @staticmethod
     def _inst_type(full_text: str) -> str | None:

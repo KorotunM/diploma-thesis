@@ -31,15 +31,15 @@ from apps.backend.app.dependencies import (
     get_university_search_service,
     get_user_service,
 )
-from apps.backend.app.subjects import EgeSubjectRepository
+from apps.backend.app.locations import LocationSuggestResponse, LocationSuggestService
 from apps.backend.app.provenance import (
     UniversityProvenanceNotFoundError,
     UniversityProvenanceReadService,
     UniversityProvenanceTrace,
 )
-from apps.backend.app.locations import LocationSuggestResponse, LocationSuggestService
 from apps.backend.app.rankings import RankingsResponse, RankingsService
 from apps.backend.app.search import UniversitySearchResponse, UniversitySearchService
+from apps.backend.app.subjects import EgeSubjectRepository
 from apps.backend.app.user import (
     ComparisonResponse,
     FavoritesResponse,
@@ -86,6 +86,8 @@ def backend_overview() -> dict[str, object]:
 # ── Search ─────────────────────────────────────────────────────────────────────
 
 EGE_SUBJECTS_REPOSITORY_DEPENDENCY = Depends(get_ege_subject_repository)
+EGE_SUBJECTS_QUERY = Query(default=None)
+PROGRAM_CODES_QUERY = Query(default=None)
 
 
 @app.get("/api/v1/subjects", tags=["search"])
@@ -103,7 +105,11 @@ def search_universities(
     region: str | None = None,
     country: str | None = None,
     source_type: str | None = None,
-    ege_subjects: list[str] | None = Query(default=None),
+    ege_subjects: list[str] | None = EGE_SUBJECTS_QUERY,
+    program_codes: list[str] | None = PROGRAM_CODES_QUERY,
+    dormitory: bool = False,
+    military_department: bool = False,
+    sort_by: str = "rating",
     page: int = 1,
     page_size: int = 20,
     service: UniversitySearchService = SEARCH_SERVICE_DEPENDENCY,
@@ -115,6 +121,10 @@ def search_universities(
         country=country,
         source_type=source_type,
         ege_subjects=ege_subjects,
+        program_codes=program_codes,
+        dormitory=dormitory,
+        military_department=military_department,
+        sort_by=sort_by,
         page=page,
         page_size=page_size,
     )

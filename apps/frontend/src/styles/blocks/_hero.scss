@@ -136,6 +136,23 @@
   min-width: 140px;
   display: grid;
   gap: 3px;
+
+  // Geo-picker inside filter row: match the look of hero__filter selects
+  .geo-picker__trigger {
+    padding: 10px 12px;
+    padding-right: 28px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: $radius-sm;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.82rem;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+  }
 }
 
 // Popular directions
@@ -184,11 +201,67 @@
   cursor: pointer;
   font-size: 0.82rem;
   color: rgba(255, 255, 255, 0.9);
+  background-image: none;
 
   &--active {
     background-color: rgba(255, 255, 255, 0.18);
     border-color: rgba(255, 255, 255, 0.45);
   }
+}
+
+.hero__check-filter {
+  flex: 1;
+  min-width: 170px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: end;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: $radius-sm;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.82rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.hero__check-filter--active {
+  background: rgba(37, 99, 235, 0.32);
+  border-color: rgba(147, 197, 253, 0.72);
+}
+
+.hero__check-box {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.48);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hero__check-filter--active .hero__check-box {
+  background: $color-brand;
+  border-color: $color-brand;
 }
 
 .hero__filter-ege-arrow {

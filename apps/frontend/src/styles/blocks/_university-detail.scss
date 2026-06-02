@@ -140,6 +140,37 @@
     opacity: 0.85;
   }
 
+  &__category {
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: $radius-sm;
+    min-width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  &__category--aplus { background: #16a34a; }
+  &__category--a { background: #22c55e; color: #fff; }
+  &__category--aminus { background: #dcfce7; color: #166534; }
+  &__category--bplus { background: #ca8a04; }
+  &__category--b { background: #d97706; }
+  &__category--c { background: #dc2626; }
+  &__category--empty { background: $color-text-muted; }
+
+  &__category-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  &__category-label {
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.88;
+  }
+
   &__score {
     text-align: right;
 
@@ -638,11 +669,20 @@
   padding: 16px;
   background: $color-surface;
 
-  &__meta {
+  &__header {
     display: flex;
+    justify-content: space-between;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  &__person {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   &__author {
@@ -660,15 +700,45 @@
     align-self: center;
   }
 
+  &__faculty {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text;
+    border: 1px solid $color-border-strong;
+    border-radius: $radius-sm;
+    padding: 6px 10px;
+    background: $color-surface;
+    max-width: min(440px, 100%);
+    line-height: 1.35;
+  }
+
   &__text {
     font-size: 13px;
     color: $color-text-soft;
     line-height: 1.65;
     margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 6;
-    -webkit-box-orient: vertical;
+    max-height: 12.9em;
     overflow: hidden;
+
+    &--expanded {
+      max-height: none;
+      overflow: visible;
+    }
+  }
+
+  &__more {
+    margin-top: 10px;
+    border: none;
+    background: none;
+    color: $color-brand;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
 

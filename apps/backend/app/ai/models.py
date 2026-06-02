@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class AiChatAdvancedFilters(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     min_rating: float | None = None
     min_budget_places: int | None = None
@@ -17,7 +17,7 @@ class AiChatAdvancedFilters(BaseModel):
 
 
 class AiChatFilters(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     query: str | None = None
     city: str | None = None
@@ -45,11 +45,11 @@ class AiChatRequest(BaseModel):
 
 
 class AiChatResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
-    intent: Literal["search", "clarify", "general"]
-    message_to_user: str
+    intent: Literal["search", "clarify", "general"] = "search"
+    message_to_user: str = ""
     filters: AiChatFilters = Field(default_factory=AiChatFilters)
     missing_fields: list[str] = Field(default_factory=list)
-    confidence: float = Field(ge=0, le=1)
+    confidence: float = Field(default=0.7, ge=0, le=1)
     model_used: str | None = None

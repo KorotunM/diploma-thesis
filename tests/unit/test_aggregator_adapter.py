@@ -197,11 +197,13 @@ def test_tabiturient_about_html_extractor_filters_program_blocks_and_reads_live_
       <h2 itemprop="name">Санкт-Петербургский государственный электротехнический университет «ЛЭТИ»</h2>
       <span itemprop="logo">https://tabiturient.ru/logovuz/eltech.png</span>
       <img src="/logovuz/eltech.png" />
+      <span itemprop="addressLocality">Санкт-Петербург</span>
       <a href="https://tabiturient.ru/city/spb">Санкт-Петербург и Ленинградская область</a>
       <span>Гос.вуз</span>
       <span>Головной</span>
       <a href="https://tabiturient.ru/globalrating">A+ категория</a>
       <a href="https://tabiturient.ru/vuzu/eltech">8.5 /10 6552 оценок</a>
+      <h3>Описание от вуза</h3>
       <span class="font2">
         Санкт-Петербургский Электротехнический Университет является одним из лидирующих
         учебных заведений в Восточной Европе. Основанный в 1886 году, университет
@@ -244,6 +246,34 @@ def test_tabiturient_about_html_extractor_filters_program_blocks_and_reads_live_
         "metric": "user_rating",
         "value": "8.5",
     }
+
+
+def test_tabiturient_about_html_extractor_does_not_guess_description_without_title() -> None:
+    html = """
+    <html><body>
+      <h2 itemprop="name">Тестовый университет</h2>
+      <span class="font2">
+        Восстановление пароля Эл. почта Прислать пароль Пожалуйста, ожидайте...
+        Не получили пароль? Подождите пару минут Проверьте папку "спам"
+        Вспомнил(а) пароль
+      </span>
+      <span class="font2">
+        Тестовый университет является одним из крупных учебных заведений региона.
+        Основанный много лет назад, университет ведет подготовку студентов и
+        развивает научную деятельность в нескольких областях знаний.
+      </span>
+    </body></html>
+    """.encode()
+    context = build_tabiturient_about_context()
+    artifact = build_tabiturient_about_artifact(html)
+
+    fragments = TabiturientAboutHtmlExtractor().extract(
+        context=context,
+        artifact=artifact,
+    )
+    by_field = {fragment.field_name: fragment for fragment in fragments}
+
+    assert "description" not in by_field
 
 
 def test_tabiturient_proxodnoi_html_extractor_reads_one_program_per_card() -> None:

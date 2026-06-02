@@ -16,6 +16,12 @@ from .base import AggregatorFragmentExtractor
 _WHITESPACE = re.compile(r"\s+")
 _TAG_PATTERN = re.compile(r"<[^>]+>")
 
+# University name from meta description: "... в <NAME> - ..."
+_META_UNI_NAME_PATTERN = re.compile(
+    r'\bв\s+([А-ЯЁ][а-яёА-ЯЁ\s]{4,120}?)\s*[-—]',
+    re.UNICODE,
+)
+
 # Program code: "01.03.02" format
 _CODE_PATTERN = re.compile(r"\b(\d{2}\.\d{2}\.\d{2})\b")
 
@@ -324,7 +330,35 @@ class TabiturientProxodnoiHtmlExtractor(AggregatorFragmentExtractor):
             programs = _extract_programs_from_nodes(parser.nodes)
         slug = self._slug(context.endpoint_url)
 
+        # Use a single university-level group key for all fragments in this doc.
+        # This ensures canonical_name and all programs end up in the same entity group
+        # in _split_by_entity, so the normalizer can match the university correctly.
+        uni_group_key = f"tabiturient:{slug}" if slug else None
+
         frags: list[ExtractedFragment] = []
+
+        # Emit canonical_name so normalizer can match this doc to the right university
+        uni_name = self._extract_uni_name(html)
+        if uni_name:
+            frags.append(
+                ExtractedFragment(
+                    raw_artifact_id=artifact.raw_artifact_id,
+                    source_key=context.source_key,
+                    source_url=artifact.source_url,
+                    field_name="canonical_name",
+                    value=uni_name,
+                    locator="meta[description]",
+                    confidence=0.9,
+                    metadata={
+                        "parser_profile": context.parser_profile,
+                        "adapter_family": "aggregators",
+                        "source_field": "tabiturient.proxodnoi.uni_name",
+                        "external_id": slug,
+                        "record_group_key": uni_group_key,
+                    },
+                )
+            )
+
         for i, prog in enumerate(programs):
             program_merge_key = f"{prog.code}:{prog.level}:{prog.name}:2025"
             value: dict[str, Any] = {
@@ -356,7 +390,7 @@ class TabiturientProxodnoiHtmlExtractor(AggregatorFragmentExtractor):
                         "external_id": slug,
                         "program_code": prog.code,
                         "program_merge_key": program_merge_key,
-                        "record_group_key": f"tabiturient:{slug}:{program_merge_key}",
+                        "record_group_key": uni_group_key,
                         "program_year": 2025,
                     },
                 )
@@ -368,6 +402,17 @@ class TabiturientProxodnoiHtmlExtractor(AggregatorFragmentExtractor):
         if artifact.content is None:
             raise ValueError("Content required for tabiturient proxodnoi extraction.")
         return artifact.content.decode("utf-8", errors="replace")
+
+    @staticmethod
+    def _extract_uni_name(html: str) -> str | None:
+        # Search only the <head> section (up to 3000 chars) for meta description
+        head = html[:3000]
+        m = _META_UNI_NAME_PATTERN.search(head)
+        if m:
+            name = _WHITESPACE.sub(" ", m.group(1).strip())
+            if len(name) > 4:
+                return name
+        return None
 
     @staticmethod
     def _slug(endpoint_url: str) -> str | None:

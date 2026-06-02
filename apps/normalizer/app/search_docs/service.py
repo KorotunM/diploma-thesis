@@ -38,6 +38,7 @@ class UniversitySearchDocProjectionService:
         city_name = self._clean_text(card.location.city)
         region_name = self._clean_text(card.location.region)
         source_keys = sorted({source.source_key for source in card.sources})
+        program_codes = self._all_program_codes(card.programs)
         program_ege_subjects = self._all_ege_subjects(card.programs)
         search_document = {
             "canonical_name": canonical_name,
@@ -47,9 +48,13 @@ class UniversitySearchDocProjectionService:
             "website_domain": website_domain,
             "country_code": country_code,
             "city_name": city_name,
+            "institutional": card.institutional.model_dump(mode="json", by_alias=True),
+            "stats": card.stats.model_dump(mode="json"),
             "ratings": [item.model_dump(mode="json") for item in card.ratings],
             "source_keys": source_keys,
+            "program_codes": program_codes,
             "program_ege_subjects": program_ege_subjects,
+            "dormitory": card.dormitory,
         }
         metadata = {
             "projection_kind": "delivery.university_search_doc",
@@ -84,6 +89,11 @@ class UniversitySearchDocProjectionService:
         if search_doc.country_code:
             terms.append(search_doc.country_code)
         terms.extend(search_doc.aliases)
+        terms.extend(
+            code
+            for code in search_doc.search_document.get("program_codes", [])
+            if isinstance(code, str)
+        )
         terms.extend(
             str(value)
             for rating in search_doc.search_document.get("ratings", [])
@@ -125,6 +135,21 @@ class UniversitySearchDocProjectionService:
                 if isinstance(subject, str) and subject not in seen:
                     seen.add(subject)
                     result.append(subject)
+        return sorted(result)
+
+    @staticmethod
+    def _all_program_codes(programs: list) -> list[str]:
+        seen: set[str] = set()
+        result: list[str] = []
+        for program in programs:
+            if not isinstance(program, dict):
+                continue
+            code = program.get("code")
+            if isinstance(code, str):
+                cleaned = WHITESPACE_RE.sub("", code).strip()
+                if cleaned and cleaned not in seen:
+                    seen.add(cleaned)
+                    result.append(cleaned)
         return sorted(result)
 
     @staticmethod

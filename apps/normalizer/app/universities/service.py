@@ -203,6 +203,12 @@ class UniversityBootstrapService:
         )
         canonical_domain = self._canonical_domain(claims_by_field)
         canonical_name = self._canonical_name_optional(claims_by_field)
+        # Fallback: use entity_hint when claims have no canonical_name
+        # (e.g. program-only documents like /proxodnoi that carry only programs.* fragments)
+        if canonical_name is None and canonical_domain is None:
+            entity_hints = {c.entity_hint for c in claim_result.claims if c.entity_hint}
+            if len(entity_hints) == 1:
+                canonical_name = next(iter(entity_hints))
         match = self._match_service.match(
             UniversityMatchCandidate(
                 canonical_domain=canonical_domain,

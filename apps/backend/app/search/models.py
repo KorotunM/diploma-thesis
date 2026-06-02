@@ -24,6 +24,11 @@ class UniversitySearchHitRecord(BaseModel):
     text_rank: float = 0.0
     trigram_score: float = 0.0
     combined_score: float = 0.0
+    rating_score: float | None = None
+    rating_category: str | None = None
+    budget_places: int | None = None
+    paid_places: int | None = None
+    avg_passing_score: float | None = None
     total_count: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -41,6 +46,11 @@ class UniversitySearchResultItem(BaseModel):
     logo_url: str | None = None
     aliases: list[str] = Field(default_factory=list)
     score: float
+    rating_score: float | None = None
+    rating_category: str | None = None
+    budget_places: int | None = None
+    paid_places: int | None = None
+    avg_passing_score: float | None = None
     match_signals: list[str] = Field(default_factory=list)
 
 
@@ -52,6 +62,9 @@ class UniversitySearchFilters(BaseModel):
     country: str | None = None
     source_type: str | None = None
     ege_subjects: list[str] = Field(default_factory=list)
+    program_codes: list[str] = Field(default_factory=list)
+    dormitory: bool = False
+    military_department: bool = False
 
 
 class UniversitySearchResponse(BaseModel):

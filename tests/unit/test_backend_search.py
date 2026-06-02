@@ -53,8 +53,14 @@ class FakeUniversitySearchService:
         query: str,
         *,
         city: str | None = None,
+        region: str | None = None,
         country: str | None = None,
         source_type: str | None = None,
+        ege_subjects: list[str] | None = None,
+        program_codes: list[str] | None = None,
+        dormitory: bool = False,
+        military_department: bool = False,
+        sort_by: str = "rating",
         page: int = 1,
         page_size: int = 20,
     ) -> UniversitySearchResponse:
@@ -62,8 +68,14 @@ class FakeUniversitySearchService:
             {
                 "query": query,
                 "city": city,
+                "region": region,
                 "country": country,
                 "source_type": source_type,
+                "ege_subjects": ege_subjects,
+                "program_codes": program_codes,
+                "dormitory": dormitory,
+                "military_department": military_department,
+                "sort_by": sort_by,
                 "page": page,
                 "page_size": page_size,
             }
@@ -81,9 +93,15 @@ def build_search_rows() -> list[dict[str, Any]]:
             "website_domain": "example.edu",
             "country_code": "RU",
             "city_name": "Moscow",
+            "region_name": "Moscow",
             "aliases": ["ESU", "Example U"],
             "metadata": json.dumps({"projection_kind": "delivery.university_search_doc"}),
             "generated_at": datetime(2026, 4, 28, 11, 0, tzinfo=UTC),
+            "rating_score": 151.0,
+            "rating_category": None,
+            "budget_places": 120,
+            "paid_places": 80,
+            "avg_passing_score": 87.5,
             "text_rank": 0.92,
             "trigram_score": 0.81,
             "combined_score": 0.887,
@@ -97,9 +115,15 @@ def build_search_rows() -> list[dict[str, Any]]:
             "website_domain": "example-institute.edu",
             "country_code": "RU",
             "city_name": "Kazan",
+            "region_name": "Tatarstan",
             "aliases": [],
             "metadata": json.dumps({"projection_kind": "delivery.university_search_doc"}),
             "generated_at": datetime(2026, 4, 28, 11, 0, tzinfo=UTC),
+            "rating_score": 88.0,
+            "rating_category": None,
+            "budget_places": None,
+            "paid_places": None,
+            "avg_passing_score": None,
             "text_rank": 0.0,
             "trigram_score": 0.79,
             "combined_score": 0.237,
@@ -168,6 +192,11 @@ def test_university_search_service_builds_api_response_with_filters_and_paging()
     assert response.items[0].website == "https://example.edu"
     assert response.items[0].aliases == ["ESU", "Example U"]
     assert response.items[0].score == 0.887
+    assert response.items[0].rating_score == 151.0
+    assert response.items[0].rating_category == "А+"
+    assert response.items[0].budget_places == 120
+    assert response.items[0].paid_places == 80
+    assert response.items[0].avg_passing_score == 87.5
     assert response.items[0].match_signals == ["full_text", "trigram"]
     assert response.items[1].match_signals == ["trigram"]
 
@@ -203,6 +232,60 @@ def test_university_search_service_supports_filter_only_browse() -> None:
     assert response.page_size == 10
 
 
+def test_university_search_repository_filters_by_program_codes() -> None:
+    session = FakeSearchSession(build_search_rows())
+    repository = UniversitySearchRepository(session=session, sql_text=lambda value: value)
+
+    repository.search(
+        query="",
+        normalized_query=None,
+        city=None,
+        country_code=None,
+        source_type=None,
+        program_codes=["09.03.04", "10.03.01"],
+        limit=10,
+        offset=0,
+    )
+
+    sql = " ".join(session.calls[0]["statement"].split()).lower()
+    assert "program_codes_json" in session.calls[0]["params"]
+    assert "jsonb_array_elements" in sql
+    assert "program_item ->> 'code'" in sql
+
+
+def test_university_search_repository_sorts_by_avg_passing_score() -> None:
+    session = FakeSearchSession(build_search_rows())
+    repository = UniversitySearchRepository(session=session, sql_text=lambda value: value)
+
+    repository.search(
+        query="",
+        normalized_query=None,
+        city=None,
+        country_code=None,
+        source_type=None,
+        sort_by="avg_passing_score",
+        limit=10,
+        offset=0,
+    )
+
+    sql = " ".join(session.calls[0]["statement"].split()).lower()
+    assert "avg_passing_score desc nulls last" in sql
+    assert "paid_places desc nulls last" not in sql
+
+
+def test_university_search_service_resolves_popular_direction_to_program_codes() -> None:
+    repository = UniversitySearchRepository(
+        session=FakeSearchSession(build_search_rows()),
+        sql_text=lambda value: value,
+    )
+    service = UniversitySearchService(repository)
+
+    response = service.search("IT и цифровые технологии")
+
+    assert "09.03.04" in response.filters.program_codes
+    assert "10.03.01" in response.filters.program_codes
+
+
 def test_search_endpoint_serves_live_search_response() -> None:
     row = build_search_rows()[0]
     response_model = UniversitySearchResponse.model_validate(
@@ -214,8 +297,13 @@ def test_search_endpoint_serves_live_search_response() -> None:
             "has_more": True,
             "filters": {
                 "city": "Moscow",
+                "region": None,
                 "country": "RU",
                 "source_type": "official_site",
+                "ege_subjects": [],
+                "program_codes": [],
+                "dormitory": False,
+                "military_department": False,
             },
             "items": [
                 {
@@ -224,12 +312,17 @@ def test_search_endpoint_serves_live_search_response() -> None:
                     "canonical_name": row["canonical_name"],
                     "city": row["city_name"],
                     "country_code": row["country_code"],
-                    "website": row["website_url"],
-                    "aliases": row["aliases"],
-                    "score": row["combined_score"],
-                    "match_signals": ["full_text", "trigram"],
-                }
-            ],
+                        "website": row["website_url"],
+                        "aliases": row["aliases"],
+                        "score": row["combined_score"],
+                        "rating_score": row["rating_score"],
+                        "rating_category": "А+",
+                        "budget_places": row["budget_places"],
+                        "paid_places": row["paid_places"],
+                        "avg_passing_score": row["avg_passing_score"],
+                        "match_signals": ["full_text", "trigram"],
+                    }
+                ],
         }
     )
     service = FakeUniversitySearchService(response_model)
@@ -258,8 +351,13 @@ def test_search_endpoint_serves_live_search_response() -> None:
     assert body["has_more"] is True
     assert body["filters"] == {
         "city": "Moscow",
+        "region": None,
         "country": "RU",
         "source_type": "official_site",
+        "ege_subjects": [],
+        "program_codes": [],
+        "dormitory": False,
+        "military_department": False,
     }
     assert body["items"][0]["university_id"] == str(row["university_id"])
     assert body["items"][0]["canonical_name"] == "Example University"
@@ -268,8 +366,14 @@ def test_search_endpoint_serves_live_search_response() -> None:
         {
             "query": "Example University",
             "city": "Moscow",
+            "region": None,
             "country": "RU",
             "source_type": "official_site",
+            "ege_subjects": None,
+            "program_codes": None,
+            "dormitory": False,
+            "military_department": False,
+            "sort_by": "rating",
             "page": 2,
             "page_size": 5,
         }

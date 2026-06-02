@@ -12,21 +12,52 @@ from .models import AiChatRequest, AiChatResponse
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
-DEFAULT_TIMEOUT_SECONDS = 20.0
+DEFAULT_TIMEOUT_SECONDS = 8.0
 
 SYSTEM_PROMPT = """You are an AI assistant for a Russian university search website.
-Your task is not to invent university facts from memory. Convert the user's Russian or English
-request into search filters for the site's database and write a short Russian user-facing answer.
+Convert the user's request into search filters and write a short Russian reply.
 
-Rules:
-- Use only the schema fields. Unknown or unsupported criteria go to filters.advanced when possible.
-- If a user asks for a university, city, region, study direction, program, budget, paid format,
-  EGE score, rating, dormitory, or passing score, extract it.
-- The current public search supports query, city, country, and source_type. Other fields are
-  future advanced filters and must still be returned in the schema.
-- If key details are missing, use intent "clarify" and put missing field names in missing_fields.
-- Keep message_to_user concise and in Russian.
-- Do not output explanations outside JSON."""
+IMPORTANT — what the search engine ACTUALLY supports:
+- filters.query   → full-text search in university names and descriptions (USE THIS for directions, programs, keywords)
+- filters.city    → exact city filter (e.g. "Москва", "Санкт-Петербург")
+- filters.country → country code (almost always "RU")
+The fields budget_type, study_form, dormitory, min_ege_score are extracted for display
+but do NOT affect search results (backend limitation). So always put meaningful keywords
+into filters.query so the search returns relevant universities.
+
+Query building rules:
+- If user mentions a study direction or program → put it in filters.query (e.g. "программирование", "медицина", "IT")
+- If user mentions dormitory (общежитие) with no direction → filters.query = null (show all)
+- If user mentions budget (бюджет) with a direction → filters.query = direction
+- If user mentions only a city → filters.query = null, filters.city = city
+
+You MUST respond with a single JSON object with EXACTLY these fields:
+{
+  "intent": "search" | "clarify" | "general",
+  "message_to_user": "<short reply in Russian — say what was found and note if budget/dormitory can only be checked on each university's page>",
+  "filters": {
+    "query": null or "<direction or program keywords for text search>",
+    "city": null or "<Russian city name>",
+    "country": "RU" or null,
+    "source_type": null,
+    "direction": null or "<study direction>",
+    "study_form": null or "full_time" | "part_time" | "mixed" | "distance",
+    "budget_type": null or "budget" | "paid",
+    "min_ege_score": null or <integer 0-400>,
+    "advanced": {
+      "min_rating": null,
+      "min_budget_places": null,
+      "max_passing_score": null,
+      "dormitory": null or true | false,
+      "university_type": null,
+      "program_query": null or "<program keywords>"
+    }
+  },
+  "missing_fields": [],
+  "confidence": 0.9
+}
+
+Output ONLY the JSON object, no extra text."""
 
 AI_CHAT_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -125,7 +156,12 @@ class AiChatService:
     def build_filter_plan(self, request: AiChatRequest) -> AiChatResponse:
         if not self._api_key:
             return self._local_filter_plan(request)
+        try:
+            return self._provider_filter_plan(request)
+        except AiChatProviderError:
+            return self._local_filter_plan(request)
 
+    def _provider_filter_plan(self, request: AiChatRequest) -> AiChatResponse:
         payload = self._build_payload(request)
         headers = self._build_headers()
         try:
@@ -143,6 +179,9 @@ class AiChatService:
             raise AiChatProviderError("AI provider request failed.") from exc
 
         provider_payload = response.json()
+        # OpenRouter may return 200 with an error body (e.g. rate limit, no compatible model)
+        if "error" in provider_payload and "choices" not in provider_payload:
+            raise AiChatProviderError(_read_provider_error_body(provider_payload))
         content = _extract_chat_content(provider_payload)
         try:
             result = AiChatResponse.model_validate_json(content)
@@ -164,17 +203,8 @@ class AiChatService:
             "model": self._model,
             "messages": messages,
             "temperature": 0.1,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "university_filter_plan",
-                    "strict": True,
-                    "schema": AI_CHAT_RESPONSE_SCHEMA,
-                },
-            },
+            "response_format": {"type": "json_object"},
         }
-        if "openrouter.ai" in self._base_url:
-            payload["provider"] = {"require_parameters": True}
         return payload
 
     def _build_headers(self) -> dict[str, str]:
@@ -198,17 +228,34 @@ class AiChatService:
         city = _extract_city(message)
         score = _extract_score(message)
         budget_type = "budget" if "бюджет" in lowered else "paid" if "платн" in lowered else None
+        dormitory = True if "общежит" in lowered else None
         study_form = _extract_study_form(lowered)
         direction = _extract_direction(lowered)
-        query_parts = [part for part in [direction, message if not direction else None] if part]
-        query = query_parts[0] if query_parts else message
+        # Use direction as query for text search; skip full message to avoid noise
+        query = direction  # None when no direction — shows all universities
+
+        # Build a helpful message based on what was extracted
+        parts: list[str] = []
+        if direction:
+            parts.append(f"направление «{direction}»")
+        if city:
+            parts.append(f"город {city}")
+        if budget_type == "budget":
+            parts.append("бюджетные места")
+        if dormitory:
+            parts.append("наличие общежития")
+        note = (
+            " Информацию о бюджетных местах и общежитии уточняйте на странице каждого вуза."
+            if (budget_type or dormitory) else ""
+        )
+        if parts:
+            message_to_user = f"Подобрал фильтры: {', '.join(parts)}.{note}"
+        else:
+            message_to_user = f"Показываю все вузы.{note}"
 
         return AiChatResponse(
             intent="search",
-            message_to_user=(
-                "Я подготовил фильтры по вашему запросу. "
-                "Для более точного подбора подключите AI_CHAT_API_KEY или OPENROUTER_API_KEY."
-            ),
+            message_to_user=message_to_user,
             filters={
                 "query": query,
                 "city": city,
@@ -222,7 +269,7 @@ class AiChatService:
                     "min_rating": None,
                     "min_budget_places": None,
                     "max_passing_score": score,
-                    "dormitory": True if "общежит" in lowered else None,
+                    "dormitory": dormitory,
                     "university_type": None,
                     "program_query": direction,
                 },
@@ -272,6 +319,13 @@ def _read_provider_error(response: httpx.Response) -> str:
     if isinstance(payload, dict) and isinstance(payload.get("detail"), str):
         return payload["detail"]
     return "AI provider request failed."
+
+
+def _read_provider_error_body(payload: dict[str, Any]) -> str:
+    error = payload.get("error")
+    if isinstance(error, dict) and isinstance(error.get("message"), str):
+        return error["message"]
+    return "AI provider returned an error."
 
 
 def _extract_city(message: str) -> str | None:

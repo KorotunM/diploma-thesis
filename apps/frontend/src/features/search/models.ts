@@ -3,6 +3,8 @@ import type {
   BackendSearchItem,
 } from "../../shared/backend-api";
 
+export type SearchSortBy = "rating" | "budget_places" | "avg_passing_score";
+
 export interface SearchQueryState {
   query: string;
   city: string;
@@ -10,6 +12,10 @@ export interface SearchQueryState {
   country: string;
   sourceType: string;
   egeSubjects: string[];
+  programCodes: string[];
+  dormitory: boolean;
+  militaryDepartment: boolean;
+  sortBy: SearchSortBy;
   page: number;
   pageSize: number;
 }

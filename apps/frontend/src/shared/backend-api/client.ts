@@ -48,6 +48,10 @@ export class BackendApiClient {
       country?: string;
       sourceType?: string;
       egeSubjects?: string[];
+      programCodes?: string[];
+      dormitory?: boolean;
+      militaryDepartment?: boolean;
+      sortBy?: string;
       page?: number;
       pageSize?: number;
     } = {},
@@ -62,6 +66,12 @@ export class BackendApiClient {
     if (params.egeSubjects && params.egeSubjects.length > 0) {
       for (const s of params.egeSubjects) search.append("ege_subjects", s);
     }
+    if (params.programCodes && params.programCodes.length > 0) {
+      for (const code of params.programCodes) search.append("program_codes", code);
+    }
+    if (params.dormitory) search.set("dormitory", "true");
+    if (params.militaryDepartment) search.set("military_department", "true");
+    if (params.sortBy) search.set("sort_by", params.sortBy);
     if (params.page && params.page > 1) search.set("page", String(params.page));
     if (params.pageSize) search.set("page_size", String(params.pageSize));
     const suffix = search.size > 0 ? `?${search.toString()}` : "";

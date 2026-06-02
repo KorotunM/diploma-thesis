@@ -3,7 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../shared/auth";
 import { useFrontendRuntime } from "../shared/runtime";
 import { useSelectedUniversity } from "../shared/selected-university";
-import type { AdmissionProgramDto, UniversityCardDto, UniversityProvenanceDto } from "../shared/backend-api/types";
+import type {
+  AdmissionProgramDto,
+  ReviewItemDto,
+  UniversityCardDto,
+  UniversityProvenanceDto,
+} from "../shared/backend-api/types";
 
 // ── Direction name mapping (Russian UGNS) ──────────────────────────────────────
 const UGNS: Record<string, string> = {
@@ -90,8 +95,102 @@ function computeMetrics(programs: AdmissionProgramDto[]) {
   };
 }
 
-function formatNum(n: number): string {
-  return n.toLocaleString("ru-RU");
+function formatMetric(value: number | null): string {
+  return value == null ? "—" : value.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+}
+
+function normalizeDescription(value: string | null | undefined): string | null {
+  const cleaned = value?.replace(/\s+/g, " ").trim();
+  return cleaned || null;
+}
+
+function parseReviewParts(review: ReviewItemDto): {
+  author: string | null;
+  date: string | null;
+  faculty: string | null;
+  text: string;
+} {
+  const raw = review as ReviewItemDto & Record<string, unknown>;
+  const author = firstText(review.author_type, raw.author, raw.status);
+  const date = firstText(review.date, raw.created_at, raw.published_at);
+  let faculty = firstText(
+    review.faculty,
+    review.department,
+    review.program,
+    raw.faculty_name,
+    raw.department_name,
+    raw.program_name,
+  );
+  let text = normalizeReviewText(review.text, faculty);
+  if (!faculty) {
+    const leadingFaculty = extractLeadingFaculty(text);
+    if (leadingFaculty) {
+      faculty = leadingFaculty.faculty;
+      text = leadingFaculty.text;
+    }
+  }
+  return {
+    author,
+    date,
+    faculty,
+    text,
+  };
+}
+
+function firstText(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const cleaned = value.replace(/\s+/g, " ").trim();
+    if (cleaned) return cleaned;
+  }
+  return null;
+}
+
+function normalizeReviewText(value: string, faculty: string | null): string {
+  let text = value.replace(/\s+/g, " ").trim();
+  if (faculty && text.toLowerCase().startsWith(faculty.toLowerCase())) {
+    text = text.slice(faculty.length).replace(/^[\s:;,.—-]+/, "").trim();
+  }
+  return text;
+}
+
+function extractLeadingFaculty(text: string): { faculty: string; text: string } | null {
+  const withSeparator = text.match(
+    /^((?:Факультет|Институт|Школа)\s+[^:;,.!?—-]{8,140})\s*[:;—-]\s+(.+)$/i,
+  );
+  if (withSeparator) {
+    return {
+      faculty: withSeparator[1].trim(),
+      text: withSeparator[2].trim(),
+    };
+  }
+
+  const withBodyMarker = text.match(
+    /^((?:Факультет|Институт|Школа)\s+.{8,140}?)(?=\s+(?:Информац|Пишу|Поступ|Учусь|Вот|Всем|Очень|Общие|Начн[её]м|Если|Я\b|О\b|Вуз\b|ВУЗ\b|1[).]))/i,
+  );
+  if (!withBodyMarker) {
+    return null;
+  }
+
+  const faculty = withBodyMarker[1].trim();
+  const body = text.slice(faculty.length).replace(/^[\s:;,.—-]+/, "").trim();
+  return body ? { faculty, text: body } : null;
+}
+
+function categoryClass(value: string | null): string {
+  const normalized = normalizeCategory(value);
+  return normalized ? `ud-hero__category--${normalized}` : "ud-hero__category--empty";
+}
+
+function normalizeCategory(value: string | null): string | null {
+  const normalized = value?.trim().toUpperCase().replace("А", "A");
+  if (normalized === "A+") return "aplus";
+  if (normalized === "A") return "a";
+  if (normalized === "A-") return "aminus";
+  if (normalized === "B+") return "bplus";
+  if (normalized === "B") return "b";
+  if (normalized === "C") return "c";
+  return null;
 }
 
 // ── Tab type ──────────────────────────────────────────────────────────────────
@@ -141,6 +240,36 @@ function AuthPrompt({ onLogin }: { onLogin: () => void }) {
       <button className="btn btn--primary btn--sm" type="button" onClick={onLogin}>
         Войти
       </button>
+    </div>
+  );
+}
+
+function ReviewCard({ review }: { review: ReviewItemDto }) {
+  const [expanded, setExpanded] = useState(false);
+  const parts = parseReviewParts(review);
+  const canExpand = parts.text.length > 520;
+
+  return (
+    <div className="ud-review-card">
+      <div className="ud-review-card__header">
+        <div className="ud-review-card__person">
+          {parts.author && <span className="ud-review-card__author">{parts.author}</span>}
+          {parts.date && <span className="ud-review-card__date">{parts.date}</span>}
+        </div>
+        {parts.faculty && <span className="ud-review-card__faculty">{parts.faculty}</span>}
+      </div>
+      <p className={`ud-review-card__text${expanded ? " ud-review-card__text--expanded" : ""}`}>
+        {parts.text}
+      </p>
+      {canExpand && (
+        <button
+          className="ud-review-card__more"
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "Скрыть" : "Показать полностью"}
+        </button>
+      )}
     </div>
   );
 }
@@ -275,14 +404,13 @@ export function UniversityDetailPage({
   const instType = card?.institutional?.type ?? null;
   const category = card?.institutional?.category ?? null;
   const isFlagship = card?.institutional?.is_flagship ?? false;
-  const description = card?.description ?? card?.reviews?.summary ?? null;
+  const description = normalizeDescription(card?.description);
+  const displayBudgetPlaces = budgetPlaces ?? (programs.length > 0 ? metrics.budgetPlaces : null);
+  const displayAvgPassingScore = avgPassingScore ?? metrics.avgScore;
+  const displayProgramCount = card?.stats?.programs_count ?? metrics.programCount;
   const reviewRating = card?.reviews?.rating ?? null;
   const reviewRatingCount = card?.reviews?.rating_count ?? null;
   const reviewItems = card?.reviews?.items ?? [];
-
-  const rating = reviewRating != null
-    ? String(reviewRating)
-    : (card?.ratings?.[0]?.value ?? null);
 
   // ── Program groups ──────────────────────────────────────────────────────────
 
@@ -452,36 +580,20 @@ export function UniversityDetailPage({
             {isFlagship && (
               <span className="ud-tag ud-tag--blue">Головной</span>
             )}
-            {category && (
-              <span className="ud-tag ud-tag--orange">Категория {category}</span>
-            )}
             {city && <span className="ud-tag ud-tag--gray">{city}</span>}
             {country && country !== "Russia" && (
               <span className="ud-tag ud-tag--gray">{country}</span>
             )}
           </div>
-
-          {description && <p className="ud-hero__description">{description}</p>}
         </div>
 
         <div className="ud-hero__right">
-          {rating && (
-            <div className="ud-hero__rating">
-              {rating}
-              {reviewRatingCount && (
-                <span className="ud-hero__rating-count">
-                  {reviewRatingCount.toLocaleString("ru-RU")} отзывов
-                </span>
-              )}
+          {category && (
+            <div className={`ud-hero__category ${categoryClass(category)}`}>
+              <span className="ud-hero__category-value">{category}</span>
+              <span className="ud-hero__category-label">категория</span>
             </div>
           )}
-
-          <div className="ud-hero__score">
-            <span className="ud-hero__score-value">
-              {metrics.avgScore != null ? metrics.avgScore : "—"}
-            </span>
-            <span className="ud-hero__score-label">средний балл</span>
-          </div>
 
           <div className="ud-hero__actions">
             <button
@@ -511,11 +623,11 @@ export function UniversityDetailPage({
       {/* ── Metrics row ── */}
       <div className="ud-metrics">
         <div className="ud-metric">
-          <span className="ud-metric__value">{formatNum(metrics.budgetPlaces)}</span>
+          <span className="ud-metric__value">{formatMetric(displayBudgetPlaces)}</span>
           <span className="ud-metric__label">Бюджетные места</span>
         </div>
         <div className="ud-metric">
-          <span className="ud-metric__value">{metrics.programCount}</span>
+          <span className="ud-metric__value">{formatMetric(displayProgramCount)}</span>
           <span className="ud-metric__label">Программы</span>
         </div>
         <div className="ud-metric">
@@ -524,7 +636,7 @@ export function UniversityDetailPage({
         </div>
         <div className="ud-metric">
           <span className="ud-metric__value">
-            {metrics.avgScore != null ? metrics.avgScore : "—"}
+            {formatMetric(displayAvgPassingScore)}
           </span>
           <span className="ud-metric__label">Средний проходной балл</span>
         </div>
@@ -554,9 +666,9 @@ export function UniversityDetailPage({
 
       {tab === "about" && (
         <div className="ud-section">
-          {description && (
-            <div className="ud-about__description">{description}</div>
-          )}
+          <div className="ud-about__description">
+            {description ?? "Описание отсутствует в источниках."}
+          </div>
           <div className="ud-about__grid">
             <div className="ud-about__field">
               <span className="ud-about__label">
@@ -613,7 +725,7 @@ export function UniversityDetailPage({
                 <span className="ud-about__value">{region}</span>
               </div>
             )}
-            {avgPassingScore != null && (
+            {displayAvgPassingScore != null && (
               <div className="ud-about__field">
                 <span className="ud-about__label">
                   Средний проходной балл
@@ -621,10 +733,10 @@ export function UniversityDetailPage({
                     <ProvenanceDot url={fieldSourceMap.get("stats.avg_passing_score")!} />
                   )}
                 </span>
-                <span className="ud-about__value">{avgPassingScore}</span>
+                <span className="ud-about__value">{formatMetric(displayAvgPassingScore)}</span>
               </div>
             )}
-            {budgetPlaces != null && (
+            {displayBudgetPlaces != null && (
               <div className="ud-about__field">
                 <span className="ud-about__label">
                   Бюджетных мест
@@ -632,7 +744,7 @@ export function UniversityDetailPage({
                     <ProvenanceDot url={fieldSourceMap.get("stats.budget_places")!} />
                   )}
                 </span>
-                <span className="ud-about__value">{budgetPlaces}</span>
+                <span className="ud-about__value">{formatMetric(displayBudgetPlaces)}</span>
               </div>
             )}
             <div className="ud-about__field">
@@ -718,17 +830,7 @@ export function UniversityDetailPage({
           ) : (
             <div className="ud-reviews-list">
               {reviewItems.map((review, i) => (
-                <div className="ud-review-card" key={i}>
-                  <div className="ud-review-card__meta">
-                    {review.author_type && (
-                      <span className="ud-review-card__author">{review.author_type}</span>
-                    )}
-                    {review.date && (
-                      <span className="ud-review-card__date">{review.date}</span>
-                    )}
-                  </div>
-                  <p className="ud-review-card__text">{review.text}</p>
-                </div>
+                <ReviewCard review={review} key={i} />
               ))}
             </div>
           )}

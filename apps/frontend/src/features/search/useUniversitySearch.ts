@@ -27,6 +27,10 @@ export function useUniversitySearch() {
   const deferredCountry = useDeferredValue(state.country.trim());
   const deferredSourceType = useDeferredValue(state.sourceType.trim());
   const deferredEgeSubjects = useDeferredValue(state.egeSubjects);
+  const deferredProgramCodes = useDeferredValue(state.programCodes);
+  const deferredDormitory = useDeferredValue(state.dormitory);
+  const deferredMilitaryDepartment = useDeferredValue(state.militaryDepartment);
+  const deferredSortBy = useDeferredValue(state.sortBy);
   const deferredPage = useDeferredValue(state.page);
   const deferredPageSize = useDeferredValue(state.pageSize);
   const [snapshot, setSnapshot] = useState<UniversitySearchSnapshot | null>(null);
@@ -70,6 +74,10 @@ export function useUniversitySearch() {
         country: deferredCountry,
         sourceType: deferredSourceType,
         egeSubjects: deferredEgeSubjects,
+        programCodes: deferredProgramCodes,
+        dormitory: deferredDormitory,
+        militaryDepartment: deferredMilitaryDepartment,
+        sortBy: deferredSortBy,
         page: deferredPage,
         pageSize: deferredPageSize,
       },
@@ -107,10 +115,14 @@ export function useUniversitySearch() {
     deferredCity,
     deferredRegion,
     deferredCountry,
+    deferredDormitory,
     deferredEgeSubjects,
+    deferredMilitaryDepartment,
     deferredPage,
     deferredPageSize,
+    deferredProgramCodes,
     deferredQuery,
+    deferredSortBy,
     deferredSourceType,
     runtime,
   ]);
@@ -178,6 +190,38 @@ export function useUniversitySearch() {
     }));
   };
 
+  const setProgramCodes = (programCodes: string[]) => {
+    setState((current) => ({
+      ...current,
+      programCodes,
+      page: 1,
+    }));
+  };
+
+  const setDormitory = (dormitory: boolean) => {
+    setState((current) => ({
+      ...current,
+      dormitory,
+      page: 1,
+    }));
+  };
+
+  const setMilitaryDepartment = (militaryDepartment: boolean) => {
+    setState((current) => ({
+      ...current,
+      militaryDepartment,
+      page: 1,
+    }));
+  };
+
+  const setSortBy = (sortBy: SearchQueryState["sortBy"]) => {
+    setState((current) => ({
+      ...current,
+      sortBy,
+      page: 1,
+    }));
+  };
+
   const resetFilters = () => {
     setState((current) => ({
       ...current,
@@ -186,6 +230,9 @@ export function useUniversitySearch() {
       country: "",
       sourceType: "",
       egeSubjects: [],
+      programCodes: [],
+      dormitory: false,
+      militaryDepartment: false,
       page: 1,
     }));
   };
@@ -203,6 +250,14 @@ export function useUniversitySearch() {
     setSourceType,
     egeSubjects: state.egeSubjects,
     setEgeSubjects,
+    programCodes: state.programCodes,
+    setProgramCodes,
+    dormitory: state.dormitory,
+    setDormitory,
+    militaryDepartment: state.militaryDepartment,
+    setMilitaryDepartment,
+    sortBy: state.sortBy,
+    setSortBy,
     page: state.page,
     setPage,
     pageSize: state.pageSize,

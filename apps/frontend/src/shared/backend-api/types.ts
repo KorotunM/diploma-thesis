@@ -9,6 +9,11 @@ export interface BackendSearchItem {
   logo_url: string | null;
   aliases: string[];
   score: number;
+  rating_score: number | null;
+  rating_category: string | null;
+  budget_places: number | null;
+  paid_places: number | null;
+  avg_passing_score: number | null;
   match_signals: string[];
 }
 
@@ -18,6 +23,9 @@ export interface BackendSearchFiltersDto {
   country: string | null;
   source_type: string | null;
   ege_subjects: string[];
+  program_codes: string[];
+  dormitory: boolean;
+  military_department: boolean;
 }
 
 export interface EgeSubjectDto {
@@ -96,6 +104,12 @@ export interface ReviewItemDto {
   date: string | null;
   text: string;
   author_type: string | null;
+  faculty?: string | null;
+  department?: string | null;
+  program?: string | null;
+  views?: number | null;
+  helpful_count?: number | null;
+  replies_count?: number | null;
 }
 
 export interface UniversityCardDto {
