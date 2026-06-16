@@ -13,6 +13,10 @@ import type {
   EgeSubjectsResponseDto,
   FavoritesResponseDto,
   LocationSuggestResponseDto,
+  PipelineRerunRequestDto,
+  PipelineRerunResponseDto,
+  PipelineRunsResponseDto,
+  PipelineSourcesResponseDto,
   ProgramDirectoryResponseDto,
   RankingsResponseDto,
   ReviewCaseItemDto,
@@ -142,6 +146,27 @@ export class BackendApiClient {
       body,
       options,
     );
+  }
+
+  async getPipelineSources(
+    options?: JsonHttpRequestOptions,
+  ): Promise<PipelineSourcesResponseDto> {
+    return this.http.get<PipelineSourcesResponseDto>("/api/v1/admin/pipeline/sources", options);
+  }
+
+  async getPipelineRuns(
+    params: { limit?: number } = {},
+    options?: JsonHttpRequestOptions,
+  ): Promise<PipelineRunsResponseDto> {
+    const suffix = params.limit ? `?limit=${params.limit}` : "";
+    return this.http.get<PipelineRunsResponseDto>(`/api/v1/admin/pipeline/runs${suffix}`, options);
+  }
+
+  async rerunPipeline(
+    body: PipelineRerunRequestDto,
+    options?: JsonHttpRequestOptions,
+  ): Promise<PipelineRerunResponseDto> {
+    return this.http.post<PipelineRerunResponseDto>("/api/v1/admin/pipeline/rerun", body, options);
   }
 
   async getUniversityCard(

@@ -94,6 +94,29 @@ class PipelineRunRepository:
             return None
         return self._record_from_row(row)
 
+    def list_recent(self, *, limit: int = 50, offset: int = 0) -> list[PipelineRunRecord]:
+        result = self._session.execute(
+            self._sql_text(
+                """
+                SELECT
+                    run_id,
+                    run_type,
+                    status,
+                    trigger_type,
+                    source_key,
+                    started_at,
+                    finished_at,
+                    metadata
+                FROM ops.pipeline_run
+                ORDER BY started_at DESC
+                LIMIT :limit
+                OFFSET :offset
+                """
+            ),
+            {"limit": limit, "offset": offset},
+        )
+        return [self._record_from_row(row) for row in result.mappings().all()]
+
     def crawled_endpoint_ids(self) -> set[str]:
         """Return endpoint_ids that already have at least one succeeded run."""
         result = self._session.execute(

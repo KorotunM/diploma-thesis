@@ -9,6 +9,14 @@ from apps.backend.app.admin_review import (
     ReviewCaseResolveRequest,
     ReviewCaseService,
 )
+from apps.backend.app.admin_pipeline import (
+    AdminPipelineService,
+    PipelineRerunRequest,
+    PipelineRerunResponse,
+    PipelineRunsResponse,
+    PipelineSourcesResponse,
+    SchedulerAdminError,
+)
 from apps.backend.app.ai import AiChatProviderError, AiChatRequest, AiChatResponse, AiChatService
 from apps.backend.app.ai.usage import AiChatLimitExceededError, AiChatUsageRepository
 from apps.backend.app.auth import (
@@ -26,6 +34,7 @@ from apps.backend.app.cards import (
     UniversityCardResponse,
 )
 from apps.backend.app.dependencies import (
+    get_admin_pipeline_service,
     get_ai_chat_service,
     get_auth_service,
     get_bearer_token,
@@ -77,6 +86,7 @@ PROGRAM_DIRECTORY_SERVICE_DEPENDENCY = Depends(get_program_directory_service)
 REVIEW_CASE_SERVICE_DEPENDENCY = Depends(get_review_case_service)
 AUTH_SERVICE_DEPENDENCY = Depends(get_auth_service)
 AI_CHAT_SERVICE_DEPENDENCY = Depends(get_ai_chat_service)
+ADMIN_PIPELINE_SERVICE_DEPENDENCY = Depends(get_admin_pipeline_service)
 USER_SERVICE_DEPENDENCY = Depends(get_user_service)
 OPTIONAL_USER_ID_DEPENDENCY = Depends(get_optional_user_id)
 REQUIRED_USER_ID_DEPENDENCY = Depends(get_required_user_id)
@@ -236,6 +246,59 @@ def resolve_review_case(
         ) from exc
 
 
+# ── Admin pipeline control ───────────────────────────────────────────────────
+
+@app.get(
+    "/api/v1/admin/pipeline/sources",
+    response_model=PipelineSourcesResponse,
+    tags=["admin"],
+)
+def list_pipeline_sources(
+    service: AdminPipelineService = ADMIN_PIPELINE_SERVICE_DEPENDENCY,
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
+) -> PipelineSourcesResponse:
+    _ = user_id
+    try:
+        return service.list_sources()
+    except SchedulerAdminError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@app.get(
+    "/api/v1/admin/pipeline/runs",
+    response_model=PipelineRunsResponse,
+    tags=["admin"],
+)
+def list_pipeline_runs(
+    limit: int = 50,
+    service: AdminPipelineService = ADMIN_PIPELINE_SERVICE_DEPENDENCY,
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
+) -> PipelineRunsResponse:
+    _ = user_id
+    try:
+        return service.list_runs(limit=limit)
+    except SchedulerAdminError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@app.post(
+    "/api/v1/admin/pipeline/rerun",
+    response_model=PipelineRerunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["admin"],
+)
+def rerun_pipeline(
+    body: PipelineRerunRequest,
+    service: AdminPipelineService = ADMIN_PIPELINE_SERVICE_DEPENDENCY,
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
+) -> PipelineRerunResponse:
+    _ = user_id
+    try:
+        return service.rerun(body)
+    except SchedulerAdminError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
 # ── University card ────────────────────────────────────────────────────────────
 
 # --- AI chat ---------------------------------------------------------------
@@ -245,6 +308,7 @@ def ai_chat(
     body: AiChatRequest,
     request: Request,
     service: AiChatService = AI_CHAT_SERVICE_DEPENDENCY,
+    search_service: UniversitySearchService = SEARCH_SERVICE_DEPENDENCY,
     user_id: UUID | None = OPTIONAL_USER_ID_DEPENDENCY,
 ) -> AiChatResponse:
     try:
@@ -257,6 +321,8 @@ def ai_chat(
             usage_remaining = None
         response = service.build_filter_plan(body)
         response.trial_remaining = usage_remaining
+        if response.intent == "search":
+            response.universities = _ai_chat_universities(search_service, response)
         return response
     except AiChatLimitExceededError as exc:
         raise HTTPException(
@@ -268,6 +334,96 @@ def ai_chat(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         ) from exc
+
+
+def _ai_chat_universities(
+    search_service: UniversitySearchService,
+    response: AiChatResponse,
+) -> list:
+    """Run the planned search and return a few concrete universities for the chat.
+
+    Best-effort: a search failure must never break the assistant reply.
+    """
+    from apps.backend.app.ai.models import AiChatUniversity
+
+    filters = response.filters
+    try:
+        result = search_service.search(
+            filters.query or "",
+            city=filters.city,
+            region=filters.region,
+            country=filters.country,
+            program_codes=filters.program_codes or None,
+            ege_subjects=filters.ege_subjects or None,
+            dormitory=bool(filters.dormitory),
+            military_department=bool(filters.military_department),
+            sort_by=filters.sort_by or "rating",
+            page=1,
+            page_size=4,
+        )
+    except Exception:  # noqa: BLE001 - chat must survive a search failure
+        return []
+    return [
+        AiChatUniversity(
+            university_id=str(item.university_id),
+            name=_university_short_name(item.canonical_name, item.aliases),
+            full_name=item.canonical_name,
+            city=item.city,
+            score=item.score,
+        )
+        for item in result.items
+    ]
+
+
+_ACRONYM_STOPWORDS = {"и", "имени", "им", "на", "по", "в", "при"}
+
+
+def _is_acronymish(text: str) -> bool:
+    """Short, uppercase-dominated token like "МФТИ", "НИУ ВШЭ" (spaces allowed)."""
+    letters = [ch for ch in text if ch.isalpha()]
+    if len(letters) < 2 or len(text) > 16:
+        return False
+    upper = sum(1 for ch in letters if ch.isupper())
+    return upper / len(letters) >= 0.7
+
+
+def _has_cyrillic(text: str) -> bool:
+    return any("Ѐ" <= ch <= "ӿ" for ch in text)
+
+
+def _acronym_from_name(canonical_name: str) -> str:
+    letters: list[str] = []
+    for raw_word in canonical_name.split():
+        word = raw_word.strip(".,()«»\"'")
+        if not word or not word[0].isalpha():
+            continue
+        if word.casefold() in _ACRONYM_STOPWORDS:
+            break  # everything after "имени"/"при" is a qualifier — stop
+        letters.append(word[0].upper())
+    return "".join(letters)
+
+
+def _university_short_name(canonical_name: str, aliases: list[str]) -> str:
+    """Compact label for the chat: a known Russian abbreviation if available.
+
+    Full names overflow the narrow chat bubble, so we show e.g. "ДГТУ"/"НИУ ВШЭ"
+    instead of the full official title. We prefer a Cyrillic abbreviation alias,
+    then a generated Cyrillic acronym, and only then a Latin abbreviation.
+    """
+    candidates = [alias.strip() for alias in aliases if alias and alias.strip()]
+    abbreviations = [alias for alias in candidates if _is_acronymish(alias)]
+
+    cyrillic = [alias for alias in abbreviations if _has_cyrillic(alias)]
+    if cyrillic:
+        return min(cyrillic, key=len)
+
+    acronym = _acronym_from_name(canonical_name)
+    if 2 <= len(acronym) <= 7:
+        return acronym
+
+    if abbreviations:
+        return min(abbreviations, key=len)
+    return canonical_name if len(canonical_name) <= 28 else f"{canonical_name[:27]}…"
 
 
 def _request_client_id(request: Request) -> str:

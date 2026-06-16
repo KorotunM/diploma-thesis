@@ -69,3 +69,44 @@ class CrawlJobAcceptedResponse(BaseModel):
 
     pipeline_run: PipelineRunResponse
     event: CrawlRequestEvent
+
+
+class PipelineRerunRequest(BaseModel):
+    """Re-run the full pipeline (all sources) or a single source (a part of it).
+
+    Re-publishing a crawl request cascades through the whole pipeline:
+    crawl → parse → normalize → card build. Scoping to one ``source_key`` re-runs
+    only that source's slice of the pipeline.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_key: str | None = Field(default=None, pattern=SOURCE_KEY_PATTERN)
+    priority: Literal["high", "bulk"] = "high"
+
+
+class PipelineRerunResultItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_key: str
+    endpoint_id: UUID
+    endpoint_url: str
+    crawl_run_id: UUID
+    status: Literal["published", "failed"]
+    detail: str | None = None
+
+
+class PipelineRerunResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    triggered: int
+    failed: int
+    scope: Literal["all", "source"]
+    items: list[PipelineRerunResultItem] = Field(default_factory=list)
+
+
+class PipelineRunListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    total: int
+    items: list[PipelineRunResponse] = Field(default_factory=list)

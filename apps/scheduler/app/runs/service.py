@@ -1,22 +1,29 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 from pydantic import BaseModel
 
 from apps.scheduler.app.sources.endpoint_repository import SourceEndpointRepository
+from apps.scheduler.app.sources.repository import SourceRepository
 from libs.contracts.events import CrawlRequestEvent, CrawlRequestPayload, EventHeader
 from libs.observability import DomainMetricsCollector, get_domain_metrics
 
 from .models import (
     CrawlJobAcceptedResponse,
     ManualCrawlTriggerRequest,
+    PipelineRerunRequest,
+    PipelineRerunResponse,
+    PipelineRerunResultItem,
     PipelineRunResponse,
     PipelineRunStatus,
     PipelineRunType,
     PipelineTriggerType,
 )
 from .repository import PipelineRunRepository
+
+LOGGER = logging.getLogger(__name__)
 
 PARSER_HIGH_QUEUE = "parser.high"
 PARSER_BULK_QUEUE = "parser.bulk"
@@ -182,3 +189,78 @@ class ManualCrawlTriggerService:
             pipeline_run=_to_pipeline_run_response(published_run),
             event=event,
         )
+
+
+class PipelineRerunService:
+    """Re-run the whole pipeline, or a single source's slice of it.
+
+    Each source endpoint is re-published as a fresh crawl request, which cascades
+    crawl → parse → normalize → card build. This reuses the manual-trigger path so
+    every re-run still produces a proper, provenance-tracked pipeline run.
+    """
+
+    def __init__(
+        self,
+        *,
+        source_repository: SourceRepository,
+        endpoint_repository: SourceEndpointRepository,
+        trigger_service: ManualCrawlTriggerService,
+    ) -> None:
+        self._source_repository = source_repository
+        self._endpoint_repository = endpoint_repository
+        self._trigger_service = trigger_service
+
+    def rerun(self, request: PipelineRerunRequest) -> PipelineRerunResponse:
+        source_keys = self._resolve_source_keys(request.source_key)
+        items: list[PipelineRerunResultItem] = []
+        failed = 0
+
+        for source_key in source_keys:
+            endpoints, _ = self._endpoint_repository.list(source_key, limit=200, offset=0)
+            for endpoint in endpoints:
+                trigger_request = ManualCrawlTriggerRequest(
+                    source_key=source_key,
+                    endpoint_id=endpoint.endpoint_id,
+                    priority=request.priority,
+                    metadata={"trigger_reason": "admin_rerun"},
+                )
+                try:
+                    accepted = self._trigger_service.trigger_manual_crawl(trigger_request)
+                    items.append(
+                        PipelineRerunResultItem(
+                            source_key=source_key,
+                            endpoint_id=endpoint.endpoint_id,
+                            endpoint_url=endpoint.endpoint_url,
+                            crawl_run_id=accepted.pipeline_run.run_id,
+                            status="published",
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    failed += 1
+                    LOGGER.warning(
+                        "pipeline_rerun_endpoint_failed",
+                        extra={"source_key": source_key, "endpoint_id": str(endpoint.endpoint_id)},
+                    )
+                    items.append(
+                        PipelineRerunResultItem(
+                            source_key=source_key,
+                            endpoint_id=endpoint.endpoint_id,
+                            endpoint_url=endpoint.endpoint_url,
+                            crawl_run_id=trigger_request.crawl_run_id,
+                            status="failed",
+                            detail=str(exc),
+                        )
+                    )
+
+        return PipelineRerunResponse(
+            triggered=sum(1 for item in items if item.status == "published"),
+            failed=failed,
+            scope="source" if request.source_key else "all",
+            items=items,
+        )
+
+    def _resolve_source_keys(self, source_key: str | None) -> list[str]:
+        if source_key:
+            return [source_key]
+        sources, _ = self._source_repository.list(limit=200, offset=0, include_inactive=False)
+        return [source.source_key for source in sources]

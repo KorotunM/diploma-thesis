@@ -6,6 +6,7 @@ from fastapi import Depends, Header
 
 from libs.storage import get_postgres_session_factory
 
+from .admin_pipeline import AdminPipelineService
 from .admin_review import ReviewCaseRepository, ReviewCaseService
 from .ai import AiChatService
 from .auth import AuthRepository, AuthService
@@ -89,6 +90,10 @@ def get_ege_subject_repository(
 
 def get_ai_chat_service() -> AiChatService:
     return AiChatService()
+
+
+def get_admin_pipeline_service() -> AdminPipelineService:
+    return AdminPipelineService()
 
 
 def get_optional_user_id(

@@ -31,7 +31,7 @@ class ProgramDirectoryService:
                 ),
                 ege_subjects=sorted(
                     subject
-                    for subject in row.get("ege_subjects", [])
+                    for subject in (row.get("ege_subjects") or [])
                     if isinstance(subject, str) and subject
                 ),
             )

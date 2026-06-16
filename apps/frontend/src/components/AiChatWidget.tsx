@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { AiChatFiltersDto, AiChatMessageDto } from "../shared/backend-api";
+import type {
+  AiChatFiltersDto,
+  AiChatMessageDto,
+  AiChatUniversityDto,
+} from "../shared/backend-api";
 import { describeRequestError } from "../shared/http";
 import { useFrontendRuntime } from "../shared/runtime";
 
@@ -13,6 +17,8 @@ interface ChatMessage {
   createdAt: string;
   filters?: AiChatFiltersDto;
   intent?: "search" | "clarify" | "general";
+  suggestions?: string[];
+  universities?: AiChatUniversityDto[];
   modelUsed?: string | null;
   trialRemaining?: number | null;
 }
@@ -93,6 +99,8 @@ export function AiChatWidget() {
           createdAt: new Date().toISOString(),
           filters: response.filters,
           intent: response.intent,
+          suggestions: response.suggestions ?? [],
+          universities: response.universities ?? [],
           modelUsed: response.model_used,
           trialRemaining: response.trial_remaining,
         },
@@ -166,16 +174,57 @@ export function AiChatWidget() {
                     </small>
                   )}
                   {message.intent === "search" && message.filters && (
-                    <button
-                      className="ai-chat__apply"
-                      type="button"
-                      onClick={() => {
-                        if (message.filters) applyFiltersToSearch(message.filters);
-                      }}
-                    >
-                      Показать в поиске
-                      <span aria-hidden>›</span>
-                    </button>
+                    <>
+                      {summarizeFilters(message.filters).length > 0 && (
+                        <div className="ai-chat__filter-tags">
+                          {summarizeFilters(message.filters).map((tag) => (
+                            <span key={tag} className="ai-chat__filter-tag">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                      {message.universities && message.universities.length > 0 && (
+                        <div className="ai-chat__unis">
+                          {message.universities.map((uni) => (
+                            <button
+                              key={uni.university_id}
+                              className="ai-chat__uni"
+                              type="button"
+                              title={uni.full_name ?? uni.name}
+                              onClick={() => openUniversityCard(uni.university_id)}
+                            >
+                              <span className="ai-chat__uni-name">{uni.name}</span>
+                              {uni.city && <span className="ai-chat__uni-city">{uni.city}</span>}
+                              <span className="ai-chat__uni-go" aria-hidden>→</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        className="ai-chat__apply"
+                        type="button"
+                        onClick={() => {
+                          if (message.filters) applyFiltersToSearch(message.filters);
+                        }}
+                      >
+                        Показать все в поиске
+                        <span aria-hidden>›</span>
+                      </button>
+                    </>
+                  )}
+                  {message.suggestions && message.suggestions.length > 0 && (
+                    <div className="ai-chat__suggestions">
+                      {message.suggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          className="ai-chat__suggestion"
+                          type="button"
+                          disabled={sending}
+                          onClick={() => void sendMessage(suggestion)}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
                   )}
                   <time dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time>
                 </div>
@@ -223,30 +272,98 @@ export function AiChatWidget() {
   );
 }
 
+function openUniversityCard(universityId: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("university_id", universityId);
+  window.history.replaceState({}, "", url);
+  window.location.hash = "university";
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 function applyFiltersToSearch(filters: AiChatFiltersDto): void {
   const url = new URL(window.location.href);
+  const params = url.searchParams;
 
-  const queryText =
-    filters.query?.trim() ||
-    filters.direction?.trim() ||
-    filters.advanced?.program_query?.trim() ||
-    null;
+  // The text query is reserved for a university name/abbreviation; a study
+  // direction is applied via program_codes instead.
+  writeParam(params, "query", filters.query);
+  params.delete("program_codes");
+  for (const code of filters.program_codes ?? []) params.append("program_codes", code);
 
-  writeParam(url.searchParams, "query", queryText);
-  writeParam(url.searchParams, "city", filters.city);
-  writeParam(url.searchParams, "country", filters.country);
-  writeParam(url.searchParams, "source_type", filters.source_type);
-  if (filters.advanced?.dormitory === true) {
-    url.searchParams.set("dormitory", "true");
-  } else {
-    url.searchParams.delete("dormitory");
+  writeParam(params, "city", filters.city);
+  writeParam(params, "region", filters.region);
+  writeParam(params, "country", filters.country);
+  writeParam(params, "source_type", filters.source_type);
+
+  // Visible checkbox filters.
+  writeBoolean(params, "dormitory", filters.dormitory ?? filters.advanced?.dormitory ?? null);
+  writeBoolean(params, "military_department", filters.military_department ?? null);
+
+  // Hidden/advanced EGE panel — subjects and per-subject scores.
+  const subjects = new Set(filters.ege_subjects ?? []);
+  for (const subject of Object.keys(filters.ege_scores ?? {})) subjects.add(subject);
+  params.delete("ege_subjects");
+  for (const subject of subjects) params.append("ege_subjects", subject);
+  params.delete("ege_scores");
+  for (const [subject, score] of Object.entries(filters.ege_scores ?? {})) {
+    if (Number.isFinite(score)) params.append("ege_scores", `${subject}:${score}`);
   }
-  url.searchParams.delete("page");
+
+  // Sort order.
+  if (filters.sort_by && filters.sort_by !== "rating") {
+    params.set("sort_by", filters.sort_by);
+  } else {
+    params.delete("sort_by");
+  }
+
+  params.delete("page");
   window.history.replaceState({}, "", url);
   if (window.location.hash !== "#search") {
     window.location.hash = "search";
   }
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function writeBoolean(params: URLSearchParams, key: string, value: boolean | null): void {
+  if (value === true) {
+    params.set(key, "1");
+  } else {
+    params.delete(key);
+  }
+}
+
+const SORT_LABELS: Record<string, string> = {
+  rating: "сначала сильные",
+  budget_places: "больше бюджетных мест",
+  avg_passing_score: "ниже проходной балл",
+};
+
+const DIRECTION_LABELS: Record<string, string> = {
+  it: "IT и программирование",
+  engineering: "Инженерия",
+  economy: "Экономика",
+  medicine: "Медицина",
+  management: "Управление",
+  humanities: "Гуманитарные науки",
+};
+
+function summarizeFilters(filters: AiChatFiltersDto): string[] {
+  const tags: string[] = [];
+  if (filters.query?.trim()) tags.push(filters.query.trim());
+  const direction = filters.direction?.trim();
+  if (direction) tags.push(DIRECTION_LABELS[direction] ?? direction);
+  if (filters.city?.trim()) tags.push(filters.city.trim());
+  if (filters.region?.trim()) tags.push(filters.region.trim());
+  const subjects = new Set(filters.ege_subjects ?? []);
+  for (const subject of Object.keys(filters.ege_scores ?? {})) subjects.add(subject);
+  for (const subject of subjects) {
+    const score = filters.ege_scores?.[subject];
+    tags.push(score ? `${subject} ${score}` : subject);
+  }
+  if (filters.dormitory === true || filters.advanced?.dormitory === true) tags.push("общежитие");
+  if (filters.military_department === true) tags.push("военная кафедра");
+  if (filters.sort_by && SORT_LABELS[filters.sort_by]) tags.push(SORT_LABELS[filters.sort_by]);
+  return tags;
 }
 
 function writeParam(params: URLSearchParams, key: string, value: string | null | undefined): void {

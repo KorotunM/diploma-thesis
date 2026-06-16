@@ -4,6 +4,7 @@ import logging
 import os
 from contextlib import ExitStack
 
+from libs.observability import start_worker_metrics_server
 from libs.storage import (
     RabbitMQPublisher,
     get_platform_settings,
@@ -111,6 +112,7 @@ def run_parser_worker(
 
 
 def main() -> None:
+    start_worker_metrics_server()
     run_parser_worker()
 
 

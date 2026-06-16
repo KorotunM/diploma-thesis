@@ -125,11 +125,110 @@
   margin-bottom: 22px;
 }
 
+.programs-subject-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.programs-subject-panel__title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: $color-text;
+}
+
+.programs-subject-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid $color-brand;
+  background: $color-surface;
+  color: $color-brand;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover {
+    background: $color-brand-light;
+  }
+
+  &--open {
+    background: $color-brand;
+    color: #fff;
+
+    &:hover {
+      background: $color-brand-hover;
+    }
+  }
+}
+
+.programs-subject-toggle__chevron {
+  font-size: 0.9rem;
+  transition: transform 0.25s ease;
+
+  .programs-subject-toggle--open & {
+    transform: rotate(180deg);
+  }
+}
+
 .programs-subject-panel__chips {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+// Collapsible container for the additional subjects — animates height + fade.
+.programs-subject-extra {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.32s ease, opacity 0.32s ease, margin-top 0.32s ease;
+  margin-top: 0;
+
+  &--open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin-top: 14px;
+  }
+}
+
+.programs-subject-extra__inner {
+  overflow: hidden;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px dashed $color-border-strong;
+}
+
+// Each additional chip fades/slides in with a small stagger when expanded.
+.programs-subject-chip--extra {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease, border-color 0.15s, color 0.15s,
+    background 0.15s;
+
+  .programs-subject-extra--open & {
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: calc(var(--chip-index, 0) * 45ms);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .programs-subject-extra,
+  .programs-subject-chip--extra,
+  .programs-subject-toggle__chevron {
+    transition: none;
+  }
 }
 
 .programs-subject-chip {
@@ -243,8 +342,8 @@
 
 .program-row-card {
   display: grid;
-  grid-template-columns: 72px minmax(260px, 1.2fr) minmax(160px, 0.8fr) 94px 112px 132px auto;
-  gap: 22px;
+  grid-template-columns: 56px minmax(0, 1.3fr) minmax(0, 0.9fr) 78px 96px 112px 172px;
+  gap: 18px;
   align-items: center;
   background: $color-surface;
   border: 1px solid $color-border;
@@ -252,6 +351,7 @@
   box-shadow: $shadow-card;
   padding: 20px;
   cursor: pointer;
+  overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
 
   &:hover {
@@ -362,7 +462,10 @@
 }
 
 .program-row-card__button {
-  min-height: 38px;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -373,13 +476,21 @@
   color: $color-brand;
   font-size: 0.76rem;
   font-weight: 800;
-  padding: 0 16px;
+  padding: 0 14px;
   cursor: pointer;
   white-space: nowrap;
 
   &:hover {
     background: $color-brand;
     color: #fff;
+  }
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-size: 1rem;
   }
 }
 

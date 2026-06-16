@@ -4,6 +4,7 @@ from contextlib import ExitStack
 import logging
 import os
 
+from libs.observability import start_worker_metrics_server
 from libs.storage import (
     get_postgres_session_factory,
     get_rabbitmq_connection,
@@ -95,6 +96,7 @@ def run_normalizer_worker(
 
 
 def main() -> None:
+    start_worker_metrics_server()
     run_normalizer_worker()
 
 

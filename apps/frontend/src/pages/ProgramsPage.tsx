@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 
 import type { BackendSearchResponse, ProgramDirectoryItemDto } from "../shared/backend-api";
@@ -7,13 +8,8 @@ import { ViewState } from "../shared/ui/view-state";
 type ProgramSort = "universities" | "score" | "budget";
 
 const PRIMARY_SUBJECTS = ["Информатика", "Физика", "Обществознание", "Биология", "Химия"];
-const EGE_FILTER_SUBJECTS = [
+const ADDITIONAL_SUBJECTS = [
   "Математика",
-  "Физика",
-  "Химия",
-  "Биология",
-  "Информатика",
-  "Обществознание",
   "История",
   "Литература",
   "География",
@@ -299,7 +295,6 @@ export function ProgramsPage() {
       .finally(() => setLoadingUnis(false));
   }, [selected, backendApi]);
 
-  const visibleSubjectFilters = showAllSubjects ? EGE_FILTER_SUBJECTS : PRIMARY_SUBJECTS;
   const filtered = programs
     .filter((program) => {
       const normalizedQuery = query.trim().toLowerCase();
@@ -364,8 +359,21 @@ export function ProgramsPage() {
       </div>
 
       <div className="programs-subject-panel">
+        <div className="programs-subject-panel__head">
+          <span className="programs-subject-panel__title">Предметы ЕГЭ</span>
+          <button
+            className={`programs-subject-toggle${showAllSubjects ? " programs-subject-toggle--open" : ""}`}
+            type="button"
+            aria-expanded={showAllSubjects}
+            onClick={() => setShowAllSubjects((value) => !value)}
+          >
+            {showAllSubjects ? "Скрыть дополнительные" : "Ещё предметы"}
+            <span className="programs-subject-toggle__chevron" aria-hidden>⌄</span>
+          </button>
+        </div>
+
         <div className="programs-subject-panel__chips">
-          {visibleSubjectFilters.map((subject) => {
+          {PRIMARY_SUBJECTS.map((subject) => {
             const active = selectedSubjects.includes(subject);
             return (
               <button
@@ -379,14 +387,30 @@ export function ProgramsPage() {
               </button>
             );
           })}
-          <button
-            className="programs-subject-chip programs-subject-chip--more"
-            type="button"
-            onClick={() => setShowAllSubjects((value) => !value)}
-          >
-            {showAllSubjects ? "Скрыть" : "Ещё предметы"}
-            <span>⌄</span>
-          </button>
+        </div>
+
+        <div
+          className={`programs-subject-extra${showAllSubjects ? " programs-subject-extra--open" : ""}`}
+          aria-hidden={!showAllSubjects}
+        >
+          <div className="programs-subject-extra__inner">
+            {ADDITIONAL_SUBJECTS.map((subject, index) => {
+              const active = selectedSubjects.includes(subject);
+              return (
+                <button
+                  key={subject}
+                  className={`programs-subject-chip programs-subject-chip--extra${active ? " programs-subject-chip--active" : ""}`}
+                  type="button"
+                  tabIndex={showAllSubjects ? 0 : -1}
+                  style={{ "--chip-index": index } as CSSProperties}
+                  onClick={() => toggleSubject(subject)}
+                >
+                  {subject}
+                  {active && <span>✓</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

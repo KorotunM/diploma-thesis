@@ -35,3 +35,26 @@ scrape_configs:
           service: backend
           layer: delivery
     metrics_path: /metrics
+  # Worker processes own the pipeline domain metrics (parse/normalize/card build).
+  # They run no FastAPI server, so each exposes a standalone exporter on :9100.
+  - job_name: scheduler-worker
+    static_configs:
+      - targets: ["scheduler-worker:9100"]
+        labels:
+          service: scheduler-worker
+          layer: control
+    metrics_path: /metrics
+  - job_name: parser-worker
+    static_configs:
+      - targets: ["parser-worker:9100"]
+        labels:
+          service: parser-worker
+          layer: ingestion
+    metrics_path: /metrics
+  - job_name: normalizer-worker
+    static_configs:
+      - targets: ["normalizer-worker:9100"]
+        labels:
+          service: normalizer-worker
+          layer: resolution
+    metrics_path: /metrics

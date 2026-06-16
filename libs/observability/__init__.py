@@ -4,7 +4,7 @@ from .domain_metrics import (
     PrometheusDomainMetricsCollector,
     get_domain_metrics,
 )
-from .service_factory import create_service_app
+from .service_factory import create_service_app, start_worker_metrics_server
 
 __all__ = [
     "DomainMetricsCollector",
@@ -12,4 +12,5 @@ __all__ = [
     "PrometheusDomainMetricsCollector",
     "create_service_app",
     "get_domain_metrics",
+    "start_worker_metrics_server",
 ]

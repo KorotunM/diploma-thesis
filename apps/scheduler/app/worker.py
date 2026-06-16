@@ -4,6 +4,7 @@ import os
 import logging
 from time import sleep
 
+from libs.observability import start_worker_metrics_server
 from libs.storage import (
     RabbitMQPublisher,
     declare_rabbitmq_topology,
@@ -108,6 +109,7 @@ def run_scheduler_worker(
 
 
 def main() -> None:
+    start_worker_metrics_server()
     run_scheduler_worker()
 
 

@@ -311,12 +311,19 @@ export interface AiChatAdvancedFiltersDto {
 export interface AiChatFiltersDto {
   query: string | null;
   city: string | null;
+  region?: string | null;
   country: string | null;
   source_type: string | null;
   direction: string | null;
+  program_codes?: string[];
   study_form: string | null;
   budget_type: string | null;
   min_ege_score: number | null;
+  ege_subjects?: string[];
+  ege_scores?: Record<string, number>;
+  dormitory?: boolean | null;
+  military_department?: boolean | null;
+  sort_by?: "rating" | "budget_places" | "avg_passing_score" | null;
   advanced: AiChatAdvancedFiltersDto;
 }
 
@@ -331,14 +338,74 @@ export interface AiChatRequestDto {
   client_id?: string | null;
 }
 
+export interface AiChatUniversityDto {
+  university_id: string;
+  name: string;
+  full_name?: string | null;
+  city: string | null;
+  score: number | null;
+}
+
 export interface AiChatResponseDto {
   intent: "search" | "clarify" | "general";
   message_to_user: string;
   filters: AiChatFiltersDto;
   missing_fields: string[];
+  suggestions?: string[];
+  universities?: AiChatUniversityDto[];
   confidence: number;
   model_used: string | null;
   trial_remaining: number | null;
+}
+
+// --- Admin pipeline control --------------------------------------------
+
+export interface PipelineSourceItemDto {
+  source_key: string;
+  source_type: string;
+  trust_tier: string;
+  is_active: boolean;
+}
+
+export interface PipelineSourcesResponseDto {
+  items: PipelineSourceItemDto[];
+}
+
+export interface PipelineRunItemDto {
+  run_id: string;
+  run_type: string;
+  status: string;
+  trigger_type: string;
+  source_key: string | null;
+  started_at: string;
+  finished_at: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface PipelineRunsResponseDto {
+  total: number;
+  items: PipelineRunItemDto[];
+}
+
+export interface PipelineRerunRequestDto {
+  source_key?: string | null;
+  priority?: "high" | "bulk";
+}
+
+export interface PipelineRerunResultItemDto {
+  source_key: string;
+  endpoint_id: string;
+  endpoint_url: string;
+  crawl_run_id: string;
+  status: "published" | "failed";
+  detail: string | null;
+}
+
+export interface PipelineRerunResponseDto {
+  triggered: number;
+  failed: number;
+  scope: "all" | "source";
+  items: PipelineRerunResultItemDto[];
 }
 
 export interface DeliveryProjectionTraceDto {

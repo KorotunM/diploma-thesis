@@ -128,3 +128,134 @@
     grid-template-columns: 1fr;
   }
 }
+
+// ── Pipeline control ─────────────────────────────────────────────────
+.admin-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-pipeline__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0 0 4px;
+  }
+
+  p {
+    margin: 0;
+    color: $color-text-muted;
+    font-size: 0.86rem;
+    max-width: 540px;
+  }
+}
+
+.admin-pipeline__header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-pipeline__notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: $radius-sm;
+  background: $color-brand-light;
+  color: $color-brand-text;
+  font-size: 0.88rem;
+}
+
+.admin-pipeline__sources,
+.admin-pipeline__runs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: $color-text;
+  }
+}
+
+.admin-pipeline__empty {
+  margin: 0;
+  color: $color-text-muted;
+  font-size: 0.88rem;
+}
+
+.admin-pipeline__source {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  background: $color-surface;
+}
+
+.admin-pipeline__source-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-pipeline__source-meta {
+  color: $color-text-muted;
+  font-size: 0.78rem;
+}
+
+.admin-pipeline__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid $color-border;
+  }
+
+  th {
+    color: $color-text-muted;
+    font-weight: 600;
+  }
+}
+
+.admin-pipeline__status {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: #eef2f7;
+  color: #334155;
+
+  &--succeeded {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  &--failed {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  &--published,
+  &--running {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  &--queued {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+}
