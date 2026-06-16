@@ -1,0 +1,130 @@
+@use "../variables" as *;
+
+.admin-review {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-review__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: $color-text-muted;
+  }
+}
+
+.admin-review__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-review__case {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  background: $color-surface;
+  box-shadow: $shadow-card;
+}
+
+.admin-review__case-main {
+  min-width: 0;
+
+  p {
+    margin: 8px 0 0;
+    color: $color-text-soft;
+  }
+}
+
+.admin-review__case-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-review__priority {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: $color-info-bg;
+  color: $color-info-text;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-review__priority--high {
+  background: $color-error-bg;
+  color: $color-error-text;
+}
+
+.admin-review__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+
+  div {
+    min-width: 0;
+  }
+
+  dt {
+    color: $color-text-muted;
+    font-size: 0.78rem;
+  }
+
+  dd {
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+    color: $color-text;
+    font-weight: 650;
+  }
+}
+
+.admin-review__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+}
+
+@media (max-width: $breakpoint-mobile) {
+  .admin-review__case {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-review__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-review__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: $breakpoint-small) {
+  .admin-review__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-review__facts {
+    grid-template-columns: 1fr;
+  }
+}

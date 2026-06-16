@@ -27,6 +27,7 @@ export function useUniversitySearch() {
   const deferredCountry = useDeferredValue(state.country.trim());
   const deferredSourceType = useDeferredValue(state.sourceType.trim());
   const deferredEgeSubjects = useDeferredValue(state.egeSubjects);
+  const deferredEgeScores = useDeferredValue(state.egeScores);
   const deferredProgramCodes = useDeferredValue(state.programCodes);
   const deferredDormitory = useDeferredValue(state.dormitory);
   const deferredMilitaryDepartment = useDeferredValue(state.militaryDepartment);
@@ -74,6 +75,7 @@ export function useUniversitySearch() {
         country: deferredCountry,
         sourceType: deferredSourceType,
         egeSubjects: deferredEgeSubjects,
+        egeScores: deferredEgeScores,
         programCodes: deferredProgramCodes,
         dormitory: deferredDormitory,
         militaryDepartment: deferredMilitaryDepartment,
@@ -116,6 +118,7 @@ export function useUniversitySearch() {
     deferredRegion,
     deferredCountry,
     deferredDormitory,
+    deferredEgeScores,
     deferredEgeSubjects,
     deferredMilitaryDepartment,
     deferredPage,
@@ -186,6 +189,18 @@ export function useUniversitySearch() {
     setState((current) => ({
       ...current,
       egeSubjects,
+      egeScores: Object.fromEntries(
+        Object.entries(current.egeScores).filter(([subject]) => egeSubjects.includes(subject)),
+      ),
+      page: 1,
+    }));
+  };
+
+  const setEgeScores = (egeScores: Record<string, number>) => {
+    setState((current) => ({
+      ...current,
+      egeScores,
+      egeSubjects: Array.from(new Set([...current.egeSubjects, ...Object.keys(egeScores)])),
       page: 1,
     }));
   };
@@ -230,6 +245,7 @@ export function useUniversitySearch() {
       country: "",
       sourceType: "",
       egeSubjects: [],
+      egeScores: {},
       programCodes: [],
       dormitory: false,
       militaryDepartment: false,
@@ -250,6 +266,8 @@ export function useUniversitySearch() {
     setSourceType,
     egeSubjects: state.egeSubjects,
     setEgeSubjects,
+    egeScores: state.egeScores,
+    setEgeScores,
     programCodes: state.programCodes,
     setProgramCodes,
     dormitory: state.dormitory,

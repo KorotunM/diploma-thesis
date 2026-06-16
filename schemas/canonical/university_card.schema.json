@@ -8,6 +8,7 @@
     "university_id",
     "canonical_name",
     "aliases",
+    "history",
     "location",
     "contacts",
     "institutional",
@@ -16,6 +17,7 @@
     "stats",
     "ratings",
     "dormitory",
+    "military_department",
     "reviews",
     "sources",
     "version"
@@ -40,6 +42,7 @@
       "items": { "type": "string" }
     },
     "description": { "type": ["string", "null"] },
+    "history": { "type": "object" },
     "location": {
       "type": "object",
       "additionalProperties": false,
@@ -100,6 +103,7 @@
       }
     },
     "dormitory": { "type": "object" },
+    "military_department": { "type": "object" },
     "reviews": {
       "type": "object",
       "additionalProperties": false,

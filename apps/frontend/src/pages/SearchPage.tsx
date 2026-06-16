@@ -103,6 +103,8 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
     pageSize,
     egeSubjects,
     setEgeSubjects,
+    egeScores,
+    setEgeScores,
     programCodes,
     setProgramCodes,
     dormitory,
@@ -124,7 +126,9 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [egeSubjectsList, setEgeSubjectsList] = useState<EgeSubjectDto[]>([]);
   const [egeChecked, setEgeChecked] = useState<Set<string>>(new Set(egeSubjects));
-  const [egeScores, setEgeScores] = useState<EgeScores>({});
+  const [localEgeScores, setLocalEgeScores] = useState<EgeScores>(
+    Object.fromEntries(Object.entries(egeScores).map(([subject, score]) => [subject, String(score)])),
+  );
 
   useEffect(() => {
     backendApi.getEgeSubjects().then((res) => setEgeSubjectsList(res.subjects)).catch(() => {});
@@ -137,6 +141,15 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
   useEffect(() => {
     setLocalQuery(query);
   }, [query]);
+
+  useEffect(() => {
+    setEgeChecked(new Set(egeSubjects));
+    setLocalEgeScores(
+      Object.fromEntries(
+        Object.entries(egeScores).map(([subject, score]) => [subject, String(score)]),
+      ),
+    );
+  }, [egeScores, egeSubjects]);
 
   useEffect(() => {
     if (!showEge) return;
@@ -221,12 +234,24 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       setEgeSubjects([...next]);
+      if (!next.has(id)) {
+        setLocalEgeScores((scores) => {
+          const copy = { ...scores };
+          delete copy[id];
+          setEgeScores(parseEgeScores(copy));
+          return copy;
+        });
+      }
       return next;
     });
   };
 
   const handleEgeScore = (id: string, val: string) => {
-    setEgeScores((prev) => ({ ...prev, [id]: val }));
+    setLocalEgeScores((prev) => {
+      const next = { ...prev, [id]: val };
+      setEgeScores(parseEgeScores(next));
+      return next;
+    });
   };
 
   return (
@@ -332,7 +357,7 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
               </p>
               <EgePanel
                 subjects={egeSubjectsList}
-                scores={egeScores}
+                scores={localEgeScores}
                 checked={egeChecked}
                 onToggle={handleEgeToggle}
                 onScore={handleEgeScore}
@@ -394,7 +419,15 @@ export function SearchPage({ onShowLogin }: { onShowLogin?: () => void }) {
           <button
             className="section-header__link"
             type="button"
-            onClick={() => { resetFilters(); setQuery(""); setLocalQuery(""); setEgeChecked(new Set()); setEgeSubjects([]); }}
+              onClick={() => {
+                resetFilters();
+                setQuery("");
+                setLocalQuery("");
+                setEgeChecked(new Set());
+                setEgeSubjects([]);
+                setLocalEgeScores({});
+                setEgeScores({});
+              }}
           >
             Сбросить фильтры ✕
           </button>
@@ -594,6 +627,17 @@ function formatDecimalMetric(value: number | null): string {
   return typeof value === "number" && Number.isFinite(value)
     ? value.toLocaleString("ru-RU", { maximumFractionDigits: 1 })
     : "—";
+}
+
+function parseEgeScores(scores: EgeScores): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [subject, value] of Object.entries(scores)) {
+    const score = Number.parseInt(value, 10);
+    if (Number.isFinite(score) && score >= 0 && score <= 100) {
+      result[subject] = score;
+    }
+  }
+  return result;
 }
 
 function resolvePopularDirectionCodes(value: string): string[] {

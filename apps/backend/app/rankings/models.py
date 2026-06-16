@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RankingItem(BaseModel):
@@ -25,4 +27,7 @@ class RankingsResponse(BaseModel):
     page: int
     page_size: int
     has_more: bool
+    updated_at: datetime | None = None
+    source_label: str = "Рейтинги из карточек вузов"
+    source_names: list[str] = Field(default_factory=list)
     items: list[RankingItem]

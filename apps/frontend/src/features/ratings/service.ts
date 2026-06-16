@@ -16,6 +16,9 @@ export async function fetchRankings(options: {
     page: response.page,
     pageSize: response.page_size,
     hasMore: response.has_more,
+    updatedAt: response.updated_at,
+    sourceLabel: response.source_label,
+    sourceNames: response.source_names,
     items: response.items,
   };
 }

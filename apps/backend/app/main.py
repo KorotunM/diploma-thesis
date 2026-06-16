@@ -1,8 +1,16 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, HTTPException, Query, Request, status
 
+from apps.backend.app.admin_review import (
+    ReviewCaseItem,
+    ReviewCaseListResponse,
+    ReviewCaseNotFoundError,
+    ReviewCaseResolveRequest,
+    ReviewCaseService,
+)
 from apps.backend.app.ai import AiChatProviderError, AiChatRequest, AiChatResponse, AiChatService
+from apps.backend.app.ai.usage import AiChatLimitExceededError, AiChatUsageRepository
 from apps.backend.app.auth import (
     AuthResponse,
     AuthService,
@@ -24,14 +32,17 @@ from apps.backend.app.dependencies import (
     get_ege_subject_repository,
     get_location_suggest_service,
     get_optional_user_id,
+    get_program_directory_service,
     get_rankings_service,
     get_required_user_id,
+    get_review_case_service,
     get_university_card_read_service,
     get_university_provenance_read_service,
     get_university_search_service,
     get_user_service,
 )
 from apps.backend.app.locations import LocationSuggestResponse, LocationSuggestService
+from apps.backend.app.programs import ProgramDirectoryResponse, ProgramDirectoryService
 from apps.backend.app.provenance import (
     UniversityProvenanceNotFoundError,
     UniversityProvenanceReadService,
@@ -62,6 +73,8 @@ RANKINGS_SERVICE_DEPENDENCY = Depends(get_rankings_service)
 CARD_READ_SERVICE_DEPENDENCY = Depends(get_university_card_read_service)
 PROVENANCE_READ_SERVICE_DEPENDENCY = Depends(get_university_provenance_read_service)
 SEARCH_SERVICE_DEPENDENCY = Depends(get_university_search_service)
+PROGRAM_DIRECTORY_SERVICE_DEPENDENCY = Depends(get_program_directory_service)
+REVIEW_CASE_SERVICE_DEPENDENCY = Depends(get_review_case_service)
 AUTH_SERVICE_DEPENDENCY = Depends(get_auth_service)
 AI_CHAT_SERVICE_DEPENDENCY = Depends(get_ai_chat_service)
 USER_SERVICE_DEPENDENCY = Depends(get_user_service)
@@ -87,6 +100,7 @@ def backend_overview() -> dict[str, object]:
 
 EGE_SUBJECTS_REPOSITORY_DEPENDENCY = Depends(get_ege_subject_repository)
 EGE_SUBJECTS_QUERY = Query(default=None)
+EGE_SCORES_QUERY = Query(default=None)
 PROGRAM_CODES_QUERY = Query(default=None)
 
 
@@ -98,6 +112,13 @@ def get_ege_subjects(
     return {"subjects": [{"id": s.code, "label": s.label} for s in subjects]}
 
 
+@app.get("/api/v1/programs", response_model=ProgramDirectoryResponse, tags=["programs"])
+def list_programs(
+    service: ProgramDirectoryService = PROGRAM_DIRECTORY_SERVICE_DEPENDENCY,
+) -> ProgramDirectoryResponse:
+    return service.list_programs()
+
+
 @app.get("/api/v1/search", response_model=UniversitySearchResponse, tags=["search"])
 def search_universities(
     query: str = "",
@@ -106,6 +127,7 @@ def search_universities(
     country: str | None = None,
     source_type: str | None = None,
     ege_subjects: list[str] | None = EGE_SUBJECTS_QUERY,
+    ege_scores: list[str] | None = EGE_SCORES_QUERY,
     program_codes: list[str] | None = PROGRAM_CODES_QUERY,
     dormitory: bool = False,
     military_department: bool = False,
@@ -114,20 +136,40 @@ def search_universities(
     page_size: int = 20,
     service: UniversitySearchService = SEARCH_SERVICE_DEPENDENCY,
 ) -> UniversitySearchResponse:
-    return service.search(
-        query,
-        city=city,
-        region=region,
-        country=country,
-        source_type=source_type,
-        ege_subjects=ege_subjects,
-        program_codes=program_codes,
-        dormitory=dormitory,
-        military_department=military_department,
-        sort_by=sort_by,
-        page=page,
-        page_size=page_size,
-    )
+    search_kwargs = {
+        "city": city,
+        "region": region,
+        "country": country,
+        "source_type": source_type,
+        "ege_subjects": ege_subjects,
+        "program_codes": program_codes,
+        "dormitory": dormitory,
+        "military_department": military_department,
+        "sort_by": sort_by,
+        "page": page,
+        "page_size": page_size,
+    }
+    parsed_ege_scores = _parse_ege_scores(ege_scores)
+    if parsed_ege_scores:
+        search_kwargs["ege_scores"] = parsed_ege_scores
+    return service.search(query, **search_kwargs)
+
+
+def _parse_ege_scores(values: list[str] | None) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for value in values or []:
+        if ":" not in value:
+            continue
+        subject, score_text = value.split(":", 1)
+        subject = subject.strip()
+        if not subject:
+            continue
+        try:
+            score = int(score_text)
+        except ValueError:
+            continue
+        result[subject] = score
+    return result
 
 
 @app.get("/api/v1/regions", response_model=LocationSuggestResponse, tags=["locations"])
@@ -160,6 +202,40 @@ def get_rankings(
     return service.get_rankings(page=page, page_size=page_size)
 
 
+# ── Admin review inbox ─────────────────────────────────────────────────────────
+
+@app.get("/api/v1/admin/review-cases", response_model=ReviewCaseListResponse, tags=["admin"])
+def list_review_cases(
+    status: str | None = "open",
+    limit: int = 50,
+    offset: int = 0,
+    service: ReviewCaseService = REVIEW_CASE_SERVICE_DEPENDENCY,
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
+) -> ReviewCaseListResponse:
+    _ = user_id
+    return service.list_cases(status=status, limit=limit, offset=offset)
+
+
+@app.post(
+    "/api/v1/admin/review-cases/{review_case_id}/resolve",
+    response_model=ReviewCaseItem,
+    tags=["admin"],
+)
+def resolve_review_case(
+    review_case_id: UUID,
+    body: ReviewCaseResolveRequest,
+    service: ReviewCaseService = REVIEW_CASE_SERVICE_DEPENDENCY,
+    user_id: UUID = REQUIRED_USER_ID_DEPENDENCY,
+) -> ReviewCaseItem:
+    try:
+        return service.resolve_case(review_case_id, user_id=user_id, body=body)
+    except ReviewCaseNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Review case {review_case_id} was not found.",
+        ) from exc
+
+
 # ── University card ────────────────────────────────────────────────────────────
 
 # --- AI chat ---------------------------------------------------------------
@@ -167,15 +243,47 @@ def get_rankings(
 @app.post("/api/v1/ai/chat", response_model=AiChatResponse, tags=["ai"])
 def ai_chat(
     body: AiChatRequest,
+    request: Request,
     service: AiChatService = AI_CHAT_SERVICE_DEPENDENCY,
+    user_id: UUID | None = OPTIONAL_USER_ID_DEPENDENCY,
 ) -> AiChatResponse:
     try:
-        return service.build_filter_plan(body)
+        try:
+            usage_remaining = _record_ai_chat_usage(
+                user_id=user_id,
+                client_id=body.client_id or _request_client_id(request),
+            )
+        except ModuleNotFoundError:
+            usage_remaining = None
+        response = service.build_filter_plan(body)
+        response.trial_remaining = usage_remaining
+        return response
+    except AiChatLimitExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
     except AiChatProviderError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
         ) from exc
+
+
+def _request_client_id(request: Request) -> str:
+    if request.client is None:
+        return "anonymous"
+    return request.client.host or "anonymous"
+
+
+def _record_ai_chat_usage(*, user_id: UUID | None, client_id: str) -> int | None:
+    session_factory = get_postgres_session_factory(service_name="backend")
+    session = session_factory()
+    try:
+        usage = AiChatUsageRepository(session).record_request(user_id=user_id, client_id=client_id)
+        return usage.remaining
+    finally:
+        session.close()
 
 
 @app.get(

@@ -62,11 +62,14 @@ class AdmissionProgramResponse(BaseModel):
     code: str | None = None
     name: str | None = None
     budget_places: int | None = None
+    paid_places: int | None = None
     passing_score: int | None = None
+    tuition_per_year: int | None = None
     study_form: str | None = None
     level: str | None = None
     year: int | None = None
     ege_subjects: list[str] = Field(default_factory=list)
+    exams: list[dict[str, Any]] = Field(default_factory=list)
     confidence: float | None = None
     sources: list[dict[str, Any]] = Field(default_factory=list)
     field_attribution: UniversityCardFieldAttribution | None = None

@@ -301,6 +301,7 @@ def test_search_endpoint_serves_live_search_response() -> None:
                 "country": "RU",
                 "source_type": "official_site",
                 "ege_subjects": [],
+                "ege_scores": {},
                 "program_codes": [],
                 "dormitory": False,
                 "military_department": False,
@@ -353,11 +354,12 @@ def test_search_endpoint_serves_live_search_response() -> None:
         "city": "Moscow",
         "region": None,
         "country": "RU",
-        "source_type": "official_site",
-        "ege_subjects": [],
-        "program_codes": [],
-        "dormitory": False,
-        "military_department": False,
+            "source_type": "official_site",
+            "ege_subjects": [],
+            "ege_scores": {},
+            "program_codes": [],
+            "dormitory": False,
+            "military_department": False,
     }
     assert body["items"][0]["university_id"] == str(row["university_id"])
     assert body["items"][0]["canonical_name"] == "Example University"

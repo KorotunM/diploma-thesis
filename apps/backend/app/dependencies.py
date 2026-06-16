@@ -6,11 +6,13 @@ from fastapi import Depends, Header
 
 from libs.storage import get_postgres_session_factory
 
+from .admin_review import ReviewCaseRepository, ReviewCaseService
 from .ai import AiChatService
 from .auth import AuthRepository, AuthService
 from .cards import UniversityCardReadRepository, UniversityCardReadService
-from .provenance import UniversityProvenanceReadService, UniversityProvenanceRepository
 from .locations import LocationSuggestRepository, LocationSuggestService
+from .programs import ProgramDirectoryRepository, ProgramDirectoryService
+from .provenance import UniversityProvenanceReadService, UniversityProvenanceRepository
 from .rankings import RankingsRepository, RankingsService
 from .search import UniversitySearchRepository, UniversitySearchService
 from .subjects import EgeSubjectRepository
@@ -57,6 +59,18 @@ def get_rankings_service(
     session=BACKEND_SESSION_DEPENDENCY,
 ) -> RankingsService:
     return RankingsService(RankingsRepository(session))
+
+
+def get_program_directory_service(
+    session=BACKEND_SESSION_DEPENDENCY,
+) -> ProgramDirectoryService:
+    return ProgramDirectoryService(ProgramDirectoryRepository(session))
+
+
+def get_review_case_service(
+    session=BACKEND_SESSION_DEPENDENCY,
+) -> ReviewCaseService:
+    return ReviewCaseService(ReviewCaseRepository(session))
 
 
 def get_auth_service(session=BACKEND_SESSION_DEPENDENCY) -> AuthService:

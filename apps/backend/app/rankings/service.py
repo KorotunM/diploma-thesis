@@ -43,6 +43,14 @@ class RankingsService:
 
         rows = self._repository.fetch_ranked(limit=resolved_size, offset=offset)
         total = int(rows[0]["total"]) if rows else 0
+        source_names = sorted(
+            {
+                source
+                for row in rows
+                for source in row.get("provider_names", [])
+                if isinstance(source, str) and source
+            }
+        )
 
         items = [
             RankingItem(
@@ -65,5 +73,8 @@ class RankingsService:
             page=resolved_page,
             page_size=resolved_size,
             has_more=(offset + len(items)) < total,
+            updated_at=rows[0].get("updated_at") if rows else None,
+            source_label=", ".join(source_names) if source_names else "Рейтинги из карточек вузов",
+            source_names=source_names,
             items=items,
         )

@@ -23,6 +23,7 @@ export interface BackendSearchFiltersDto {
   country: string | null;
   source_type: string | null;
   ege_subjects: string[];
+  ege_scores: Record<string, number>;
   program_codes: string[];
   dormitory: boolean;
   military_department: boolean;
@@ -59,7 +60,55 @@ export interface RankingsResponseDto {
   page: number;
   page_size: number;
   has_more: boolean;
+  updated_at: string | null;
+  source_label: string;
+  source_names: string[];
   items: RankingItemDto[];
+}
+
+export interface ProgramDirectoryItemDto {
+  code: string;
+  name: string;
+  level: string | null;
+  description: string | null;
+  university_count: number;
+  budget_places: number;
+  paid_places: number;
+  avg_passing_score: number | null;
+  min_tuition_per_year: number | null;
+  ege_subjects: string[];
+}
+
+export interface ProgramDirectoryResponseDto {
+  total: number;
+  items: ProgramDirectoryItemDto[];
+}
+
+export interface ReviewCaseItemDto {
+  review_case_id: string;
+  status: "open" | "resolved" | "dismissed";
+  reason: string;
+  priority: "high" | "normal";
+  university_id: string | null;
+  canonical_name: string | null;
+  evidence_ids: string[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution: string | null;
+  note: string | null;
+}
+
+export interface ReviewCaseListResponseDto {
+  total: number;
+  items: ReviewCaseItemDto[];
+}
+
+export interface ReviewCaseResolveDto {
+  resolution: "accepted" | "rejected" | "merged" | "ignored";
+  note?: string | null;
 }
 
 export interface BackendSearchResponse {
@@ -90,11 +139,14 @@ export interface AdmissionProgramDto {
   code: string | null;
   name: string | null;
   budget_places: number | null;
+  paid_places: number | null;
   passing_score: number | null;
+  tuition_per_year: number | null;
   study_form: string | null;
   level: string | null;
   year: number | null;
   ege_subjects: string[];
+  exams: Array<Record<string, unknown>>;
   confidence: number | null;
   sources: Array<Record<string, unknown>>;
   field_attribution: Record<string, unknown> | null;
@@ -117,6 +169,7 @@ export interface UniversityCardDto {
   canonical_name: ConfidenceValueDto;
   aliases: string[];
   description: string | null;
+  history: Record<string, unknown>;
   location: {
     country: string | null;
     region: string | null;
@@ -150,6 +203,7 @@ export interface UniversityCardDto {
     value: string;
   }>;
   dormitory: Record<string, unknown>;
+  military_department: Record<string, unknown>;
   reviews: {
     summary: string | null;
     rating: number | null;
@@ -274,6 +328,7 @@ export interface AiChatMessageDto {
 export interface AiChatRequestDto {
   message: string;
   history?: AiChatMessageDto[];
+  client_id?: string | null;
 }
 
 export interface AiChatResponseDto {
@@ -283,6 +338,7 @@ export interface AiChatResponseDto {
   missing_fields: string[];
   confidence: number;
   model_used: string | null;
+  trial_remaining: number | null;
 }
 
 export interface DeliveryProjectionTraceDto {

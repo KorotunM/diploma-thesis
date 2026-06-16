@@ -7,5 +7,8 @@ export interface RankingsSnapshot {
   page: number;
   pageSize: number;
   hasMore: boolean;
+  updatedAt: string | null;
+  sourceLabel: string;
+  sourceNames: string[];
   items: RankingItemDto[];
 }

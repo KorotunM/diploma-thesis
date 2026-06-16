@@ -495,7 +495,7 @@
 
 .program-table-header {
   display: grid;
-  grid-template-columns: 90px 1fr 80px 100px 70px 70px;
+  grid-template-columns: 84px minmax(160px, 1fr) 74px 70px 70px 92px 66px minmax(150px, 1fr);
   gap: 8px;
   padding: 8px 16px;
   font-size: 11px;
@@ -511,7 +511,7 @@
 
 .program-row {
   display: grid;
-  grid-template-columns: 90px 1fr 80px 100px 70px 70px;
+  grid-template-columns: 84px minmax(160px, 1fr) 74px 70px 70px 92px 66px minmax(150px, 1fr);
   gap: 8px;
   align-items: center;
   padding: 11px 16px;
@@ -527,7 +527,10 @@
   &__form { color: $color-text-muted; }
   &__level { color: $color-text-muted; }
   &__budget { font-weight: 600; color: $color-success-text; text-align: center; }
+  &__paid { color: $color-text-soft; text-align: center; }
+  &__tuition { color: $color-text-soft; white-space: nowrap; }
   &__score { font-weight: 700; color: $color-brand; text-align: center; }
+  &__exams { color: $color-text-muted; line-height: 1.35; }
 
   @media (max-width: $breakpoint-small) {
     grid-template-columns: 1fr;
@@ -536,6 +539,9 @@
     &__form, &__level { display: inline; }
     &__budget::before { content: "Бюджет: "; color: $color-text-muted; font-weight: 400; }
     &__paid::before { content: "Платно: "; color: $color-text-muted; }
+    &__tuition::before { content: "Стоимость: "; color: $color-text-muted; }
+    &__score::before { content: "Балл: "; color: $color-text-muted; font-weight: 400; }
+    &__exams::before { content: "ЕГЭ: "; color: $color-text-muted; }
   }
 }
 

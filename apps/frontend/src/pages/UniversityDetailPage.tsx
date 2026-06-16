@@ -99,9 +99,64 @@ function formatMetric(value: number | null): string {
   return value == null ? "—" : value.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
 }
 
+function formatMoney(value: number | null): string {
+  if (value == null) return "—";
+  return `${value.toLocaleString("ru-RU")} ₽`;
+}
+
+function averageTuition(programs: AdmissionProgramDto[]): number | null {
+  const values = programs
+    .map((program) => program.tuition_per_year)
+    .filter((value): value is number => typeof value === "number" && value > 0);
+  if (values.length === 0) return null;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
 function normalizeDescription(value: string | null | undefined): string | null {
   const cleaned = value?.replace(/\s+/g, " ").trim();
   return cleaned || null;
+}
+
+function recordString(record: Record<string, unknown> | null | undefined, key: string): string | null {
+  const value = record?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function recordNumber(record: Record<string, unknown> | null | undefined, key: string): number | null {
+  const value = record?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function recordBoolean(record: Record<string, unknown> | null | undefined, key: string): boolean | null {
+  const value = record?.[key];
+  return typeof value === "boolean" ? value : null;
+}
+
+function formatAvailability(record: Record<string, unknown> | null | undefined): string {
+  const available = recordBoolean(record, "available");
+  if (available === false) return "Нет";
+  const note = recordString(record, "note");
+  const count = recordNumber(record, "count");
+  const places = recordNumber(record, "places_count");
+  const parts = [
+    available === true ? "Есть" : null,
+    count != null ? `${count} общеж.` : null,
+    places != null ? `${places.toLocaleString("ru-RU")} мест` : null,
+    note,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "—";
+}
+
+function formatProgramExams(exams: Array<Record<string, unknown>>): string {
+  const parts = exams
+    .map((exam) => {
+      const subject = recordString(exam, "subject");
+      const minScore = recordNumber(exam, "min_score");
+      if (!subject) return null;
+      return minScore == null ? subject : `${subject} ${minScore}`;
+    })
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "—";
 }
 
 function parseReviewParts(review: ReviewItemDto): {
@@ -310,9 +365,11 @@ function DirectionAccordion({
             <span>Код</span>
             <span>Название</span>
             <span>Форма</span>
-            <span>Уровень</span>
             <span>Бюджет</span>
+            <span>Платно</span>
+            <span>Стоимость</span>
             <span>Балл</span>
+            <span>ЕГЭ</span>
           </div>
           {programs.map((p, i) => (
             <div className="program-row" key={p.field_name ?? i}>
@@ -325,13 +382,19 @@ function DirectionAccordion({
                   : p.study_form === "mixed" ? "Очно-заочная"
                   : "—"}
               </span>
-              <span className="program-row__level">{p.level ?? getLevel(p.code)}</span>
               <span className="program-row__budget">
                 {p.budget_places != null ? p.budget_places : "—"}
+              </span>
+              <span className="program-row__paid">
+                {p.paid_places != null ? p.paid_places : "—"}
+              </span>
+              <span className="program-row__tuition">
+                {formatMoney(p.tuition_per_year)}
               </span>
               <span className="program-row__score">
                 {p.passing_score != null ? p.passing_score : "—"}
               </span>
+              <span className="program-row__exams">{formatProgramExams(p.exams)}</span>
             </div>
           ))}
         </div>
@@ -408,6 +471,10 @@ export function UniversityDetailPage({
   const displayBudgetPlaces = budgetPlaces ?? (programs.length > 0 ? metrics.budgetPlaces : null);
   const displayAvgPassingScore = avgPassingScore ?? metrics.avgScore;
   const displayProgramCount = card?.stats?.programs_count ?? metrics.programCount;
+  const displayAverageTuition = averageTuition(programs);
+  const historySummary = recordString(card?.history, "summary");
+  const dormitoryText = formatAvailability(card?.dormitory);
+  const militaryDepartmentText = formatAvailability(card?.military_department);
   const reviewRating = card?.reviews?.rating ?? null;
   const reviewRatingCount = card?.reviews?.rating_count ?? null;
   const reviewItems = card?.reviews?.items ?? [];
@@ -641,7 +708,7 @@ export function UniversityDetailPage({
           <span className="ud-metric__label">Средний проходной балл</span>
         </div>
         <div className="ud-metric">
-          <span className="ud-metric__value">—</span>
+          <span className="ud-metric__value">{formatMoney(displayAverageTuition)}</span>
           <span className="ud-metric__label">Средняя стоимость обучения</span>
         </div>
       </div>
@@ -669,6 +736,11 @@ export function UniversityDetailPage({
           <div className="ud-about__description">
             {description ?? "Описание отсутствует в источниках."}
           </div>
+          {historySummary && (
+            <div className="ud-about__description ud-about__description--history">
+              {historySummary}
+            </div>
+          )}
           <div className="ud-about__grid">
             <div className="ud-about__field">
               <span className="ud-about__label">
@@ -687,6 +759,24 @@ export function UniversityDetailPage({
                 )}
               </span>
               <span className="ud-about__value">{phone ?? "—"}</span>
+            </div>
+            <div className="ud-about__field">
+              <span className="ud-about__label">
+                Общежитие
+                {fieldSourceMap.has("dormitory") && (
+                  <ProvenanceDot url={fieldSourceMap.get("dormitory")!} />
+                )}
+              </span>
+              <span className="ud-about__value">{dormitoryText}</span>
+            </div>
+            <div className="ud-about__field">
+              <span className="ud-about__label">
+                Военный учебный центр
+                {fieldSourceMap.has("military_department") && (
+                  <ProvenanceDot url={fieldSourceMap.get("military_department")!} />
+                )}
+              </span>
+              <span className="ud-about__value">{militaryDepartmentText}</span>
             </div>
             <div className="ud-about__field">
               <span className="ud-about__label">

@@ -32,6 +32,7 @@ class UniversitySearchRepository:
         sort_by: str = "rating",
         region: str | None = None,
         ege_subjects: list[str] | None = None,
+        ege_scores: list[dict[str, Any]] | None = None,
         program_codes: list[str] | None = None,
         dormitory: bool = False,
         military_department: bool = False,
@@ -126,6 +127,29 @@ class UniversitySearchRepository:
             extra_filters.append(
                 "COALESCE(search_doc.search_document->'program_ege_subjects', '[]'::jsonb)"
                 " @> CAST(:ege_subjects_json AS jsonb)"
+            )
+
+        if ege_scores:
+            params["ege_scores_json"] = json.dumps(ege_scores, ensure_ascii=False)
+            extra_filters.append(
+                "EXISTS ("
+                " SELECT 1"
+                " FROM jsonb_array_elements("
+                "   COALESCE(card.card_json->'programs', '[]'::jsonb)"
+                " ) AS program"
+                " WHERE NOT EXISTS ("
+                "   SELECT 1"
+                "   FROM jsonb_array_elements(CAST(:ege_scores_json AS jsonb)) AS score_item"
+                "   WHERE NOT EXISTS ("
+                "     SELECT 1"
+                "     FROM jsonb_array_elements(COALESCE(program->'exams', '[]'::jsonb)) AS exam"
+                "     WHERE lower(regexp_replace(COALESCE(exam->>'subject', ''), '\\s+', '', 'g'))"
+                "       IN (SELECT jsonb_array_elements_text(score_item->'aliases'))"
+                "       AND CAST(NULLIF(exam->>'min_score', '') AS integer)"
+                "           <= CAST(score_item->>'score' AS integer)"
+                "   )"
+                " )"
+                ")"
             )
 
         if dormitory:

@@ -32,6 +32,11 @@ class RankingsRepository:
                         (sd.search_document->>'logo_url') AS logo_url,
                         sd.city_name,
                         sd.region_name,
+                        MAX(sd.generated_at) AS document_generated_at,
+                        ARRAY_REMOVE(
+                            ARRAY_AGG(DISTINCT NULLIF(rating->>'provider', '')),
+                            NULL
+                        ) AS provider_names,
                         AVG(
                             CAST(rating->>'value' AS double precision)
                         ) AS composite_score,
@@ -53,6 +58,7 @@ class RankingsRepository:
                     SELECT
                         scored.*,
                         (SELECT COUNT(*) FROM scored) AS total,
+                        MAX(document_generated_at) OVER() AS updated_at,
                         ROW_NUMBER() OVER (ORDER BY composite_score DESC) AS rank
                     FROM scored
                 ),

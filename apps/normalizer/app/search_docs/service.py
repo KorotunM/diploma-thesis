@@ -9,6 +9,19 @@ from .models import UniversitySearchDocRecord
 from .repository import UniversitySearchDocProjectionRepository
 
 WHITESPACE_RE = re.compile(r"\s+")
+SUBJECT_ALIASES = {
+    "russian": "Русский язык",
+    "math": "Математика",
+    "physics": "Физика",
+    "chemistry": "Химия",
+    "biology": "Биология",
+    "informatics": "Информатика",
+    "social": "Обществознание",
+    "history": "История",
+    "literature": "Литература",
+    "geography": "География",
+    "foreign": "Иностранный язык",
+}
 
 
 class UniversitySearchDocProjectionService:
@@ -55,6 +68,8 @@ class UniversitySearchDocProjectionService:
             "program_codes": program_codes,
             "program_ege_subjects": program_ege_subjects,
             "dormitory": card.dormitory,
+            "military_department": card.military_department,
+            "history": card.history,
         }
         metadata = {
             "projection_kind": "delivery.university_search_doc",
@@ -132,10 +147,27 @@ class UniversitySearchDocProjectionService:
             if not isinstance(program, dict):
                 continue
             for subject in program.get("ege_subjects") or []:
-                if isinstance(subject, str) and subject not in seen:
-                    seen.add(subject)
-                    result.append(subject)
+                if not isinstance(subject, str):
+                    continue
+                for value in UniversitySearchDocProjectionService._subject_terms(subject):
+                    if value not in seen:
+                        seen.add(value)
+                        result.append(value)
         return sorted(result)
+
+    @staticmethod
+    def _subject_terms(subject: str) -> list[str]:
+        cleaned = WHITESPACE_RE.sub("", subject).strip()
+        if not cleaned:
+            return []
+        normalized = cleaned.casefold()
+        terms = {subject.strip(), normalized}
+        if normalized in SUBJECT_ALIASES:
+            terms.add(SUBJECT_ALIASES[normalized])
+        for code, label in SUBJECT_ALIASES.items():
+            if normalized == WHITESPACE_RE.sub("", label).casefold():
+                terms.add(code)
+        return sorted(terms)
 
     @staticmethod
     def _all_program_codes(programs: list) -> list[str]:

@@ -12,6 +12,7 @@ export interface SearchQueryState {
   country: string;
   sourceType: string;
   egeSubjects: string[];
+  egeScores: Record<string, number>;
   programCodes: string[];
   dormitory: boolean;
   militaryDepartment: boolean;

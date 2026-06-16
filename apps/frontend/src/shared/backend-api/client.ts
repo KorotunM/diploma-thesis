@@ -13,7 +13,11 @@ import type {
   EgeSubjectsResponseDto,
   FavoritesResponseDto,
   LocationSuggestResponseDto,
+  ProgramDirectoryResponseDto,
   RankingsResponseDto,
+  ReviewCaseItemDto,
+  ReviewCaseListResponseDto,
+  ReviewCaseResolveDto,
   SavedSearchCreateDto,
   SavedSearchItemDto,
   SavedSearchesResponseDto,
@@ -48,6 +52,7 @@ export class BackendApiClient {
       country?: string;
       sourceType?: string;
       egeSubjects?: string[];
+      egeScores?: Record<string, number>;
       programCodes?: string[];
       dormitory?: boolean;
       militaryDepartment?: boolean;
@@ -65,6 +70,11 @@ export class BackendApiClient {
     if (params.sourceType) search.set("source_type", params.sourceType);
     if (params.egeSubjects && params.egeSubjects.length > 0) {
       for (const s of params.egeSubjects) search.append("ege_subjects", s);
+    }
+    if (params.egeScores) {
+      for (const [subject, score] of Object.entries(params.egeScores)) {
+        if (Number.isFinite(score)) search.append("ege_scores", `${subject}:${score}`);
+      }
     }
     if (params.programCodes && params.programCodes.length > 0) {
       for (const code of params.programCodes) search.append("program_codes", code);
@@ -104,6 +114,34 @@ export class BackendApiClient {
 
   async getAllRegions(options?: JsonHttpRequestOptions): Promise<LocationSuggestResponseDto> {
     return this.http.get<LocationSuggestResponseDto>("/api/v1/regions", options);
+  }
+
+  async getPrograms(options?: JsonHttpRequestOptions): Promise<ProgramDirectoryResponseDto> {
+    return this.http.get<ProgramDirectoryResponseDto>("/api/v1/programs", options);
+  }
+
+  async getReviewCases(
+    params: { status?: "open" | "resolved" | "dismissed"; limit?: number; offset?: number } = {},
+    options?: JsonHttpRequestOptions,
+  ): Promise<ReviewCaseListResponseDto> {
+    const search = new URLSearchParams();
+    if (params.status) search.set("status", params.status);
+    if (params.limit) search.set("limit", String(params.limit));
+    if (params.offset) search.set("offset", String(params.offset));
+    const suffix = search.size > 0 ? `?${search.toString()}` : "";
+    return this.http.get<ReviewCaseListResponseDto>(`/api/v1/admin/review-cases${suffix}`, options);
+  }
+
+  async resolveReviewCase(
+    reviewCaseId: string,
+    body: ReviewCaseResolveDto,
+    options?: JsonHttpRequestOptions,
+  ): Promise<ReviewCaseItemDto> {
+    return this.http.post<ReviewCaseItemDto>(
+      `/api/v1/admin/review-cases/${encodeURIComponent(reviewCaseId)}/resolve`,
+      body,
+      options,
+    );
   }
 
   async getUniversityCard(

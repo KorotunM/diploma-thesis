@@ -42,6 +42,7 @@ class AiChatRequest(BaseModel):
 
     message: str = Field(min_length=1, max_length=500)
     history: list[AiChatHistoryMessage] = Field(default_factory=list, max_length=20)
+    client_id: str | None = Field(default=None, max_length=120)
 
 
 class AiChatResponse(BaseModel):
@@ -53,3 +54,4 @@ class AiChatResponse(BaseModel):
     missing_fields: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.7, ge=0, le=1)
     model_used: str | None = None
+    trial_remaining: int | None = None

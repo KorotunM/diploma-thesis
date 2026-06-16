@@ -13,6 +13,7 @@ export function readSearchQueryStateFromLocation(): SearchQueryState {
     country: params.get("country")?.trim() ?? "",
     sourceType: params.get("source_type")?.trim() ?? "",
     egeSubjects: params.getAll("ege_subjects").filter(Boolean),
+    egeScores: readEgeScores(params.getAll("ege_scores")),
     programCodes: params.getAll("program_codes").filter(Boolean),
     dormitory: readBoolean(params.get("dormitory")),
     militaryDepartment: readBoolean(params.get("military_department")),
@@ -31,6 +32,12 @@ export function writeSearchQueryStateToLocation(state: SearchQueryState): void {
   writeParam(url.searchParams, "source_type", state.sourceType);
   url.searchParams.delete("ege_subjects");
   for (const s of state.egeSubjects) url.searchParams.append("ege_subjects", s);
+  url.searchParams.delete("ege_scores");
+  for (const [subject, score] of Object.entries(state.egeScores)) {
+    if (Number.isFinite(score)) {
+      url.searchParams.append("ege_scores", `${subject}:${score}`);
+    }
+  }
   url.searchParams.delete("program_codes");
   for (const code of state.programCodes) url.searchParams.append("program_codes", code);
   writeBoolean(url.searchParams, "dormitory", state.dormitory);
@@ -67,6 +74,18 @@ function writeParam(searchParams: URLSearchParams, key: string, value: string): 
 
 function readBoolean(value: string | null): boolean {
   return value === "1" || value === "true";
+}
+
+function readEgeScores(values: string[]): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const value of values) {
+    const [subject, scoreText] = value.split(":");
+    const score = Number.parseInt(scoreText ?? "", 10);
+    if (subject && Number.isFinite(score) && score >= 0 && score <= 100) {
+      result[subject] = score;
+    }
+  }
+  return result;
 }
 
 function writeBoolean(searchParams: URLSearchParams, key: string, value: boolean): void {

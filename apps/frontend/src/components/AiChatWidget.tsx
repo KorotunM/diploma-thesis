@@ -14,9 +14,11 @@ interface ChatMessage {
   filters?: AiChatFiltersDto;
   intent?: "search" | "clarify" | "general";
   modelUsed?: string | null;
+  trialRemaining?: number | null;
 }
 
 const STORAGE_KEY = "abiturient_ai_chat_messages_v1";
+const CLIENT_ID_KEY = "abiturient_ai_client_id_v1";
 const MAX_MESSAGE_LENGTH = 500;
 
 const QUICK_PROMPTS = [
@@ -80,6 +82,7 @@ export function AiChatWidget() {
       const response = await backendApi.aiChat({
         message: normalized,
         history: requestHistory,
+        client_id: getAiClientId(),
       });
       setMessages((current) => [
         ...current,
@@ -91,6 +94,7 @@ export function AiChatWidget() {
           filters: response.filters,
           intent: response.intent,
           modelUsed: response.model_used,
+          trialRemaining: response.trial_remaining,
         },
       ]);
     } catch (error: unknown) {
@@ -156,6 +160,11 @@ export function AiChatWidget() {
                 )}
                 <div className="ai-chat__bubble">
                   <p>{message.content}</p>
+                  {message.trialRemaining !== null && message.trialRemaining !== undefined && (
+                    <small className="ai-chat__trial">
+                      Пробных запросов осталось: {message.trialRemaining}
+                    </small>
+                  )}
                   {message.intent === "search" && message.filters && (
                     <button
                       className="ai-chat__apply"
@@ -217,9 +226,6 @@ export function AiChatWidget() {
 function applyFiltersToSearch(filters: AiChatFiltersDto): void {
   const url = new URL(window.location.href);
 
-  // Build a meaningful text query from available structured fields.
-  // Only query and city are actually applied by the backend search engine.
-  // budget_type, dormitory, study_form are extracted for display purposes only.
   const queryText =
     filters.query?.trim() ||
     filters.direction?.trim() ||
@@ -230,6 +236,11 @@ function applyFiltersToSearch(filters: AiChatFiltersDto): void {
   writeParam(url.searchParams, "city", filters.city);
   writeParam(url.searchParams, "country", filters.country);
   writeParam(url.searchParams, "source_type", filters.source_type);
+  if (filters.advanced?.dormitory === true) {
+    url.searchParams.set("dormitory", "true");
+  } else {
+    url.searchParams.delete("dormitory");
+  }
   url.searchParams.delete("page");
   window.history.replaceState({}, "", url);
   if (window.location.hash !== "#search") {
@@ -272,6 +283,15 @@ function isStoredMessage(value: unknown): value is ChatMessage {
 
 function createMessageId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getAiClientId(): string {
+  const existing = localStorage.getItem(CLIENT_ID_KEY);
+  if (existing) return existing;
+  const generated =
+    window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  localStorage.setItem(CLIENT_ID_KEY, generated);
+  return generated;
 }
 
 function formatMessageTime(value: string): string {

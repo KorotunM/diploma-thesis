@@ -23,6 +23,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 
 from apps.scheduler.app.persistence import sql_text as _sql_text
+from scripts.seed_university_examples.__main__ import seed_examples
 from scripts.source_bootstrap.workflow import (
     LiveSourceSeedResult,
     build_live_source_seed_service,
@@ -115,9 +116,11 @@ def _trigger_crawl(
     return pipeline_run.get("run_id")
 
 
-def _bootstrap_sources_and_get_crawled() -> tuple[LiveSourceSeedResult, set[str]]:
+def _bootstrap_sources_and_get_crawled() -> tuple[LiveSourceSeedResult, set[str], dict[str, Any]]:
     with managed_session("scheduler") as session:
         result = build_live_source_seed_service(session).bootstrap()
+        example_seed_summary = seed_examples(session)
+        session.commit()
         rows = session.execute(
             _sql_text(
                 """
@@ -129,7 +132,7 @@ def _bootstrap_sources_and_get_crawled() -> tuple[LiveSourceSeedResult, set[str]
             )
         ).fetchall()
         already_crawled = {row[0] for row in rows}
-    return result, already_crawled
+    return result, already_crawled, example_seed_summary
 
 
 def _trigger_demo_crawls(
@@ -193,6 +196,7 @@ def _trigger_demo_crawls(
 def _print_summary(
     seed_result: LiveSourceSeedResult,
     triggered: list[TriggeredRun],
+    example_seed_summary: dict[str, Any],
 ) -> None:
     successes = [run for run in triggered if run.error is None]
     failures = [run for run in triggered if run.error is not None]
@@ -201,6 +205,7 @@ def _print_summary(
         "endpoints_registered": seed_result.endpoint_count,
         "crawls_triggered": len(successes),
         "crawls_failed_to_trigger": len(failures),
+        "official_examples_seeded": example_seed_summary,
         "triggered_runs": [
             {
                 "source_key": run.source_key,
@@ -249,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_argument_parser().parse_args(argv)
 
     print("[seed] Bootstrapping source registry...", file=sys.stderr)
-    seed_result, already_crawled = _bootstrap_sources_and_get_crawled()
+    seed_result, already_crawled, example_seed_summary = _bootstrap_sources_and_get_crawled()
     skip = set() if args.force else already_crawled
     print(
         f"[seed] Registered {seed_result.source_count} sources, "
@@ -260,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.skip_trigger:
-        _print_summary(seed_result, triggered=[])
+        _print_summary(seed_result, triggered=[], example_seed_summary=example_seed_summary)
         return 0
 
     print(
@@ -287,7 +292,7 @@ def main(argv: list[str] | None = None) -> int:
         seed_result.source_keys,
         skip_endpoint_ids=skip,
     )
-    _print_summary(seed_result, triggered)
+    _print_summary(seed_result, triggered, example_seed_summary)
     return 0
 
 

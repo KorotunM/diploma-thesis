@@ -63,6 +63,23 @@ POPULAR_DIRECTIONS: dict[str, list[str]] = {
         "46.03.01",
     ],
 }
+SUBJECT_LABEL_BY_CODE = {
+    "russian": "Русский язык",
+    "math": "Математика",
+    "physics": "Физика",
+    "chemistry": "Химия",
+    "biology": "Биология",
+    "informatics": "Информатика",
+    "social": "Обществознание",
+    "history": "История",
+    "literature": "Литература",
+    "geography": "География",
+    "foreign": "Иностранный язык",
+}
+SUBJECT_CODE_BY_LABEL = {
+    re.sub(r"\s+", "", label).casefold(): code
+    for code, label in SUBJECT_LABEL_BY_CODE.items()
+}
 
 
 def _rating_category(score: float | None, explicit_category: str | None = None) -> str | None:
@@ -94,6 +111,7 @@ class UniversitySearchService:
         country: str | None = None,
         source_type: str | None = None,
         ege_subjects: list[str] | None = None,
+        ege_scores: dict[str, int] | None = None,
         program_codes: list[str] | None = None,
         dormitory: bool = False,
         military_department: bool = False,
@@ -107,6 +125,7 @@ class UniversitySearchService:
         cleaned_country = self._clean_country(country)
         cleaned_source_type = self._clean_source_type(source_type)
         cleaned_ege_subjects = self._clean_ege_subjects(ege_subjects)
+        cleaned_ege_scores = self._clean_ege_scores(ege_scores)
         cleaned_program_codes = self._clean_program_codes(program_codes)
         if not cleaned_program_codes:
             cleaned_program_codes = self._popular_direction_codes(cleaned_query)
@@ -122,6 +141,11 @@ class UniversitySearchService:
             country_code=cleaned_country,
             source_type=cleaned_source_type,
             ege_subjects=cleaned_ege_subjects or None,
+            ege_scores=(
+                self._repository_ege_scores(cleaned_ege_scores)
+                if cleaned_ege_scores
+                else None
+            ),
             program_codes=cleaned_program_codes or None,
             dormitory=dormitory,
             military_department=military_department,
@@ -143,6 +167,7 @@ class UniversitySearchService:
                 country=cleaned_country,
                 source_type=cleaned_source_type,
                 ege_subjects=cleaned_ege_subjects,
+                ege_scores=cleaned_ege_scores,
                 program_codes=cleaned_program_codes,
                 dormitory=dormitory,
                 military_department=military_department,
@@ -210,11 +235,66 @@ class UniversitySearchService:
         seen: set[str] = set()
         result: list[str] = []
         for s in subjects:
-            cleaned = WHITESPACE_RE.sub("", s).strip().lower()
+            cleaned = UniversitySearchService._canonical_subject_label(s)
             if cleaned and cleaned not in seen:
                 seen.add(cleaned)
                 result.append(cleaned)
         return result
+
+    @staticmethod
+    def _clean_ege_scores(scores: dict[str, int] | None) -> dict[str, int]:
+        if not scores:
+            return {}
+        result: dict[str, int] = {}
+        for subject, score in scores.items():
+            label = UniversitySearchService._canonical_subject_label(subject)
+            if not label:
+                continue
+            try:
+                parsed = int(score)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= parsed <= 100:
+                result[label] = parsed
+        return result
+
+    @staticmethod
+    def _canonical_subject_label(subject: str | None) -> str | None:
+        if not subject:
+            return None
+        cleaned = WHITESPACE_RE.sub("", subject).strip().casefold()
+        if not cleaned:
+            return None
+        if cleaned in SUBJECT_LABEL_BY_CODE:
+            return SUBJECT_LABEL_BY_CODE[cleaned]
+        code = SUBJECT_CODE_BY_LABEL.get(cleaned)
+        if code:
+            return SUBJECT_LABEL_BY_CODE[code]
+        return subject.strip()
+
+    @staticmethod
+    def _subject_aliases(subject: str) -> list[str]:
+        normalized = WHITESPACE_RE.sub("", subject).casefold()
+        aliases = {normalized}
+        code = SUBJECT_CODE_BY_LABEL.get(normalized)
+        if code:
+            aliases.add(code)
+        elif normalized in SUBJECT_LABEL_BY_CODE:
+            aliases.add(
+                WHITESPACE_RE.sub("", SUBJECT_LABEL_BY_CODE[normalized]).casefold()
+            )
+        return sorted(aliases)
+
+    @staticmethod
+    def _repository_ege_scores(scores: dict[str, int]) -> list[dict[str, object]]:
+        return [
+            {
+                "subject": subject,
+                "aliases": UniversitySearchService._subject_aliases(subject),
+                "score": score,
+            }
+            for subject, score in sorted(scores.items())
+        ]
 
     @staticmethod
     def _clean_program_codes(program_codes: list[str] | None) -> list[str]:

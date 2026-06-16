@@ -62,6 +62,7 @@ class UniversitySearchFilters(BaseModel):
     country: str | None = None
     source_type: str | None = None
     ege_subjects: list[str] = Field(default_factory=list)
+    ege_scores: dict[str, int] = Field(default_factory=dict)
     program_codes: list[str] = Field(default_factory=list)
     dormitory: bool = False
     military_department: bool = False

@@ -1,12 +1,24 @@
 import { useEffect, useState } from "react";
 
-import type { BackendSearchResponse } from "../shared/backend-api";
+import type { BackendSearchResponse, ProgramDirectoryItemDto } from "../shared/backend-api";
 import { useFrontendRuntime } from "../shared/runtime";
-import { DIRECTIONS, EGE_FILTER_SUBJECTS, type Direction } from "./programs-data";
+import { ViewState } from "../shared/ui/view-state";
 
 type ProgramSort = "universities" | "score" | "budget";
 
 const PRIMARY_SUBJECTS = ["Информатика", "Физика", "Обществознание", "Биология", "Химия"];
+const EGE_FILTER_SUBJECTS = [
+  "Математика",
+  "Физика",
+  "Химия",
+  "Биология",
+  "Информатика",
+  "Обществознание",
+  "История",
+  "Литература",
+  "География",
+  "Иностранный язык",
+];
 
 const SORT_OPTIONS: Array<{ value: ProgramSort; label: string; icon: string }> = [
   { value: "universities", label: "по рейтингу вузов", icon: "↗" },
@@ -14,46 +26,55 @@ const SORT_OPTIONS: Array<{ value: ProgramSort; label: string; icon: string }> =
   { value: "budget", label: "по количеству вузов", icon: "▥" },
 ];
 
-function directionStats(direction: Direction): {
-  universityCount: number;
-  avgScore: number;
-  budgetPlaces: number;
-} {
-  const seed = Array.from(direction.code).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return {
-    universityCount: 72 + (seed % 120),
-    avgScore: 198 + (seed % 64),
-    budgetPlaces: 2100 + ((seed * 97) % 6800),
-  };
+function programGroup(code: string): string {
+  const prefix = code.split(".")[0];
+  if (prefix === "09" || prefix === "10") return "IT и цифровые технологии";
+  if (prefix === "01" || prefix === "02") return "Математика и точные науки";
+  if (["08", "13", "15", "19", "20", "21", "23", "27"].includes(prefix)) return "Инженерия и технологии";
+  if (prefix === "38") return "Экономика и управление";
+  if (prefix === "36" || prefix === "35") return "Аграрные и биологические науки";
+  if (["37", "40", "41", "42", "44", "45", "46"].includes(prefix)) return "Гуманитарные науки";
+  if (prefix === "43") return "Сервис и туризм";
+  return "Другие направления";
 }
 
-function directionIcon(direction: Direction): string {
-  if (direction.ugnsGroup.includes("IT")) return "</>";
-  if (direction.ugnsGroup.includes("Математика")) return "Σ";
-  if (direction.ugnsGroup.includes("Экономика")) return "▥";
-  if (direction.ugnsGroup.includes("Медицина")) return "+";
-  if (direction.ugnsGroup.includes("Гуманитарные")) return "✎";
+function programColor(code: string): string {
+  const group = programGroup(code);
+  if (group.includes("IT")) return "#2563eb";
+  if (group.includes("Математика")) return "#7c3aed";
+  if (group.includes("Экономика")) return "#059669";
+  if (group.includes("Аграрные")) return "#16a34a";
+  if (group.includes("Гуманитарные")) return "#0891b2";
+  if (group.includes("Сервис")) return "#ea580c";
+  return "#d97706";
+}
+
+function directionIcon(program: ProgramDirectoryItemDto): string {
+  const group = programGroup(program.code);
+  if (group.includes("IT")) return "</>";
+  if (group.includes("Математика")) return "Σ";
+  if (group.includes("Экономика")) return "▥";
+  if (group.includes("Аграрные")) return "✚";
+  if (group.includes("Гуманитарные")) return "✎";
   return "□";
 }
 
-function subjectMatches(direction: Direction, selectedSubjects: string[]): boolean {
+function subjectMatches(program: ProgramDirectoryItemDto, selectedSubjects: string[]): boolean {
   if (selectedSubjects.length === 0) return true;
   return selectedSubjects.some((subject) =>
-    direction.egeSubjects.some((variant) => variant.includes(subject)),
+    program.ege_subjects.some((item) => item.toLowerCase().includes(subject.toLowerCase())),
   );
 }
 
 // ── Direction list card ────────────────────────────────────────────────────────
 
 function DirectionRow({
-  direction,
+  program,
   onClick,
 }: {
-  direction: Direction;
+  program: ProgramDirectoryItemDto;
   onClick: () => void;
 }) {
-  const stats = directionStats(direction);
-  const subjects = direction.egeSubjects[0] ?? [];
   return (
     <article
       className="program-row-card"
@@ -63,42 +84,38 @@ function DirectionRow({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
     >
       <div className="program-row-card__icon" aria-hidden>
-        {directionIcon(direction)}
+        {directionIcon(program)}
       </div>
 
       <div className="program-row-card__main">
-        <span className="program-row-card__code">{direction.code}</span>
-        <h3 className="program-row-card__name">{direction.name}</h3>
+        <span className="program-row-card__code">{program.code}</span>
+        <h3 className="program-row-card__name">{program.name}</h3>
         <p className="program-row-card__learns">
-          Учит специальностям:
-          <span>{direction.professions.slice(0, 4).join(" · ")}</span>
+          {program.description ?? `Направление группы «${programGroup(program.code)}».`}
         </p>
       </div>
 
       <div className="program-row-card__subjects">
         <span className="program-row-card__subjects-title">Предметы ЕГЭ</span>
         <div className="program-row-card__subject-list">
-          {subjects.slice(0, 3).map((subject) => (
+          {program.ege_subjects.slice(0, 4).map((subject) => (
             <span key={subject} className="program-row-card__subject">
               {subject}
             </span>
           ))}
-          <span className="program-row-card__subject program-row-card__subject--muted">
-            Русский язык
-          </span>
         </div>
       </div>
 
       <div className="program-row-card__metric">
-        <strong>{stats.universityCount}</strong>
+        <strong>{program.university_count}</strong>
         <span>вузов</span>
       </div>
       <div className="program-row-card__metric">
-        <strong>{stats.avgScore}</strong>
+        <strong>{program.avg_passing_score ?? "—"}</strong>
         <span>средний балл</span>
       </div>
       <div className="program-row-card__metric">
-        <strong>{stats.budgetPlaces.toLocaleString("ru-RU")}</strong>
+        <strong>{program.budget_places.toLocaleString("ru-RU")}</strong>
         <span>бюджетных мест</span>
       </div>
 
@@ -120,12 +137,12 @@ function DirectionRow({
 // ── Direction detail ───────────────────────────────────────────────────────────
 
 function DirectionDetail({
-  direction,
+  program,
   unis,
   loadingUnis,
   onBack,
 }: {
-  direction: Direction;
+  program: ProgramDirectoryItemDto;
   unis: BackendSearchResponse | null;
   loadingUnis: boolean;
   onBack: () => void;
@@ -138,14 +155,14 @@ function DirectionDetail({
 
       <div
         className="prog-detail__hero"
-        style={{ background: `linear-gradient(135deg, ${direction.ugnsGroupColor}cc 0%, ${direction.ugnsGroupColor}88 100%)` }}
+        style={{ background: `linear-gradient(135deg, ${programColor(program.code)}cc 0%, ${programColor(program.code)}88 100%)` }}
       >
         <div className="prog-detail__hero-inner">
-          <span className="prog-detail__code">{direction.code}</span>
-          <h1 className="prog-detail__name">{direction.name}</h1>
+          <span className="prog-detail__code">{program.code}</span>
+          <h1 className="prog-detail__name">{program.name}</h1>
           <div className="prog-detail__meta">
-            <span className="prog-detail__level">{direction.level}</span>
-            <span className="prog-detail__group">{direction.ugnsGroup}</span>
+            <span className="prog-detail__level">{program.level ?? "Бакалавриат"}</span>
+            <span className="prog-detail__group">{programGroup(program.code)}</span>
           </div>
         </div>
       </div>
@@ -154,36 +171,31 @@ function DirectionDetail({
         <div className="prog-detail__main">
           <section className="prog-detail__section">
             <h2 className="prog-detail__section-title">О направлении</h2>
-            <p className="prog-detail__description">{direction.description}</p>
+            <p className="prog-detail__description">
+              {program.description ?? "Описание направления появится после загрузки официальных карточек вузов."}
+            </p>
           </section>
 
           <section className="prog-detail__section">
             <h2 className="prog-detail__section-title">Требуемые предметы ЕГЭ</h2>
             <div className="prog-detail__ege-variants">
-              {direction.egeSubjects.map((variant, i) => (
-                <div key={i} className="prog-detail__ege-variant">
-                  {i > 0 && <span className="prog-detail__ege-or">или</span>}
-                  <div className="prog-detail__ege-chips">
-                    {variant.map((subj) => (
-                      <span key={subj} className="prog-detail__ege-chip">{subj}</span>
-                    ))}
-                    <span className="prog-detail__ege-chip prog-detail__ege-chip--always">+ Русский язык</span>
-                    <span className="prog-detail__ege-chip prog-detail__ege-chip--always">+ Математика (профиль)</span>
-                  </div>
+              <div className="prog-detail__ege-variant">
+                <div className="prog-detail__ege-chips">
+                  {program.ege_subjects.map((subj) => (
+                    <span key={subj} className="prog-detail__ege-chip">{subj}</span>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </section>
 
           <section className="prog-detail__section">
-            <h2 className="prog-detail__section-title">Кем можно работать</h2>
+            <h2 className="prog-detail__section-title">Сводные показатели</h2>
             <ul className="prog-detail__professions">
-              {direction.professions.map((prof) => (
-                <li key={prof} className="prog-detail__profession">
-                  <span className="prog-detail__profession-dot" />
-                  {prof}
-                </li>
-              ))}
+              <li className="prog-detail__profession"><span className="prog-detail__profession-dot" />Вузов: {program.university_count}</li>
+              <li className="prog-detail__profession"><span className="prog-detail__profession-dot" />Бюджетных мест: {program.budget_places.toLocaleString("ru-RU")}</li>
+              <li className="prog-detail__profession"><span className="prog-detail__profession-dot" />Платных мест: {program.paid_places.toLocaleString("ru-RU")}</li>
+              <li className="prog-detail__profession"><span className="prog-detail__profession-dot" />Стоимость от: {program.min_tuition_per_year ? `${program.min_tuition_per_year.toLocaleString("ru-RU")} ₽` : "—"}</li>
             </ul>
           </section>
         </div>
@@ -252,9 +264,26 @@ export function ProgramsPage() {
   const [showAllSubjects, setShowAllSubjects] = useState(false);
   const [sortBy, setSortBy] = useState<ProgramSort>("universities");
   const [visibleCount, setVisibleCount] = useState(5);
-  const [selected, setSelected] = useState<Direction | null>(null);
+  const [programs, setPrograms] = useState<ProgramDirectoryItemDto[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(true);
+  const [programsError, setProgramsError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ProgramDirectoryItemDto | null>(null);
   const [unis, setUnis] = useState<BackendSearchResponse | null>(null);
   const [loadingUnis, setLoadingUnis] = useState(false);
+
+  useEffect(() => {
+    setProgramsLoading(true);
+    backendApi
+      .getPrograms()
+      .then((response) => {
+        setPrograms(response.items);
+        setProgramsError(null);
+      })
+      .catch((error: unknown) => {
+        setProgramsError(error instanceof Error ? error.message : "Не удалось загрузить программы");
+      })
+      .finally(() => setProgramsLoading(false));
+  }, [backendApi]);
 
   useEffect(() => {
     if (!selected) {
@@ -264,31 +293,27 @@ export function ProgramsPage() {
     setLoadingUnis(true);
     setUnis(null);
     backendApi
-      .searchUniversities({ query: selected.searchQuery, pageSize: 10 })
+      .searchUniversities({ programCodes: [selected.code], pageSize: 10 })
       .then((r) => setUnis(r))
       .catch(() => setUnis(null))
       .finally(() => setLoadingUnis(false));
   }, [selected, backendApi]);
 
   const visibleSubjectFilters = showAllSubjects ? EGE_FILTER_SUBJECTS : PRIMARY_SUBJECTS;
-  const filtered = DIRECTIONS
-    .filter((direction) => {
+  const filtered = programs
+    .filter((program) => {
       const normalizedQuery = query.trim().toLowerCase();
       const matchesQuery =
         !normalizedQuery ||
-        direction.name.toLowerCase().includes(normalizedQuery) ||
-        direction.code.includes(normalizedQuery) ||
-        direction.professions.some((profession) =>
-          profession.toLowerCase().includes(normalizedQuery),
-        );
-      return matchesQuery && subjectMatches(direction, selectedSubjects);
+        program.name.toLowerCase().includes(normalizedQuery) ||
+        program.code.includes(normalizedQuery) ||
+        (program.description ?? "").toLowerCase().includes(normalizedQuery);
+      return matchesQuery && subjectMatches(program, selectedSubjects);
     })
     .sort((left, right) => {
-      const leftStats = directionStats(left);
-      const rightStats = directionStats(right);
-      if (sortBy === "score") return rightStats.avgScore - leftStats.avgScore;
-      if (sortBy === "budget") return rightStats.budgetPlaces - leftStats.budgetPlaces;
-      return rightStats.universityCount - leftStats.universityCount;
+      if (sortBy === "score") return (right.avg_passing_score ?? 0) - (left.avg_passing_score ?? 0);
+      if (sortBy === "budget") return right.budget_places - left.budget_places;
+      return right.university_count - left.university_count;
     });
   const visibleDirections = filtered.slice(0, visibleCount);
 
@@ -305,7 +330,7 @@ export function ProgramsPage() {
     return (
       <div className="programs-page">
         <DirectionDetail
-          direction={selected}
+          program={selected}
           unis={unis}
           loadingUnis={loadingUnis}
           onBack={() => setSelected(null)}
@@ -382,23 +407,37 @@ export function ProgramsPage() {
         </div>
       </div>
 
-      {filtered.length === 0 && (
+      {programsLoading && (
+        <ViewState
+          kind="loading"
+          title="Загружаем направления"
+          message="Собираем список программ из актуальных карточек вузов."
+        />
+      )}
+
+      {!programsLoading && programsError && (
+        <ViewState kind="error" title="Не удалось загрузить программы" message={programsError} />
+      )}
+
+      {!programsLoading && !programsError && filtered.length === 0 && (
         <div className="programs-page__empty">
           По выбранным фильтрам направлений не найдено. Попробуйте изменить фильтры.
         </div>
       )}
 
-      <div className="programs-list">
-        {visibleDirections.map((direction) => (
+      {!programsLoading && !programsError && (
+        <div className="programs-list">
+          {visibleDirections.map((direction) => (
           <DirectionRow
             key={direction.code}
-            direction={direction}
+            program={direction}
             onClick={() => setSelected(direction)}
           />
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {visibleCount < filtered.length && (
+      {!programsLoading && !programsError && visibleCount < filtered.length && (
         <div className="programs-load-more">
           <button
             className="programs-load-more__button"

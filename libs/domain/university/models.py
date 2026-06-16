@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class FieldAttribution(BaseModel):
@@ -93,16 +93,20 @@ class UniversityCard(BaseModel):
     canonical_name: ConfidenceValue
     aliases: list[str] = Field(default_factory=list)
     description: str | None = None
+    history: dict[str, Any] = Field(default_factory=dict)
     location: LocationInfo = Field(default_factory=LocationInfo)
     contacts: ContactsInfo = Field(default_factory=ContactsInfo)
     institutional: InstitutionalInfo = Field(
-        default_factory=lambda: InstitutionalInfo.model_validate({"type": None, "founded_year": None})
+        default_factory=lambda: InstitutionalInfo.model_validate(
+            {"type": None, "founded_year": None}
+        )
     )
     programs: list[dict[str, Any]] = Field(default_factory=list)
     tuition: list[dict[str, Any]] = Field(default_factory=list)
     stats: StatsInfo = Field(default_factory=StatsInfo)
     ratings: list[RatingItem] = Field(default_factory=list)
     dormitory: dict[str, Any] = Field(default_factory=dict)
+    military_department: dict[str, Any] = Field(default_factory=dict)
     reviews: ReviewSummary = Field(default_factory=ReviewSummary)
     sources: list[FieldAttribution] = Field(default_factory=list)
     version: CardVersionInfo
@@ -123,8 +127,12 @@ class UniversityCard(BaseModel):
             aliases=["ESU"],
             location=LocationInfo(country="Russia", city="Moscow"),
             contacts=ContactsInfo(website="https://example.edu", emails=["admissions@example.edu"]),
-            institutional=InstitutionalInfo.model_validate({"type": "public", "founded_year": 1965}),
-            ratings=[RatingItem(provider="Example Ranking", year=2025, metric="national", value="12")],
+            institutional=InstitutionalInfo.model_validate(
+                {"type": "public", "founded_year": 1965}
+            ),
+            ratings=[
+                RatingItem(provider="Example Ranking", year=2025, metric="national", value="12")
+            ],
             sources=[
                 FieldAttribution(
                     source_key="official-site",

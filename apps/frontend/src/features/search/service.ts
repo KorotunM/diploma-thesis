@@ -15,6 +15,7 @@ export async function searchUniversities(options: {
       country: options.state.country,
       sourceType: options.state.sourceType,
       egeSubjects: options.state.egeSubjects.length > 0 ? options.state.egeSubjects : undefined,
+      egeScores: Object.keys(options.state.egeScores).length > 0 ? options.state.egeScores : undefined,
       programCodes: options.state.programCodes.length > 0 ? options.state.programCodes : undefined,
       dormitory: options.state.dormitory,
       militaryDepartment: options.state.militaryDepartment,

@@ -2,8 +2,6 @@ import { useRatings } from "../features/ratings";
 import type { RankingItem } from "../features/ratings";
 import { ViewState } from "../shared/ui/view-state";
 
-const UPDATED_DATE = "1 июля 2025";
-
 function categoryColor(cat: string): string {
   if (cat === "А+") return "rank-row__category--aplus";
   if (cat === "А")  return "rank-row__category--a";
@@ -91,6 +89,8 @@ function openUniversityCard(universityId: string): void {
 export function RatingsPage() {
   const { snapshot, loading, error, page, setPage } = useRatings();
   const totalPages = snapshot ? Math.ceil(snapshot.total / snapshot.pageSize) : 0;
+  const updatedDate = formatRatingDate(snapshot?.updatedAt);
+  const sourceLabel = snapshot?.sourceLabel ?? "Рейтинги из карточек вузов";
 
   return (
     <>
@@ -102,7 +102,11 @@ export function RatingsPage() {
           <div className="ratings-hero__meta">
             <span className="ratings-hero__meta-item">
               <span className="ratings-hero__meta-icon">📅</span>
-              {UPDATED_DATE}
+              {updatedDate}
+            </span>
+            <span className="ratings-hero__meta-item">
+              <span className="ratings-hero__meta-icon">◎</span>
+              {sourceLabel}
             </span>
           </div>
         </div>
@@ -172,4 +176,15 @@ export function RatingsPage() {
       </div>
     </>
   );
+}
+
+function formatRatingDate(value: string | null | undefined): string {
+  if (!value) return "16 июня 2026";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "16 июня 2026";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
 }
